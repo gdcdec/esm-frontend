@@ -1,48 +1,7 @@
 import { CATEGORIES } from '@/src/constants/categories';
 import { Report } from '@/src/types';
-import L from 'leaflet';
-import React from 'react';
-import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaflet';
-
-// Fix leaflet default icons in web bundlers
-import 'leaflet/dist/leaflet.css';
-
-// Create custom colored marker icons
-const createIcon = (color: string) =>
-    new L.DivIcon({
-        html: `<div style="
-      width: 30px; height: 30px;
-      background: ${color};
-      border: 3px solid white;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    "></div>`,
-        className: '',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-        popupAnchor: [0, -30],
-    });
-
-const clusterIcon = (count: number) =>
-    new L.DivIcon({
-        html: `<div style="
-      width: 36px; height: 36px;
-      background: #2563EB;
-      border: 3px solid white;
-      border-radius: 50%;
-      color: white;
-      font-weight: bold;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px rgba(37,99,235,0.4);
-    ">${count}</div>`,
-        className: '',
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-    });
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 interface MapViewProps {
     reports: Report[];
@@ -59,25 +18,14 @@ interface MapViewProps {
 const DEFAULT_CENTER: [number, number] = [55.7558, 37.6173];
 const DEFAULT_ZOOM = 13;
 
-function MapClickHandler({
-    onMapPress,
-}: {
-    onMapPress?: (coordinate: { latitude: number; longitude: number }) => void;
-}) {
-    useMapEvents({
-        click(e) {
-            onMapPress?.({ latitude: e.latlng.lat, longitude: e.latlng.lng });
-        },
-    });
-    return null;
-}
-
 export const AppMapView: React.FC<MapViewProps> = ({
     reports,
     onMapPress,
     onMarkerPress,
     initialRegion,
 }) => {
+    const [LeafletComponents, setLeafletComponents] = useState<any>(null);
+
     const center: [number, number] = initialRegion
         ? [initialRegion.latitude, initialRegion.longitude]
         : DEFAULT_CENTER;
@@ -93,6 +41,90 @@ export const AppMapView: React.FC<MapViewProps> = ({
         return Object.values(grouped);
     }, [reports]);
 
+    // Dynamically import Leaflet only on client side (avoid "window is not defined")
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadLeaflet() {
+            const L = await import('leaflet');
+            const RL = await import('react-leaflet');
+
+            // Load leaflet CSS
+            if (!document.querySelector('link[href*="leaflet.css"]')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                document.head.appendChild(link);
+            }
+
+            if (!cancelled) {
+                setLeafletComponents({ L: L.default || L, RL });
+            }
+        }
+
+        loadLeaflet();
+        return () => { cancelled = true; };
+    }, []);
+
+    if (!LeafletComponents) {
+        return (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E5E7EB' }}>
+                <ActivityIndicator size="large" color="#2563EB" />
+                <Text style={{ marginTop: 12, color: '#6B7280' }}>Загрузка карты...</Text>
+            </View>
+        );
+    }
+
+    const { L, RL } = LeafletComponents;
+    const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = RL;
+
+    // Create custom colored marker icons
+    const createIcon = (color: string) =>
+        new L.DivIcon({
+            html: `<div style="
+        width: 30px; height: 30px;
+        background: ${color};
+        border: 3px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      "></div>`,
+            className: '',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -30],
+        });
+
+    const clusterIcon = (count: number) =>
+        new L.DivIcon({
+            html: `<div style="
+        width: 36px; height: 36px;
+        background: #2563EB;
+        border: 3px solid white;
+        border-radius: 50%;
+        color: white;
+        font-weight: bold;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(37,99,235,0.4);
+      ">${count}</div>`,
+            className: '',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+        });
+
+    // Click handler component
+    function MapClickHandler() {
+        useMapEvents({
+            click(e: any) {
+                onMapPress?.({ latitude: e.latlng.lat, longitude: e.latlng.lng });
+            },
+        });
+        return null;
+    }
+
     return (
         <div style={{ width: '100%', height: '100%' }}>
             <MapContainer
@@ -105,9 +137,9 @@ export const AppMapView: React.FC<MapViewProps> = ({
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <MapClickHandler onMapPress={onMapPress} />
+                <MapClickHandler />
 
-                {clusters.map((cluster, i) => {
+                {clusters.map((cluster: Report[], i: number) => {
                     const main = cluster[0];
                     const cat = CATEGORIES.find((c) => c.id === main.category);
                     const isCluster = cluster.length > 1;
