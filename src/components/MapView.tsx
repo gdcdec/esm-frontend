@@ -3,6 +3,7 @@ import React from 'react';
 
 interface MapViewProps {
     reports: Report[];
+    selectedCoordinate?: { latitude: number; longitude: number } | null;
     onMapPress?: (coordinate: { latitude: number; longitude: number }) => void;
     onMarkerPress?: (reports: Report[]) => void;
     initialRegion?: {

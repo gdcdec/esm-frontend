@@ -5,6 +5,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 interface MapViewProps {
     reports: Report[];
+    selectedCoordinate?: { latitude: number; longitude: number } | null;
     onMapPress?: (coordinate: { latitude: number; longitude: number }) => void;
     onMarkerPress?: (reports: Report[]) => void;
     initialRegion?: {
@@ -15,11 +16,12 @@ interface MapViewProps {
     };
 }
 
-const DEFAULT_CENTER: [number, number] = [55.7558, 37.6173];
+const DEFAULT_CENTER: [number, number] = [53.20, 50.15];
 const DEFAULT_ZOOM = 13;
 
 export const AppMapView: React.FC<MapViewProps> = ({
     reports,
+    selectedCoordinate,
     onMapPress,
     onMarkerPress,
     initialRegion,
@@ -115,6 +117,31 @@ export const AppMapView: React.FC<MapViewProps> = ({
             iconAnchor: [18, 18],
         });
 
+    const selectedPinIcon = new L.DivIcon({
+        html: `<div style="position:relative">
+            <div style="
+                width: 32px; height: 32px;
+                background: #2563EB;
+                border: 3px solid white;
+                border-radius: 50% 50% 50% 0;
+                transform: rotate(-45deg);
+                box-shadow: 0 2px 8px rgba(37,99,235,0.5);
+            "></div>
+            <div style="
+                position: absolute;
+                top: -4px; left: -4px;
+                width: 40px; height: 40px;
+                border-radius: 50%;
+                background: rgba(37,99,235,0.2);
+                animation: pulse 1.5s infinite;
+            "></div>
+            <style>@keyframes pulse { 0%,100% { transform:scale(1); opacity:1 } 50% { transform:scale(1.4); opacity:0 } }</style>
+        </div>`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+    });
+
     // Click handler component
     function MapClickHandler() {
         useMapEvents({
@@ -165,6 +192,14 @@ export const AppMapView: React.FC<MapViewProps> = ({
                         </Marker>
                     );
                 })}
+
+                {/* Selected point marker */}
+                {selectedCoordinate && (
+                    <Marker
+                        position={[selectedCoordinate.latitude, selectedCoordinate.longitude]}
+                        icon={selectedPinIcon}
+                    />
+                )}
             </MapContainer>
         </div>
     );

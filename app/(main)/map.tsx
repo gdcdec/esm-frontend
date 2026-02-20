@@ -82,6 +82,7 @@ export default function MapScreen() {
             <View className="flex-1">
                 <AppMapView
                     reports={reports}
+                    selectedCoordinate={selectedCoord}
                     onMapPress={handleMapPress}
                     onMarkerPress={handleMarkerPress}
                 />

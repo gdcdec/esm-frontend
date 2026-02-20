@@ -3,8 +3,8 @@ import { Report } from '@/src/types';
 export const MOCK_REPORTS: Report[] = [
     {
         id: 1,
-        lat: 55.7558,
-        long: 37.6173,
+        lat: 53.20,
+        long: 50.15,
         title: 'Яма во дворе',
         desc: 'Огромная яма при въезде во двор, машины цепляют дном.',
         address: 'ул. Пушкина, д. 10',
@@ -18,8 +18,8 @@ export const MOCK_REPORTS: Report[] = [
     },
     {
         id: 4,
-        lat: 55.7558,
-        long: 37.6173,
+        lat: 53.20,
+        long: 50.18,
         title: 'Сломан забор',
         desc: 'Дети выломали секцию забора, опасно.',
         address: 'ул. Пушкина, д. 10',
@@ -33,8 +33,8 @@ export const MOCK_REPORTS: Report[] = [
     },
     {
         id: 2,
-        lat: 55.7308,
-        long: 37.5988,
+        lat: 53.20,
+        long: 50.16,
         title: 'Не горит фонарь',
         desc: 'Вдоль аллеи не работает освещение уже неделю.',
         address: 'Парк Горького',
@@ -48,8 +48,8 @@ export const MOCK_REPORTS: Report[] = [
     },
     {
         id: 3,
-        lat: 55.7512,
-        long: 37.6184,
+        lat: 53.2025,
+        long: 50.1510,
         title: 'Мусор не вывозят',
         desc: 'Контейнеры переполнены, запах на весь район.',
         address: 'пр. Ленина, 42',

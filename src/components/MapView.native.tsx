@@ -6,6 +6,7 @@ import RNMapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps'
 
 interface MapViewProps {
     reports: Report[];
+    selectedCoordinate?: { latitude: number; longitude: number } | null;
     onMapPress?: (coordinate: { latitude: number; longitude: number }) => void;
     onMarkerPress?: (reports: Report[]) => void;
     initialRegion?: {
@@ -17,14 +18,15 @@ interface MapViewProps {
 }
 
 const DEFAULT_REGION = {
-    latitude: 55.7558,
-    longitude: 37.6173,
+    latitude: 53.20,
+    longitude: 50.15,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
 };
 
 export const AppMapView: React.FC<MapViewProps> = ({
     reports,
+    selectedCoordinate,
     onMapPress,
     onMarkerPress,
     initialRegion = DEFAULT_REGION,
@@ -71,6 +73,15 @@ export const AppMapView: React.FC<MapViewProps> = ({
                     />
                 );
             })}
+
+            {/* Selected point marker */}
+            {selectedCoordinate && (
+                <Marker
+                    coordinate={selectedCoordinate}
+                    pinColor="#2563EB"
+                    title="Новая метка"
+                />
+            )}
         </RNMapView>
     );
 };
