@@ -1,5 +1,11 @@
 import { Report } from '@/src/types';
-import React from 'react';
+import { forwardRef } from 'react';
+
+export interface MapViewRef {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    goToLocation: (lat: number, lng: number) => void;
+}
 
 interface MapViewProps {
     reports: Report[];
@@ -15,13 +21,10 @@ interface MapViewProps {
 }
 
 /**
- * Fallback MapView — this file is overridden by:
- *  - MapView.native.tsx on Android/iOS (react-native-maps)
- *  - MapView.web.tsx on Web (react-leaflet)
- *
- * Metro picks the platform-specific file automatically.
- * This base file only exists for TypeScript resolution.
+ * Fallback MapView — overridden by platform-specific files:
+ *  - MapView.native.tsx (react-native-maps)
+ *  - MapView.web.tsx (react-leaflet)
  */
-export const AppMapView: React.FC<MapViewProps> = () => {
+export const AppMapView = forwardRef<MapViewRef, MapViewProps>(() => {
     return null;
-};
+});

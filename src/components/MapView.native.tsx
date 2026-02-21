@@ -1,8 +1,14 @@
 import { CATEGORIES } from '@/src/constants/categories';
 import { Report } from '@/src/types';
-import React from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import RNMapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
+
+export interface MapViewRef {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    goToLocation: (lat: number, lng: number) => void;
+}
 
 interface MapViewProps {
     reports: Report[];
@@ -24,13 +30,44 @@ const DEFAULT_REGION = {
     longitudeDelta: 0.05,
 };
 
-export const AppMapView: React.FC<MapViewProps> = ({
+export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     reports,
     selectedCoordinate,
     onMapPress,
     onMarkerPress,
     initialRegion = DEFAULT_REGION,
-}) => {
+}, ref) => {
+    const mapRef = useRef<RNMapView>(null);
+
+    useImperativeHandle(ref, () => ({
+        zoomIn: async () => {
+            const camera = await mapRef.current?.getCamera();
+            if (camera && mapRef.current) {
+                mapRef.current.animateCamera({
+                    ...camera,
+                    zoom: (camera.zoom ?? 13) + 1,
+                }, { duration: 300 });
+            }
+        },
+        zoomOut: async () => {
+            const camera = await mapRef.current?.getCamera();
+            if (camera && mapRef.current) {
+                mapRef.current.animateCamera({
+                    ...camera,
+                    zoom: (camera.zoom ?? 13) - 1,
+                }, { duration: 300 });
+            }
+        },
+        goToLocation: (lat: number, lng: number) => {
+            mapRef.current?.animateToRegion({
+                latitude: lat,
+                longitude: lng,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            }, 500);
+        },
+    }));
+
     // Group reports by coordinates for clustering
     const clusters = React.useMemo(() => {
         const grouped: Record<string, Report[]> = {};
@@ -44,16 +81,18 @@ export const AppMapView: React.FC<MapViewProps> = ({
 
     return (
         <RNMapView
+            ref={mapRef}
             style={StyleSheet.absoluteFillObject}
             provider={PROVIDER_DEFAULT}
             initialRegion={initialRegion}
             onPress={(e) => onMapPress?.(e.nativeEvent.coordinate)}
             showsUserLocation
             showsMyLocationButton={false}
+            zoomControlEnabled={false}
         >
-            {/* OpenStreetMap tiles */}
+            {/* CartoDB CDN tiles (OSM blocks direct access without User-Agent) */}
             <UrlTile
-                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                urlTemplate="https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"
                 maximumZ={19}
                 flipY={false}
             />
@@ -84,4 +123,4 @@ export const AppMapView: React.FC<MapViewProps> = ({
             )}
         </RNMapView>
     );
-};
+});

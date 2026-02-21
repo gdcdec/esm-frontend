@@ -1,8 +1,9 @@
-import { AppMapView } from '@/src/components/MapView';
+import { AppMapView, MapViewRef } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
 import { MOCK_REPORTS } from '@/src/constants/mock-data';
 import { Report } from '@/src/types';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { router } from 'expo-router';
 import {
     Clock,
@@ -13,21 +14,15 @@ import {
     Search,
     X,
 } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-    Dimensions,
     FlatList,
-    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_MIN = 96;
-const SHEET_MAX = SCREEN_HEIGHT * 0.85;
 
 export default function MapScreen() {
     const [reports] = useState<Report[]>(MOCK_REPORTS);
@@ -36,13 +31,18 @@ export default function MapScreen() {
         longitude: number;
     } | null>(null);
     const [activeReports, setActiveReports] = useState<Report[] | null>(null);
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchHistory, setSearchHistory] = useState([
         'ул. Пушкина, 10',
         'Парк Горького',
         'Центральный рынок',
     ]);
+
+    const mapRef = useRef<MapViewRef>(null);
+    const bottomSheetRef = useRef<BottomSheet>(null);
+
+    // Bottom sheet snap points: collapsed (120px), half, full
+    const snapPoints = useMemo(() => ['12%', '45%', '85%'], []);
 
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
 
@@ -61,7 +61,7 @@ export default function MapScreen() {
         (coordinate: { latitude: number; longitude: number }) => {
             setActiveReports(null);
             setSelectedCoord(coordinate);
-            setIsSheetOpen(false);
+            bottomSheetRef.current?.snapToIndex(0); // collapse
         },
         []
     );
@@ -69,18 +69,28 @@ export default function MapScreen() {
     const handleMarkerPress = useCallback((clusterReports: Report[]) => {
         setSelectedCoord(null);
         setActiveReports(clusterReports);
-        setIsSheetOpen(true);
+        bottomSheetRef.current?.snapToIndex(1); // half
     }, []);
 
     const handleAddReport = () => {
         router.push('/(main)/create');
     };
 
+    const handleZoomIn = () => mapRef.current?.zoomIn();
+    const handleZoomOut = () => mapRef.current?.zoomOut();
+
+    const handleCloseDetail = useCallback(() => {
+        setActiveReports(null);
+        setSelectedCoord(null);
+        bottomSheetRef.current?.snapToIndex(0);
+    }, []);
+
     return (
         <View className="flex-1 bg-white">
             {/* Map */}
             <View className="flex-1">
                 <AppMapView
+                    ref={mapRef}
                     reports={reports}
                     selectedCoordinate={selectedCoord}
                     onMapPress={handleMapPress}
@@ -101,15 +111,21 @@ export default function MapScreen() {
                     </TouchableOpacity>
                 </SafeAreaView>
 
-                {/* Zoom controls */}
+                {/* Zoom controls — now connected to map ref */}
                 <View
                     className="absolute right-4 gap-3"
-                    style={{ top: '40%', zIndex: 10 }}
+                    style={{ top: '35%', zIndex: 10 }}
                 >
-                    <TouchableOpacity className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100">
+                    <TouchableOpacity
+                        onPress={handleZoomIn}
+                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100"
+                    >
                         <Plus size={24} color="#374151" />
                     </TouchableOpacity>
-                    <TouchableOpacity className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100">
+                    <TouchableOpacity
+                        onPress={handleZoomOut}
+                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100"
+                    >
                         <Minus size={24} color="#374151" />
                     </TouchableOpacity>
                     <TouchableOpacity className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100 mt-4">
@@ -156,26 +172,33 @@ export default function MapScreen() {
                 </View>
             )}
 
-            {/* Bottom Sheet */}
+            {/* Swipable Bottom Sheet */}
             {!selectedCoord && (
-                <View
-                    className="absolute bottom-0 w-full bg-white rounded-t-[30px] shadow-lg"
-                    style={{
-                        height: isSheetOpen ? SHEET_MAX : SHEET_MIN,
-                        zIndex: 20,
+                <BottomSheet
+                    ref={bottomSheetRef}
+                    index={0}
+                    snapPoints={snapPoints}
+                    enablePanDownToClose={false}
+                    backgroundStyle={{
+                        backgroundColor: 'white',
+                        borderTopLeftRadius: 24,
+                        borderTopRightRadius: 24,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: -4 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 12,
+                        elevation: 16,
+                    }}
+                    handleIndicatorStyle={{
+                        backgroundColor: '#D1D5DB',
+                        width: 48,
+                        height: 5,
+                        borderRadius: 3,
                     }}
                 >
-                    {/* Pull handle */}
-                    <TouchableOpacity
-                        className="w-full pt-3 pb-1 items-center"
-                        onPress={() => setIsSheetOpen(!isSheetOpen)}
-                    >
-                        <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
-                    </TouchableOpacity>
-
                     {/* Single report detail */}
                     {singleReport ? (
-                        <ScrollView className="flex-1 px-5 pb-5">
+                        <BottomSheetScrollView contentContainerStyle={{ padding: 20 }}>
                             <View className="flex-row justify-between items-start">
                                 <View className="bg-green-100 px-2.5 py-1 rounded-full">
                                     <Text className="text-[10px] font-bold text-green-700 uppercase">
@@ -186,12 +209,7 @@ export default function MapScreen() {
                                                 : 'На рассмотрении'}
                                     </Text>
                                 </View>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setActiveReports(null);
-                                        setIsSheetOpen(false);
-                                    }}
-                                >
+                                <TouchableOpacity onPress={handleCloseDetail}>
                                     <X size={24} color="#9CA3AF" />
                                 </TouchableOpacity>
                             </View>
@@ -238,7 +256,7 @@ export default function MapScreen() {
                                     </Text>
                                 </TouchableOpacity>
                             </View>
-                        </ScrollView>
+                        </BottomSheetScrollView>
 
                     ) : activeReports && activeReports.length > 1 ? (
                         /* Cluster list */
@@ -250,12 +268,7 @@ export default function MapScreen() {
                                         {activeReports[0].address || 'Адрес не определен'}
                                     </Text>
                                 </View>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setActiveReports(null);
-                                        setIsSheetOpen(false);
-                                    }}
-                                >
+                                <TouchableOpacity onPress={handleCloseDetail}>
                                     <X size={24} color="#9CA3AF" />
                                 </TouchableOpacity>
                             </View>
@@ -280,7 +293,7 @@ export default function MapScreen() {
 
                     ) : (
                         /* Main feed + search */
-                        <>
+                        <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 40 }}>
                             <View className="px-5 pb-4">
                                 <View className="relative">
                                     <View className="absolute left-3 top-3 z-10">
@@ -292,12 +305,12 @@ export default function MapScreen() {
                                         className="w-full bg-gray-100 pl-10 pr-4 py-3 rounded-2xl text-gray-900"
                                         value={searchQuery}
                                         onChangeText={setSearchQuery}
-                                        onFocus={() => setIsSheetOpen(true)}
+                                        onFocus={() => bottomSheetRef.current?.snapToIndex(2)}
                                     />
                                 </View>
                             </View>
 
-                            <ScrollView className="flex-1 px-5 pb-5">
+                            <View className="px-5">
                                 {/* Search history */}
                                 {!searchQuery && searchHistory.length > 0 && (
                                     <View className="mb-6">
@@ -334,7 +347,7 @@ export default function MapScreen() {
                                         report={report}
                                         onPress={() => {
                                             setActiveReports([report]);
-                                            setIsSheetOpen(true);
+                                            bottomSheetRef.current?.snapToIndex(1);
                                         }}
                                     />
                                 ))}
@@ -344,10 +357,10 @@ export default function MapScreen() {
                                         <Text className="text-gray-400">Ничего не найдено</Text>
                                     </View>
                                 )}
-                            </ScrollView>
-                        </>
+                            </View>
+                        </BottomSheetScrollView>
                     )}
-                </View>
+                </BottomSheet>
             )}
         </View>
     );

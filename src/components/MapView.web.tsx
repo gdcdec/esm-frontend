@@ -1,7 +1,13 @@
 import { CATEGORIES } from '@/src/constants/categories';
 import { Report } from '@/src/types';
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
+
+export interface MapViewRef {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    goToLocation: (lat: number, lng: number) => void;
+}
 
 interface MapViewProps {
     reports: Report[];
@@ -19,14 +25,15 @@ interface MapViewProps {
 const DEFAULT_CENTER: [number, number] = [53.20, 50.15];
 const DEFAULT_ZOOM = 13;
 
-export const AppMapView: React.FC<MapViewProps> = ({
+export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     reports,
     selectedCoordinate,
     onMapPress,
     onMarkerPress,
     initialRegion,
-}) => {
+}, ref) => {
     const [LeafletComponents, setLeafletComponents] = useState<any>(null);
+    const mapInstanceRef = useRef<any>(null);
 
     const center: [number, number] = initialRegion
         ? [initialRegion.latitude, initialRegion.longitude]
@@ -43,7 +50,23 @@ export const AppMapView: React.FC<MapViewProps> = ({
         return Object.values(grouped);
     }, [reports]);
 
-    // Dynamically import Leaflet only on client side (avoid "window is not defined")
+    // Expose zoom methods via ref
+    useImperativeHandle(ref, () => ({
+        zoomIn: () => {
+            const map = mapInstanceRef.current;
+            if (map) map.setZoom(map.getZoom() + 1);
+        },
+        zoomOut: () => {
+            const map = mapInstanceRef.current;
+            if (map) map.setZoom(map.getZoom() - 1);
+        },
+        goToLocation: (lat: number, lng: number) => {
+            const map = mapInstanceRef.current;
+            if (map) map.flyTo([lat, lng], 16);
+        },
+    }));
+
+    // Dynamically import Leaflet only on client side
     useEffect(() => {
         let cancelled = false;
 
@@ -78,7 +101,7 @@ export const AppMapView: React.FC<MapViewProps> = ({
     }
 
     const { L, RL } = LeafletComponents;
-    const { MapContainer, TileLayer, Marker, Popup, useMapEvents } = RL;
+    const { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } = RL;
 
     // Create custom colored marker icons
     const createIcon = (color: string) =>
@@ -142,8 +165,13 @@ export const AppMapView: React.FC<MapViewProps> = ({
         iconAnchor: [16, 32],
     });
 
-    // Click handler component
-    function MapClickHandler() {
+    // Save map instance ref + handle click
+    function MapSetup() {
+        const map = useMap();
+        React.useEffect(() => {
+            mapInstanceRef.current = map;
+        }, [map]);
+
         useMapEvents({
             click(e: any) {
                 onMapPress?.({ latitude: e.latlng.lat, longitude: e.latlng.lng });
@@ -158,13 +186,13 @@ export const AppMapView: React.FC<MapViewProps> = ({
                 center={center}
                 zoom={DEFAULT_ZOOM}
                 style={{ width: '100%', height: '100%' }}
-                zoomControl={true}
+                zoomControl={false}
             >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    url="https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"
                 />
-                <MapClickHandler />
+                <MapSetup />
 
                 {clusters.map((cluster: Report[], i: number) => {
                     const main = cluster[0];
@@ -203,4 +231,4 @@ export const AppMapView: React.FC<MapViewProps> = ({
             </MapContainer>
         </div>
     );
-};
+});

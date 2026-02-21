@@ -15,7 +15,7 @@ export default function MainLayout() {
                 name="profile"
                 options={{
                     presentation: 'modal',
-                    animation: 'slide_from_right',
+                    animation: 'slide_from_bottom',
                 }}
             />
         </Stack>
