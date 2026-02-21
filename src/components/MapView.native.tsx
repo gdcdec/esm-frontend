@@ -90,7 +90,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
             showsMyLocationButton={false}
             zoomControlEnabled={false}
         >
-            {/* CartoDB CDN tiles (OSM blocks direct access without User-Agent) */}
+            {/* OpenStreetMap tiles via CartoDB CDN (avoids OSM 403 block) почему-то меня блокирует osm заменил https://tile.openstreetmap.org/{z}/{x}/{y}.png на это, надо думать*/}
             <UrlTile
                 urlTemplate="https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"
                 maximumZ={19}
