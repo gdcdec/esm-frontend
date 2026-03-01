@@ -10,8 +10,17 @@ interface ReportCardProps {
     onPress?: () => void;
 }
 
+/** Format ISO date string to readable Russian locale */
+function formatDate(iso: string): string {
+    try {
+        return new Date(iso).toLocaleDateString('ru-RU');
+    } catch {
+        return iso;
+    }
+}
+
 export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
-    const category = CATEGORIES.find((c) => c.id === report.category);
+    const category = CATEGORIES.find((c) => c.name === report.rubric_name);
 
     return (
         <TouchableOpacity
@@ -23,12 +32,12 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
             <View className="flex-row items-center gap-2 mb-3">
                 <View className="w-6 h-6 rounded-full bg-gray-200 items-center justify-center">
                     <Text className="text-gray-600 font-bold text-xs">
-                        {report.author.charAt(0)}
+                        {report.author_username?.charAt(0) ?? '?'}
                     </Text>
                 </View>
-                <Text className="font-medium text-gray-900 text-xs">{report.author}</Text>
+                <Text className="font-medium text-gray-900 text-xs">{report.author_username}</Text>
                 <Text className="text-gray-400 text-xs">•</Text>
-                <Text className="text-gray-500 text-xs">{report.date}</Text>
+                <Text className="text-gray-500 text-xs">{formatDate(report.created_at)}</Text>
             </View>
 
             {/* Content row */}
@@ -53,14 +62,14 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
                     </View>
 
                     <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
-                        {report.desc || 'Нет описания'}
+                        {report.description || 'Нет описания'}
                     </Text>
 
                     {/* Image */}
-                    {report.image && (
+                    {report.preview_photo && (
                         <View className="w-full h-32 rounded-lg overflow-hidden bg-gray-100 mb-3">
                             <Image
-                                source={{ uri: report.image }}
+                                source={{ uri: report.preview_photo }}
                                 className="w-full h-full"
                                 resizeMode="cover"
                             />
@@ -73,11 +82,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
                         <View className="flex-row items-center gap-3">
                             <View className="flex-row items-center gap-1">
                                 <ThumbsUp size={14} color="#9CA3AF" />
-                                <Text className="text-xs text-gray-400">{report.likes}</Text>
+                                <Text className="text-xs text-gray-400">0</Text>
                             </View>
                             <View className="flex-row items-center gap-1">
                                 <MessageCircle size={14} color="#9CA3AF" />
-                                <Text className="text-xs text-gray-400">{report.comments}</Text>
+                                <Text className="text-xs text-gray-400">0</Text>
                             </View>
                         </View>
                     </View>

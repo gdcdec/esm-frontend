@@ -133,14 +133,14 @@ function ReportDetail({
             <View className="flex-row items-center gap-2 mt-3 mb-4">
                 <View className="w-6 h-6 bg-blue-100 rounded-full items-center justify-center">
                     <Text className="text-blue-600 font-bold text-xs">
-                        {report.author.charAt(0)}
+                        {report.author_username?.charAt(0) ?? '?'}
                     </Text>
                 </View>
                 <Text className="font-medium text-gray-900 text-sm">
-                    {report.author}
+                    {report.author_username}
                 </Text>
                 <Text className="text-gray-400 text-sm">•</Text>
-                <Text className="text-gray-500 text-sm">{report.date}</Text>
+                <Text className="text-gray-500 text-sm">{report.created_at ? new Date(report.created_at).toLocaleDateString('ru-RU') : ''}</Text>
             </View>
 
             <View className="flex-row items-center gap-1 mb-2">
@@ -152,19 +152,19 @@ function ReportDetail({
 
             <View className="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100">
                 <Text className="text-gray-700 leading-6">
-                    {report.desc || report.title}
+                    {report.description || report.title}
                 </Text>
             </View>
 
             <View className="flex-row gap-3 mb-6">
                 <TouchableOpacity className="flex-1 py-3 bg-blue-50 rounded-xl flex-row items-center justify-center gap-2">
                     <Text className="text-blue-600 font-medium">
-                        👍 Поддержать ({report.likes})
+                        👍 Поддержать (0)
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity className="flex-1 py-3 bg-gray-100 rounded-xl flex-row items-center justify-center gap-2">
                     <Text className="text-gray-700 font-medium">
-                        💬 Обсудить ({report.comments})
+                        💬 Обсудить (0)
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -1263,6 +1263,7 @@ function NativeMapScreen() {
                         }
                     }}
                     snapPoints={snapPoints}
+                    enableDynamicSizing={false}
                     enablePanDownToClose={false}
                     enableOverDrag={false}
                     backgroundStyle={{

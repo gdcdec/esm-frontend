@@ -43,7 +43,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     const clusters = React.useMemo(() => {
         const grouped: Record<string, Report[]> = {};
         reports.forEach((r) => {
-            const key = `${r.lat.toFixed(3)}-${r.long.toFixed(3)}`;
+            const key = `${r.latitude.toFixed(3)}-${r.longitude.toFixed(3)}`;
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(r);
         });
@@ -196,13 +196,13 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                 {clusters.map((cluster: Report[], i: number) => {
                     const main = cluster[0];
-                    const cat = CATEGORIES.find((c) => c.id === main.category);
+                    const cat = CATEGORIES.find((c) => c.name === main.rubric_name);
                     const isCluster = cluster.length > 1;
 
                     return (
                         <Marker
                             key={i}
-                            position={[main.lat, main.long]}
+                            position={[main.latitude, main.longitude]}
                             icon={isCluster ? clusterIcon(cluster.length) : createIcon(cat?.color || '#FF3B30')}
                             eventHandlers={{
                                 click: () => onMarkerPress?.(cluster),

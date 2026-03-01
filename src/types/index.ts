@@ -1,5 +1,3 @@
-// Types
-
 export interface Category {
     id: string;
     name: string;
@@ -9,20 +7,28 @@ export interface Category {
 
 export type ReportStatus = 'pending' | 'progress' | 'solved';
 
+export interface ReportPhoto {
+    id: number;
+    photo_url: string;
+    order: number;
+    caption: string;
+    uploaded_at: string;
+}
+
 export interface Report {
     id: number;
-    lat: number;
-    long: number;
     title: string;
-    desc: string;
+    description: string;
     address: string;
+    latitude: number;
+    longitude: number;
+    rubric_name: string | null;
+    author_username: string;
     status: ReportStatus;
-    category: string;
-    date: string;
-    author: string;
-    likes: number;
-    comments: number;
-    image: string | null;
+    created_at: string;
+    preview_photo: string | null;
+    photos?: ReportPhoto[];
+    photo_count?: number;
 }
 
 export interface User {
@@ -38,4 +44,35 @@ export interface User {
 export interface Coordinates {
     latitude: number;
     longitude: number;
+}
+
+export interface ApiRubric {
+    name: string;
+    counter: number;
+}
+
+export interface AddressReverseResponse {
+    in_working_area: boolean;
+    address: string;
+    latitude: number;
+    longitude: number;
+    city: string;
+    street: string;
+    house: string;
+}
+
+export interface AddressSearchResult {
+    display_name: string;
+    lat: string;
+    lon: string;
+}
+
+export interface CreateReportPayload {
+    title: string;
+    description: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    rubric?: string;
+    status?: 'draft' | 'published';
 }

@@ -85,7 +85,7 @@ export default function ProfileScreen() {
 
                 <View className="px-4 pb-4">
                     {MOCK_REPORTS.map((r) => {
-                        const cat = CATEGORIES.find((c) => c.id === r.category);
+                        const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
                         return (
                             <View
                                 key={r.id}
@@ -106,7 +106,7 @@ export default function ProfileScreen() {
                                     >
                                         {r.title}
                                     </Text>
-                                    <Text className="text-xs text-gray-400">{r.date}</Text>
+                                    <Text className="text-xs text-gray-400">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
                                 </View>
                                 <Badge status={r.status} />
                             </View>
