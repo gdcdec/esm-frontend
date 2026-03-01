@@ -63,8 +63,11 @@ export interface AddressReverseResponse {
 
 export interface AddressSearchResult {
     display_name: string;
-    lat: string;
-    lon: string;
+    latitude: number;
+    longitude: number;
+    city?: string;
+    street?: string;
+    house?: string;
 }
 
 export interface CreateReportPayload {

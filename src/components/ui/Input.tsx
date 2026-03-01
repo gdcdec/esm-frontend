@@ -1,41 +1,51 @@
-import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { X } from 'lucide-react-native';
+import React, { forwardRef } from 'react';
+import { Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 
-interface InputProps {
-    placeholder?: string;
-    value?: string;
-    onChangeText: (text: string) => void;
-    secureTextEntry?: boolean;
-    multiline?: boolean;
+interface InputProps extends TextInputProps {
     label?: string;
     className?: string;
 }
 
-export const Input: React.FC<InputProps> = ({
-    placeholder,
-    value,
-    onChangeText,
-    secureTextEntry = false,
-    multiline = false,
+export const Input = forwardRef<TextInput, InputProps>(({
     label,
     className = '',
-}) => {
+    multiline,
+    value,
+    onChangeText,
+    ...props
+}, ref) => {
+    const showClearBtn = !multiline && value && value.length > 0 && onChangeText;
+
     return (
         <View className={`mb-3 ${className}`}>
             {label && (
                 <Text className="text-sm font-bold text-gray-900 mb-2">{label}</Text>
             )}
-            <TextInput
-                className={`w-full bg-gray-50 p-4 rounded-xl text-base border border-transparent text-gray-900 ${multiline ? 'min-h-[100px]' : ''
-                    }`}
-                placeholder={placeholder}
-                placeholderTextColor="#9CA3AF"
-                value={value}
-                onChangeText={onChangeText}
-                secureTextEntry={secureTextEntry}
-                multiline={multiline}
-                textAlignVertical={multiline ? 'top' : 'center'}
-            />
+            <View className="relative justify-center">
+                <TextInput
+                    ref={ref}
+                    className={`w-full bg-gray-50 p-4 rounded-xl text-base border border-transparent text-gray-900 ${multiline ? 'min-h-[100px]' : showClearBtn ? 'pr-12' : ''
+                        }`}
+                    placeholderTextColor="#9CA3AF"
+                    multiline={multiline}
+                    textAlignVertical={multiline ? 'top' : 'center'}
+                    value={value}
+                    onChangeText={onChangeText}
+                    {...props}
+                />
+
+                {showClearBtn && (
+                    <TouchableOpacity
+                        onPress={() => onChangeText('')}
+                        className="absolute right-0 top-0 bottom-0 justify-center px-4"
+                    >
+                        <View className="bg-gray-200 rounded-full p-1 opacity-70">
+                            <X size={14} color="#4B5563" />
+                        </View>
+                    </TouchableOpacity>
+                )}
+            </View>
         </View>
     );
-};
+});

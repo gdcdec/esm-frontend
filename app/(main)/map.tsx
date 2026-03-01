@@ -2,8 +2,10 @@ import { AppMapView, MapViewRef } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
 import { MOCK_REPORTS } from '@/src/constants/mock-data';
+import { addressService } from '@/src/services/address';
 import { Report } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import {
     ChevronLeft,
@@ -18,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    Alert,
     BackHandler,
     FlatList,
     Keyboard,
@@ -51,6 +54,7 @@ function useMapState() {
         latitude: number;
         longitude: number;
     } | null>(null);
+    const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
     const [activeReports, setActiveReports] = useState<Report[] | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchHistory, setSearchHistory] = useState([
@@ -58,6 +62,8 @@ function useMapState() {
         'Парк Горького',
         'Центральный рынок',
     ]);
+    const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [userAddress, setUserAddress] = useState<string | null>(null);
 
     const mapRef = useRef<MapViewRef>(null);
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
@@ -74,30 +80,69 @@ function useMapState() {
     );
 
     const handleMapPress = useCallback(
-        (coordinate: { latitude: number; longitude: number }) => {
+        async (coordinate: { latitude: number; longitude: number }) => {
             setActiveReports(null);
             setSelectedCoord(coordinate);
+            setSelectedAddress(null);
+            try {
+                const res = await addressService.reverse(coordinate.latitude, coordinate.longitude);
+                const formatted = res.street
+                    ? `${res.street}${res.house ? ', ' + res.house : ''}${res.city ? ', ' + res.city : ''}`
+                    : res.address;
+                setSelectedAddress(formatted);
+            } catch {
+                setSelectedAddress(null);
+            }
         },
         []
     );
 
     const handleMarkerPress = useCallback((clusterReports: Report[]) => {
         setSelectedCoord(null);
+        setSelectedAddress(null);
         setActiveReports(clusterReports);
     }, []);
 
     const handleCloseDetail = useCallback(() => {
         setActiveReports(null);
         setSelectedCoord(null);
+        setSelectedAddress(null);
+    }, []);
+
+    const handleLocate = useCallback(async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Геолокация', 'Нет доступа к геолокации. Включите в настройках.');
+                return;
+            }
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const coord = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+            setUserLocation(coord);
+            mapRef.current?.goToLocation(coord.latitude, coord.longitude);
+            try {
+                const res = await addressService.reverse(coord.latitude, coord.longitude);
+                const formatted = res.street
+                    ? `${res.street}${res.house ? ', ' + res.house : ''}${res.city ? ', ' + res.city : ''}`
+                    : res.address;
+                setUserAddress(formatted);
+            } catch {
+                setUserAddress(null);
+            }
+        } catch {
+            Alert.alert('Ошибка', 'Не удалось определить местоположение');
+        }
     }, []);
 
     return {
         reports, selectedCoord, setSelectedCoord,
+        selectedAddress, setSelectedAddress,
         activeReports, setActiveReports,
         searchQuery, setSearchQuery,
         searchHistory, setSearchHistory,
         mapRef, singleReport, filteredReports,
-        handleMapPress, handleMarkerPress, handleCloseDetail,
+        userLocation, userAddress,
+        handleMapPress, handleMarkerPress, handleCloseDetail, handleLocate,
     };
 }
 
@@ -435,7 +480,13 @@ function WebMapScreen() {
                     <div style={{ padding: 16, borderTop: '1px solid #F3F4F6' }}>
                         <Button
                             title="+ Сообщить о проблеме"
-                            onPress={() => router.push('/(main)/create')}
+                            onPress={() => router.push({
+                                pathname: '/(main)/create',
+                                params: {
+                                    ...(state.userAddress ? { address: state.userAddress } : {}),
+                                    ...(state.userLocation ? { lat: String(state.userLocation.latitude), lon: String(state.userLocation.longitude) } : {}),
+                                },
+                            })}
                         />
                     </div>
                 </div>
@@ -504,6 +555,7 @@ function WebMapScreen() {
                     <Minus size={22} color="#374151" />
                 </button>
                 <button
+                    onClick={() => state.handleLocate()}
                     style={{
                         width: 44, height: 44,
                         borderRadius: '50%',
@@ -533,11 +585,16 @@ function WebMapScreen() {
                 >
                     <View className="bg-white p-5 rounded-3xl shadow-lg border border-gray-100">
                         <View className="flex-row justify-between items-start mb-2">
-                            <View>
+                            <View style={{ flex: 1, marginRight: 12 }}>
                                 <Text className="font-bold text-lg">Новая метка</Text>
-                                <Text className="text-gray-900 font-medium">
-                                    {state.selectedCoord.latitude.toFixed(4)},{' '}
-                                    {state.selectedCoord.longitude.toFixed(4)}
+                                {state.selectedAddress && (
+                                    <Text className="text-gray-700 text-sm" style={{ marginTop: 4 }}>
+                                        {state.selectedAddress}
+                                    </Text>
+                                )}
+                                <Text className="text-gray-400" style={{ fontSize: 11, marginTop: 4 }}>
+                                    {state.selectedCoord.latitude.toFixed(6)},{' '}
+                                    {state.selectedCoord.longitude.toFixed(6)}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -549,7 +606,14 @@ function WebMapScreen() {
                         </View>
                         <Button
                             title="Сообщить о проблеме"
-                            onPress={() => router.push('/(main)/create')}
+                            onPress={() => router.push({
+                                pathname: '/(main)/create',
+                                params: {
+                                    ...(state.selectedAddress ? { address: state.selectedAddress } : {}),
+                                    lat: String(state.selectedCoord!.latitude),
+                                    lon: String(state.selectedCoord!.longitude),
+                                },
+                            })}
                         />
                     </View>
                 </div>
@@ -915,6 +979,7 @@ function MobileWebMapScreen() {
                     </button>
                 ))}
                 <button
+                    onClick={() => state.handleLocate()}
                     style={{
                         width: 44, height: 44, borderRadius: 22,
                         border: 'none', background: 'white', cursor: 'pointer',
@@ -930,7 +995,13 @@ function MobileWebMapScreen() {
             {/* FAB — create report */}
             {!state.selectedCoord && !state.activeReports && sheetHeight <= SNAP_PEEK + 20 && (
                 <button
-                    onClick={() => router.push('/(main)/create')}
+                    onClick={() => router.push({
+                        pathname: '/(main)/create',
+                        params: {
+                            ...(state.userAddress ? { address: state.userAddress } : {}),
+                            ...(state.userLocation ? { lat: String(state.userLocation.latitude), lon: String(state.userLocation.longitude) } : {}),
+                        },
+                    } as any)}
                     style={{
                         position: 'absolute' as const,
                         bottom: SNAP_PEEK + 16, right: 16,
@@ -960,11 +1031,16 @@ function MobileWebMapScreen() {
                     }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div>
+                        <div style={{ flex: 1, marginRight: 12 }}>
                             <div style={{ fontWeight: 700, fontSize: 16 }}>Новая метка</div>
-                            <div style={{ color: '#111827', fontWeight: 500 }}>
-                                {state.selectedCoord.latitude.toFixed(4)},{' '}
-                                {state.selectedCoord.longitude.toFixed(4)}
+                            {state.selectedAddress && (
+                                <div style={{ color: '#374151', fontSize: 14, marginTop: 4 }}>
+                                    {state.selectedAddress}
+                                </div>
+                            )}
+                            <div style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>
+                                {state.selectedCoord.latitude.toFixed(6)},{' '}
+                                {state.selectedCoord.longitude.toFixed(6)}
                             </div>
                         </div>
                         <button
@@ -980,7 +1056,14 @@ function MobileWebMapScreen() {
                     </div>
                     <Button
                         title="Сообщить о проблеме"
-                        onPress={() => router.push('/(main)/create')}
+                        onPress={() => router.push({
+                            pathname: '/(main)/create',
+                            params: {
+                                ...(state.selectedAddress ? { address: state.selectedAddress } : {}),
+                                lat: String(state.selectedCoord!.latitude),
+                                lon: String(state.selectedCoord!.longitude),
+                            },
+                        })}
                     />
                 </div>
             )}
@@ -1205,7 +1288,10 @@ function NativeMapScreen() {
                     >
                         <Minus size={24} color="#374151" />
                     </TouchableOpacity>
-                    <TouchableOpacity className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100 mt-4">
+                    <TouchableOpacity
+                        onPress={state.handleLocate}
+                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100 mt-4"
+                    >
                         <Locate size={24} color="#2563EB" />
                     </TouchableOpacity>
                 </View>
@@ -1213,7 +1299,13 @@ function NativeMapScreen() {
                 {/* FAB */}
                 {!state.selectedCoord && !state.activeReports && (
                     <TouchableOpacity
-                        onPress={() => router.push('/(main)/create')}
+                        onPress={() => router.push({
+                            pathname: '/(main)/create',
+                            params: {
+                                ...(state.userAddress ? { address: state.userAddress } : {}),
+                                ...(state.userLocation ? { lat: String(state.userLocation.latitude), lon: String(state.userLocation.longitude) } : {}),
+                            },
+                        })}
                         className="absolute bottom-28 right-4 w-14 h-14 bg-blue-600 rounded-full shadow-xl items-center justify-center"
                         style={{ zIndex: 10 }}
                     >
@@ -1227,11 +1319,16 @@ function NativeMapScreen() {
                 <View className="absolute bottom-0 w-full p-4" style={{ zIndex: 30 }}>
                     <View className="bg-white p-5 rounded-3xl shadow-lg border border-gray-100">
                         <View className="flex-row justify-between items-start mb-2">
-                            <View>
-                                <Text className="font-bold text-lg">Новая метка</Text>
-                                <Text className="text-gray-900 font-medium">
-                                    {state.selectedCoord.latitude.toFixed(4)},{' '}
-                                    {state.selectedCoord.longitude.toFixed(4)}
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <Text className="font-bold text-lg">{"\u041d\u043e\u0432\u0430\u044f \u043c\u0435\u0442\u043a\u0430"}</Text>
+                                {state.selectedAddress && (
+                                    <Text className="text-gray-700 text-sm mt-1" numberOfLines={2}>
+                                        {state.selectedAddress}
+                                    </Text>
+                                )}
+                                <Text className="text-gray-400 text-xs mt-1">
+                                    {state.selectedCoord.latitude.toFixed(6)},{' '}
+                                    {state.selectedCoord.longitude.toFixed(6)}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -1243,7 +1340,14 @@ function NativeMapScreen() {
                         </View>
                         <Button
                             title="Сообщить о проблеме"
-                            onPress={() => router.push('/(main)/create')}
+                            onPress={() => router.push({
+                                pathname: '/(main)/create',
+                                params: {
+                                    ...(state.selectedAddress ? { address: state.selectedAddress } : {}),
+                                    lat: String(state.selectedCoord!.latitude),
+                                    lon: String(state.selectedCoord!.longitude),
+                                },
+                            })}
                         />
                     </View>
                 </View>

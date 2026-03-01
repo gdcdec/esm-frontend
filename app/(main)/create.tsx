@@ -1,10 +1,14 @@
 import { GallerySheet, SelectedPhoto } from '@/src/components/InlineGallery';
 import { Button, Input } from '@/src/components/ui';
 import { CATEGORIES } from '@/src/constants/categories';
+import { addressService } from '@/src/services/address';
+import { photosService } from '@/src/services/photos';
+import { reportsService } from '@/src/services/reports';
+import { AddressSearchResult } from '@/src/types';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import { Camera, ImagePlus, Trash2, X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Camera, ImagePlus, Loader2, MapPin, Trash2, X } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Image,
@@ -15,6 +19,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -25,12 +30,72 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
 export default function CreateReportScreen() {
+    const params = useLocalSearchParams<{ address?: string; lat?: string; lon?: string }>();
+
     const [category, setCategory] = useState<string | null>(null);
     const [title, setTitle] = useState('');
-    const [address, setAddress] = useState('');
+    const [address, setAddress] = useState(params.address ?? '');
     const [desc, setDesc] = useState('');
     const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
     const [galleryOpen, setGalleryOpen] = useState(false);
+
+    // Address Autocomplete state
+    const [suggestions, setSuggestions] = useState<AddressSearchResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lon: number } | null>(null);
+    const preventSearchRef = useRef(false);
+
+    // Ref and selection state to control cursor position
+    const addressInputRef = useRef<TextInput>(null);
+    const [addressSelection, setAddressSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+
+    useEffect(() => {
+        if (address.length < 3) {
+            setSuggestions([]);
+            return;
+        }
+        if (preventSearchRef.current) {
+            preventSearchRef.current = false;
+            return;
+        }
+
+        const timeout = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const results = await addressService.search(address);
+                setSuggestions(results);
+            } catch (e) {
+                console.warn('Address search fail', e);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(timeout);
+    }, [address]);
+
+    const handleSelectAddress = (item: AddressSearchResult) => {
+        preventSearchRef.current = true;
+
+        let shortAddress = '';
+        const { street, house, city } = item;
+
+        if (house && street) {
+            const cityStr = city ? `, ${city}` : '';
+            shortAddress = `${street}, ${house}${cityStr}`;
+        } else {
+            shortAddress = item.display_name;
+        }
+
+        setAddress(shortAddress);
+        setSelectedLocation({ lat: item.latitude, lon: item.longitude });
+        setSuggestions([]);
+
+        // Move cursor to the start of the string
+        setAddressSelection({ start: 0, end: 0 });
+
+        Keyboard.dismiss();
+    };
 
     function openGallery() {
         Keyboard.dismiss();
@@ -67,15 +132,32 @@ export default function CreateReportScreen() {
         }
     }
 
-    const handleSubmit = () => {
-        if (!category || !title) {
+    const handleSubmit = async () => {
+        if (!category || !title || !address) {
             Alert.alert('Ошибка', 'Заполните обязательные поля');
             return;
         }
-        // TODO: API call to create report + upload photos
-        Alert.alert('Успех', 'Заявка отправлена!', [
-            { text: 'OK', onPress: () => router.back() },
-        ]);
+        const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
+        const lon = selectedLocation?.lon ?? (params.lon ? parseFloat(params.lon) : 0);
+        try {
+            const report = await reportsService.create({
+                title,
+                description: desc,
+                address,
+                latitude: lat,
+                longitude: lon,
+                rubric: category,
+                status: 'published',
+            });
+            if (photos.length > 0) {
+                await photosService.upload(report.id, photos);
+            }
+            Alert.alert('Успех', 'Заявка отправлена!', [
+                { text: 'OK', onPress: () => router.back() },
+            ]);
+        } catch (e: any) {
+            Alert.alert('Ошибка', e?.message ?? 'Не удалось отправить заявку');
+        }
     };
 
     return (
@@ -146,11 +228,51 @@ export default function CreateReportScreen() {
                         value={title}
                         onChangeText={setTitle}
                     />
-                    <Input
-                        placeholder="Адрес (например: ул. Ленина, 10)"
-                        value={address}
-                        onChangeText={setAddress}
-                    />
+
+                    <View className="z-10 relative">
+                        <Input
+                            ref={addressInputRef}
+                            placeholder="Адрес (например: ул. Ленина, 10)"
+                            value={address}
+                            selection={addressSelection}
+                            onSelectionChange={(e) => setAddressSelection(e.nativeEvent.selection)}
+                            onChangeText={(text) => {
+                                setAddress(text);
+                                setSelectedLocation(null);
+                            }}
+                        />
+                        {/* Address Autocomplete Dropdown */}
+                        {(suggestions.length > 0 || isSearching) && (
+                            <View className="absolute top-[52px] left-0 right-0 bg-white rounded-xl shadow-lg border border-gray-100 z-50 p-2"
+                                style={{
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 12,
+                                    elevation: 5,
+                                }}>
+                                {isSearching ? (
+                                    <View className="p-4 items-center">
+                                        <Loader2 size={24} color="#9CA3AF" />
+                                    </View>
+                                ) : (
+                                    suggestions.map((item, index) => (
+                                        <TouchableOpacity
+                                            key={index}
+                                            onPress={() => handleSelectAddress(item)}
+                                            className={`flex-row items-center p-3 ${index < suggestions.length - 1 ? 'border-b border-gray-50' : ''
+                                                }`}
+                                        >
+                                            <MapPin size={16} color="#9CA3AF" style={{ marginRight: 12 }} />
+                                            <Text className="flex-1 text-sm text-gray-700" numberOfLines={2}>
+                                                {item.display_name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))
+                                )}
+                            </View>
+                        )}
+                    </View>
+
                     <Input
                         placeholder="Подробное описание..."
                         multiline
