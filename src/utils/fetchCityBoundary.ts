@@ -3,7 +3,14 @@ export interface GeoCoordinate {
     longitude: number;
 }
 
+export interface CityBoundaryData {
+    coords: GeoCoordinate[];
+    center: GeoCoordinate;
+}
+
 export function calculateCentroid(coords: GeoCoordinate[]): GeoCoordinate {
+    if (!coords || coords.length === 0) return { latitude: 0, longitude: 0 };
+
     let signedArea = 0;
     let cx = 0;
     let cy = 0;
@@ -34,7 +41,7 @@ export function calculateCentroid(coords: GeoCoordinate[]): GeoCoordinate {
     return { latitude: cy, longitude: cx };
 }
 
-export async function fetchCityBoundary(cityName: string, maxPoints: number = 1000): Promise<GeoCoordinate[]> {
+export async function fetchCityBoundary(cityName: string, maxPoints: number = 200): Promise<CityBoundaryData | null> {
     try {
         const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cityName)}&polygon_geojson=1&format=json`;
 
@@ -46,14 +53,14 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 10
 
         if (!response.ok) {
             console.warn(`[Nominatim] Fetch failed with status ${response.status}`);
-            return [];
+            return null;
         }
 
         const data = await response.json();
 
         if (!data || data.length === 0) {
             console.warn(`[Nominatim] No results found for region: ${cityName}`);
-            return [];
+            return null;
         }
 
         // Find the most relevant administrative boundary (usually the first result with a polygon)
@@ -61,7 +68,7 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 10
 
         if (!bestResult) {
             console.warn(`[Nominatim] No GeoJSON polygon found for region: ${cityName}`);
-            return [];
+            return null;
         }
 
         let rawCoords: number[][] = [];
@@ -95,10 +102,16 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 10
             mappedCoords = decimated;
         }
 
-        return mappedCoords.reverse();
+        return {
+            coords: mappedCoords.reverse(),
+            center: {
+                latitude: parseFloat(bestResult.lat),
+                longitude: parseFloat(bestResult.lon)
+            }
+        };
 
     } catch (error) {
         console.error(`[Nominatim] Error fetching boundary for ${cityName}:`, error);
-        return [];
+        return null;
     }
 }

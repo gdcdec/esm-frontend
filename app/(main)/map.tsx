@@ -225,6 +225,7 @@ type PanelMode = 'collapsed' | 'dropdown' | 'open';
 
 function WebMapScreen() {
     const state = useMapState();
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const [panelMode, setPanelMode] = useState<PanelMode>('open');
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -257,7 +258,7 @@ function WebMapScreen() {
                 display: 'flex',
                 alignItems: 'center',
                 position: 'relative' as const,
-                background: isOpen ? '#F3F4F6' : 'white',
+                background: isOpen ? (isDarkMode ? '#1F2937' : '#F3F4F6') : (isDarkMode ? '#111827' : 'white'),
                 borderRadius: 14,
                 padding: '0 12px',
                 height: 48,
@@ -279,7 +280,7 @@ function WebMapScreen() {
                     background: 'transparent',
                     fontSize: 16,
                     fontWeight: 500,
-                    color: '#111827',
+                    color: isDarkMode ? '#F9FAFB' : '#111827',
                     padding: '0 10px',
                     height: '100%',
                     minWidth: 0,
@@ -316,9 +317,10 @@ function WebMapScreen() {
                 <div
                     style={{
                         width: PANEL_WIDTH - 32,
-                        background: 'white',
+                        background: isDarkMode ? '#111827' : 'white',
                         borderRadius: isOpen ? '16px 16px 0 0' : 16,
-                        boxShadow: isOpen ? 'none' : '0 2px 12px rgba(0,0,0,0.12)',
+                        boxShadow: isOpen ? 'none' : (isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)'),
+                        border: isDarkMode ? '1px solid #374151' : 'none',
                         overflow: 'hidden',
                     }}
                 >
@@ -338,7 +340,7 @@ function WebMapScreen() {
                             {state.searchHistory.length > 0 ? (
                                 <>
                                     <View className="flex-row justify-between items-center mb-3">
-                                        <Text style={{ fontWeight: '700', fontSize: 16, color: '#111827' }}>
+                                        <Text style={{ fontWeight: '700', fontSize: 16, color: isDarkMode ? '#F9FAFB' : '#111827' }}>
                                             История
                                         </Text>
                                         <TouchableOpacity onPress={() => state.setSearchHistory([])}>
@@ -358,18 +360,18 @@ function WebMapScreen() {
                                                 gap: 12,
                                                 paddingVertical: 10,
                                                 borderBottomWidth: idx < state.searchHistory.length - 1 ? 1 : 0,
-                                                borderBottomColor: '#F3F4F6',
+                                                borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
                                             }}
                                         >
                                             <View style={{
                                                 width: 36, height: 36, borderRadius: 18,
-                                                backgroundColor: '#F3F4F6',
+                                                backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
                                                 alignItems: 'center', justifyContent: 'center',
                                             }}>
-                                                <Search size={16} color="#9CA3AF" />
+                                                <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                             </View>
-                                            <Text style={{ fontSize: 14, color: '#374151', flex: 1 }}>{item}</Text>
-                                            <Clock size={14} color="#D1D5DB" />
+                                            <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</Text>
+                                            <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
                                         </TouchableOpacity>
                                     ))}
                                 </>
@@ -390,18 +392,18 @@ function WebMapScreen() {
                         top: 4,
                         width: 40, height: 40,
                         borderRadius: 10,
-                        border: 'none',
-                        background: 'white',
+                        border: isDarkMode ? '1px solid #374151' : 'none',
+                        background: isDarkMode ? '#111827' : 'white',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                        boxShadow: isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)',
                         flexShrink: 0,
                     }}
                 >
                     {isOpen ? (
-                        <ChevronLeft size={20} color="#374151" />
+                        <ChevronLeft size={20} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                     ) : (
-                        <ChevronRight size={20} color="#374151" />
+                        <ChevronRight size={20} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                     )}
                 </button>
             </div>
@@ -415,12 +417,12 @@ function WebMapScreen() {
                         left: 0,
                         width: PANEL_WIDTH,
                         height: '100%',
-                        backgroundColor: 'white',
-                        borderRight: '1px solid #E5E7EB',
+                        backgroundColor: isDarkMode ? '#111827' : 'white',
+                        borderRight: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
                         display: 'flex',
                         flexDirection: 'column' as const,
                         zIndex: 20,
-                        boxShadow: '4px 0 16px rgba(0,0,0,0.08)',
+                        boxShadow: isDarkMode ? '4px 0 16px rgba(0,0,0,0.3)' : '4px 0 16px rgba(0,0,0,0.08)',
                         paddingTop: 84,
                     }}
                 >
@@ -430,10 +432,10 @@ function WebMapScreen() {
                             <ReportDetail report={state.singleReport} onClose={state.handleCloseDetail} />
                         ) : state.activeReports && state.activeReports.length > 1 ? (
                             <View>
-                                <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50">
+                                <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
                                     <View>
-                                        <Text className="font-bold text-lg">Жалобы по адресу</Text>
-                                        <Text className="text-xs text-gray-500">
+                                        <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
+                                        <Text className="text-xs text-gray-500 dark:text-gray-400">
                                             {state.activeReports[0].address || 'Адрес не определен'}
                                         </Text>
                                     </View>

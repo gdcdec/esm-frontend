@@ -1,41 +1,44 @@
 import { GeoCoordinate } from './fetchCityBoundary';
 
 /**
+ * Chaikin's Corner-Cutting Algorithm to smooth out a jagged polygon.
+ * This takes the raw city boundary (which can be blocky, especially after decimation)
+ * and turns it into a perfectly smooth, flowing continuous curve.
  * 
- * @param baseBoundary The coordinates making up the city polygon hole.
- * @param phase The current animation timeframe.
- * @param noiseIntensity A multiplier for how "fluffy" or deep the clouds are (in degrees coords).
+ * @param baseBoundary The raw coordinates making up the city polygon hole.
+ * @param iterations The number of smoothing passes (default 4 is very smooth).
  */
 export function generateCloudyPolygon(
     baseBoundary: GeoCoordinate[],
-    phase: number,
-    noiseIntensity: number = 0.02
+    iterations: number = 4
 ): GeoCoordinate[] {
     if (!baseBoundary || baseBoundary.length < 3) return baseBoundary;
 
-    const points = [];
-    const numPoints = baseBoundary.length;
+    let result = baseBoundary;
 
-    for (let i = 0; i < numPoints; i++) {
-        const pt = baseBoundary[i];
+    // Chaikin's algorithm: for every line segment A->B, replace it with two points
+    // at 25% and 75% along the segment. Repeating this physically rounds off all corners.
+    for (let iter = 0; iter < iterations; iter++) {
+        const smoothed: GeoCoordinate[] = [];
+        const len = result.length;
 
-        // Progress around the perimeter (0 to 2PI roughly) to feed into the sine functions
-        const theta = (Math.PI * 2 * i) / numPoints;
+        for (let i = 0; i < len; i++) {
+            const p1 = result[i];
+            const p2 = result[(i + 1) % len];
 
-        // Multiple overlapping sine waves for irregular "fluffy" noise
-        const noisePrimary = Math.sin(theta * 8 + phase) * 0.5;
-        const noiseSecondary = Math.cos(theta * 5 - phase * 1.5) * 0.3;
-        const noiseTertiary = Math.sin(theta * 12 + phase * 0.5) * 0.2;
-
-        const totalNoiseShift = (noisePrimary + noiseSecondary + noiseTertiary) * noiseIntensity;
-
-        const aspect = Math.cos(pt.latitude * (Math.PI / 180));
-
-        const lat = pt.latitude + totalNoiseShift * Math.sin(theta);
-        const lng = pt.longitude + (totalNoiseShift * Math.cos(theta)) / aspect;
-
-        points.push({ latitude: lat, longitude: lng });
+            // Point at 25% distance from p1 to p2
+            smoothed.push({
+                latitude: p1.latitude * 0.75 + p2.latitude * 0.25,
+                longitude: p1.longitude * 0.75 + p2.longitude * 0.25,
+            });
+            // Point at 75% distance from p1 to p2
+            smoothed.push({
+                latitude: p1.latitude * 0.25 + p2.latitude * 0.75,
+                longitude: p1.longitude * 0.25 + p2.longitude * 0.75,
+            });
+        }
+        result = smoothed;
     }
 
-    return points;
+    return result;
 }

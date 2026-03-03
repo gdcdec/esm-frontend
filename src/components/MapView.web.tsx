@@ -1,11 +1,14 @@
 import { CATEGORIES } from '@/src/constants/categories';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
-import { calculateCentroid, fetchCityBoundary, GeoCoordinate } from '@/src/utils/fetchCityBoundary';
+import { CityBoundaryData, fetchCityBoundary, GeoCoordinate } from '@/src/utils/fetchCityBoundary';
 import { generateCloudyHole } from '@/src/utils/generateCloudyHole';
 import { generateCloudyPolygon } from '@/src/utils/generateCloudyPolygon';
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
+
+import 'maplibre-gl/dist/maplibre-gl.css';
+import Map, { Layer, Marker as MapMarker, MapRef, Source } from 'react-map-gl/maplibre';
 
 export interface MapViewRef {
     zoomIn: () => void;
@@ -36,66 +39,77 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     onMarkerPress,
     initialRegion,
 }, ref) => {
-    const [LeafletComponents, setLeafletComponents] = useState<any>(null);
-    const mapInstanceRef = useRef<any>(null);
+    const mapRef = useRef<MapRef>(null);
     const { isDarkMode, fogOfWar, city } = useThemeStore();
-    const [cloudPhase, setCloudPhase] = useState(0);
-    const [cityBoundary, setCityBoundary] = useState<GeoCoordinate[] | null>(null);
+    const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
 
-    const center: [number, number] = initialRegion
-        ? [initialRegion.latitude, initialRegion.longitude]
-        : DEFAULT_CENTER;
+    const center = initialRegion
+        ? { latitude: initialRegion.latitude, longitude: initialRegion.longitude }
+        : { latitude: DEFAULT_CENTER[0], longitude: DEFAULT_CENTER[1] };
 
-    // Fetch the real OSM boundaries of the user's city on mount or change
+    // Fetch OSM boundaries of the user's city
     useEffect(() => {
-        fetchCityBoundary(city).then(coords => {
-            if (coords && coords.length > 0) {
-                setCityBoundary(coords);
-                if (mapInstanceRef.current) {
-                    const centroid = calculateCentroid(coords);
-                    mapInstanceRef.current.flyTo([centroid.latitude, centroid.longitude], DEFAULT_ZOOM);
+        fetchCityBoundary(city).then(data => {
+            if (data && data.coords.length > 0) {
+                setCityBoundary(data);
+                if (mapRef.current) {
+                    mapRef.current.flyTo({ center: [data.center.longitude, data.center.latitude], zoom: DEFAULT_ZOOM, duration: 1500 });
                 }
             }
         });
     }, [city]);
 
-    // Run interval to creep clouds over time at a fast frame rate
-    useEffect(() => {
-        if (!fogOfWar) return;
-        const interval = setInterval(() => {
-            setCloudPhase((prev) => prev + 0.05);
-        }, 32);
-        return () => clearInterval(interval);
-    }, [fogOfWar]);
-
-    const fogBaseCoords = React.useMemo(() => {
-        const centerLat = cityBoundary?.[0]?.latitude ?? center[0];
-        const centerLng = cityBoundary?.[0]?.longitude ?? center[1];
+    const fogBaseCoords = useMemo(() => {
+        const centerLat = cityBoundary?.center?.latitude ?? center.latitude;
+        const centerLng = cityBoundary?.center?.longitude ?? center.longitude;
+        // MapLibre / GeoJSON uses [lng, lat]
         return [
-            [centerLat + 10.0, centerLng - 15.0],
-            [centerLat + 10.0, centerLng + 15.0],
-            [centerLat - 10.0, centerLng + 15.0],
-            [centerLat - 10.0, centerLng - 15.0],
+            [centerLng - 15.0, centerLat + 10.0],
+            [centerLng + 15.0, centerLat + 10.0],
+            [centerLng + 15.0, centerLat - 10.0],
+            [centerLng - 15.0, centerLat - 10.0],
+            [centerLng - 15.0, centerLat + 10.0], // Close ring
         ] as [number, number][];
     }, [cityBoundary, center]);
 
-    const holeBoundary = React.useMemo(() => {
+    const holeBoundary = useMemo(() => {
+        let polygonCoords: GeoCoordinate[];
         if (!cityBoundary) {
-            return generateCloudyHole(
-                DEFAULT_CENTER[0],
-                DEFAULT_CENTER[1],
+            polygonCoords = generateCloudyHole(
+                center.latitude,
+                center.longitude,
                 0.15,
-                cloudPhase,
                 40
-            ).map(pt => [pt.latitude, pt.longitude]) as [number, number][];
+            );
+        } else {
+            polygonCoords = generateCloudyPolygon(cityBoundary.coords, 4);
         }
 
-        return generateCloudyPolygon(cityBoundary, cloudPhase, 0.005)
-            .map(pt => [pt.latitude, pt.longitude]) as [number, number][];
-    }, [cityBoundary, cloudPhase]);
+        const hole = polygonCoords.map(pt => [pt.longitude, pt.latitude] as [number, number]);
+        if (hole.length > 0) {
+            hole.push([...hole[0]]); // GeoJSON requires closed loops
+        }
+        return hole;
+    }, [cityBoundary]);
+
+    const fogGeoJSON = useMemo(() => {
+        return {
+            type: 'FeatureCollection' as const,
+            features: [
+                {
+                    type: 'Feature' as const,
+                    properties: {},
+                    geometry: {
+                        type: 'Polygon' as const,
+                        coordinates: [fogBaseCoords, holeBoundary]
+                    }
+                }
+            ]
+        };
+    }, [fogBaseCoords, holeBoundary]);
 
     // Group reports by coordinates for clustering
-    const clusters = React.useMemo(() => {
+    const clusters = useMemo(() => {
         const grouped: Record<string, Report[]> = {};
         reports.forEach((r) => {
             const key = `${r.latitude.toFixed(3)}-${r.longitude.toFixed(3)}`;
@@ -105,219 +119,162 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         return Object.values(grouped);
     }, [reports]);
 
-    // Expose zoom methods via ref
     useImperativeHandle(ref, () => ({
         zoomIn: () => {
-            const map = mapInstanceRef.current;
-            if (map) map.setZoom(map.getZoom() + 1);
+            mapRef.current?.zoomIn({ duration: 300 });
         },
         zoomOut: () => {
-            const map = mapInstanceRef.current;
-            if (map) map.setZoom(map.getZoom() - 1);
+            mapRef.current?.zoomOut({ duration: 300 });
         },
         goToLocation: (lat: number, lng: number) => {
-            const map = mapInstanceRef.current;
-            if (map) map.flyTo([lat, lng], 16);
+            mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
         },
     }));
 
-    // Dynamically import Leaflet only on client side
-    useEffect(() => {
-        let cancelled = false;
-
-        async function loadLeaflet() {
-            const L = await import('leaflet');
-            const RL = await import('react-leaflet');
-
-            // Load leaflet CSS
-            if (!document.querySelector('link[href*="leaflet.css"]')) {
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-                document.head.appendChild(link);
+    const mapStyle = useMemo(() => ({
+        version: 8,
+        sources: {
+            'cartodb-tiles': {
+                type: 'raster',
+                tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+                tileSize: 256,
             }
-
-            if (!cancelled) {
-                setLeafletComponents({ L: L.default || L, RL });
+        },
+        layers: [
+            {
+                id: 'cartodb-layer',
+                type: 'raster',
+                source: 'cartodb-tiles',
+                minzoom: 0,
+                maxzoom: 22
             }
+        ]
+    } as any), []);
+
+    const fogLayerStyle = useMemo((): any => ({
+        id: 'fog-layer',
+        type: 'fill',
+        paint: {
+            'fill-color': isDarkMode ? '#111827' : '#6B7280',
+            'fill-opacity': 1
         }
+    }), [isDarkMode]);
 
-        loadLeaflet();
-        return () => { cancelled = true; };
-    }, []);
-
-    if (!LeafletComponents) {
-        return (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E5E7EB' }}>
-                <ActivityIndicator size="large" color="#2563EB" />
-                <Text style={{ marginTop: 12, color: '#6B7280' }}>Загрузка карты...</Text>
-            </View>
-        );
-    }
-
-    const { L, RL } = LeafletComponents;
-    const { MapContainer, TileLayer, Marker, Popup, Polygon, useMapEvents, useMap } = RL;
-
-    // Create custom colored marker icons
-    const createIcon = (color: string) =>
-        new L.DivIcon({
-            html: `<div style="
-        width: 30px; height: 30px;
-        background: ${color};
-        border: 3px solid white;
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      "></div>`,
-            className: '',
-            iconSize: [30, 30],
-            iconAnchor: [15, 30],
-            popupAnchor: [0, -30],
-        });
-
-    const clusterIcon = (count: number) =>
-        new L.DivIcon({
-            html: `<div style="
-        width: 36px; height: 36px;
-        background: #2563EB;
-        border: 3px solid white;
-        border-radius: 50%;
-        color: white;
-        font-weight: bold;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(37,99,235,0.4);
-      ">${count}</div>`,
-            className: '',
-            iconSize: [36, 36],
-            iconAnchor: [18, 18],
-        });
-
-    const selectedPinIcon = new L.DivIcon({
-        html: `<div style="position:relative">
-            <div style="
-                width: 32px; height: 32px;
-                background: #2563EB;
-                border: 3px solid white;
-                border-radius: 50% 50% 50% 0;
-                transform: rotate(-45deg);
-                box-shadow: 0 2px 8px rgba(37,99,235,0.5);
-            "></div>
-            <div style="
-                position: absolute;
-                top: -4px; left: -4px;
-                width: 40px; height: 40px;
-                border-radius: 50%;
-                background: rgba(37,99,235,0.2);
-                animation: pulse 1.5s infinite;
-            "></div>
-            <style>@keyframes pulse { 0%,100% { transform:scale(1); opacity:1 } 50% { transform:scale(1.4); opacity:0 } }</style>
-        </div>`,
-        className: '',
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-    });
-
-    // Save map instance ref + handle click + set bounds dynamically
-    function MapSetup() {
-        const map = useMap();
-        React.useEffect(() => {
-            mapInstanceRef.current = map;
-        }, [map]);
-
-        React.useEffect(() => {
-            if (fogOfWar) {
-                const centerLat = cityBoundary?.[0]?.latitude ?? center[0];
-                const centerLng = cityBoundary?.[0]?.longitude ?? center[1];
-
-                map.setMaxBounds([
-                    [centerLat - 2.0, centerLng - 3.0],
-                    [centerLat + 2.0, centerLng + 3.0]
-                ]);
-            } else {
-                // Free roam using absurdly large bounds to essentially disable it completely in Leaflet
-                map.setMaxBounds([
-                    [-900, -1800],
-                    [900, 1800]
-                ]);
-            }
-        }, [map, fogOfWar, cityBoundary]);
-
-        useMapEvents({
-            click(e: any) {
-                onMapPress?.({ latitude: e.latlng.lat, longitude: e.latlng.lng });
-            },
-        });
-        return null;
-    }
+    // Check if the client is a mobile browser to enable touch gestures
+    const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(window.navigator.userAgent);
 
     return (
-        <div style={{ width: '100%', height: '100%' }}>
-            <MapContainer
-                center={center}
-                zoom={DEFAULT_ZOOM}
-                minZoom={fogOfWar ? 10 : 0}
-                maxBoundsViscosity={1.0}
+        <View style={{ width: '100%', height: '100%' }}>
+            <Map
+                ref={mapRef}
+                initialViewState={{
+                    longitude: center.longitude,
+                    latitude: center.latitude,
+                    zoom: DEFAULT_ZOOM,
+                    pitch: 0,
+                    bearing: 0
+                }}
+                mapStyle={mapStyle}
                 style={{ width: '100%', height: '100%' }}
-                zoomControl={false}
+                onClick={(e) => {
+                    onMapPress?.({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
+                }}
+                interactiveLayerIds={['cartodb-layer']}
+                maxZoom={19}
+                minZoom={fogOfWar ? 10 : 0}
+                maxBounds={fogOfWar ? [
+                    [center.longitude - 3.0, center.latitude - 2.0], // SW
+                    [center.longitude + 3.0, center.latitude + 2.0]  // NE
+                ] : undefined}
+                dragRotate={isMobile}
+                touchPitch={isMobile}
+                touchZoomRotate={isMobile}
+                keyboard={isMobile}
             >
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url={isDarkMode ? "https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png" : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"}
-                />
-                <MapSetup />
-
                 {fogOfWar && (
-                    <Polygon
-                        key={'fog_overlay'}
-                        positions={[fogBaseCoords, holeBoundary]}
-                        pathOptions={{
-                            color: 'transparent',
-                            fillColor: isDarkMode ? '#111827' : '#6B7280',
-                            fillOpacity: 1,
-                            stroke: false,
-                            interactive: false,
-                        }}
-                    />
+                    <Source id="fog-source" type="geojson" data={fogGeoJSON}>
+                        <Layer {...fogLayerStyle} />
+                    </Source>
                 )}
 
                 {clusters.map((cluster: Report[], i: number) => {
                     const main = cluster[0];
                     const cat = CATEGORIES.find((c) => c.name === main.rubric_name);
                     const isCluster = cluster.length > 1;
+                    const color = cat?.color || '#FF3B30';
 
                     return (
-                        <Marker
-                            key={i}
-                            position={[main.latitude, main.longitude]}
-                            icon={isCluster ? clusterIcon(cluster.length) : createIcon(cat?.color || '#FF3B30')}
-                            eventHandlers={{
-                                click: () => onMarkerPress?.(cluster),
+                        <MapMarker
+                            key={`marker-${i}`}
+                            longitude={main.longitude}
+                            latitude={main.latitude}
+                            anchor="bottom"
+                            onClick={(e) => {
+                                e.originalEvent.stopPropagation();
+                                onMarkerPress?.(cluster);
                             }}
                         >
-                            <Popup>
-                                <div>
-                                    <strong>{isCluster ? `${cluster.length} жалоб` : main.title}</strong>
-                                    <br />
-                                    <span style={{ color: '#666', fontSize: 12 }}>
-                                        {main.address || 'Адрес не указан'}
-                                    </span>
+                            {isCluster ? (
+                                <div style={{
+                                    width: 36, height: 36,
+                                    background: '#2563EB',
+                                    border: '3px solid white',
+                                    borderRadius: '50%',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    fontSize: 14,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 2px 8px rgba(37,99,235,0.4)',
+                                    cursor: 'pointer'
+                                }}>
+                                    {cluster.length}
                                 </div>
-                            </Popup>
-                        </Marker>
+                            ) : (
+                                <div style={{
+                                    width: 30, height: 30,
+                                    background: color,
+                                    border: '3px solid white',
+                                    borderRadius: '50% 50% 50% 0',
+                                    transform: 'rotate(-45deg)',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                    cursor: 'pointer',
+                                    marginBottom: 10
+                                }} />
+                            )}
+                        </MapMarker>
                     );
                 })}
 
-                {/* Selected point marker */}
                 {selectedCoordinate && (
-                    <Marker
-                        position={[selectedCoordinate.latitude, selectedCoordinate.longitude]}
-                        icon={selectedPinIcon}
-                    />
+                    <MapMarker
+                        longitude={selectedCoordinate.longitude}
+                        latitude={selectedCoordinate.latitude}
+                        anchor="bottom"
+                    >
+                        <div style={{ position: 'relative', marginBottom: 15 }}>
+                            <div style={{
+                                width: 32, height: 32,
+                                background: '#2563EB',
+                                border: '3px solid white',
+                                borderRadius: '50% 50% 50% 0',
+                                transform: 'rotate(-45deg)',
+                                boxShadow: '0 2px 8px rgba(37,99,235,0.5)',
+                            }} />
+                            <div style={{
+                                position: 'absolute',
+                                top: -4, left: -4,
+                                width: 40, height: 40,
+                                borderRadius: '50%',
+                                background: 'rgba(37,99,235,0.2)',
+                                animation: 'pulse 1.5s infinite',
+                            }} />
+                            <style>{`@keyframes pulse { 0%,100% { transform:scale(1); opacity:1 } 50% { transform:scale(1.4); opacity:0 } }`}</style>
+                        </div>
+                    </MapMarker>
                 )}
-            </MapContainer>
-        </div>
+            </Map>
+        </View>
     );
 });
