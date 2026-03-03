@@ -39,7 +39,7 @@ export default function ProfileScreen() {
 
             <ScrollView className="flex-1">
                 {/* Profile card */}
-                <View className="bg-white p-6 m-4 rounded-3xl shadow-sm border border-gray-100 items-center">
+                <View className="bg-white p-6 mx-4 rounded-3xl shadow-sm border border-gray-100 items-center">
                     <View className="w-20 h-20 rounded-full bg-gray-100 items-center justify-center mb-4 border-2 border-white shadow-sm">
                         <Text className="text-4xl">🧑‍💼</Text>
                     </View>
@@ -79,49 +79,51 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* My reports */}
-                <Text className="font-bold text-gray-900 px-6 mb-3 text-lg">
-                    Мои заявки
-                </Text>
+                <View className="w-full max-w-sm self-center mt-6">
+                    <Text className="font-bold text-gray-900 mb-3 text-lg">
+                        Мои заявки
+                    </Text>
 
-                <View className="px-4 pb-4">
-                    {MOCK_REPORTS.map((r) => {
-                        const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
-                        return (
-                            <View
-                                key={r.id}
-                                className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex-row items-center gap-3 mb-3"
-                            >
+                    <View className="pb-4">
+                        {MOCK_REPORTS.map((r) => {
+                            const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
+                            return (
                                 <View
-                                    className="w-10 h-10 rounded-xl items-center justify-center"
-                                    style={{
-                                        backgroundColor: (cat?.color || '#999') + '20',
-                                    }}
+                                    key={r.id}
+                                    className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex-row items-center gap-3 mb-3"
                                 >
-                                    <Text className="text-lg">{cat?.icon || '❗'}</Text>
-                                </View>
-                                <View className="flex-1">
-                                    <Text
-                                        className="font-semibold text-gray-900"
-                                        numberOfLines={1}
+                                    <View
+                                        className="w-10 h-10 rounded-xl items-center justify-center"
+                                        style={{
+                                            backgroundColor: (cat?.color || '#999') + '20',
+                                        }}
                                     >
-                                        {r.title}
-                                    </Text>
-                                    <Text className="text-xs text-gray-400">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                        <Text className="text-lg">{cat?.icon || '❗'}</Text>
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text
+                                            className="font-semibold text-gray-900"
+                                            numberOfLines={1}
+                                        >
+                                            {r.title}
+                                        </Text>
+                                        <Text className="text-xs text-gray-400">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                    </View>
+                                    <Badge status={r.status} />
                                 </View>
-                                <Badge status={r.status} />
-                            </View>
-                        );
-                    })}
-                </View>
+                            );
+                        })}
+                    </View>
 
-                {/* Logout */}
-                <View className="px-4 pb-8">
-                    <TouchableOpacity
-                        onPress={handleLogout}
-                        className="py-3 bg-red-50 rounded-xl items-center"
-                    >
-                        <Text className="text-red-500 font-semibold">Выйти из аккаунта</Text>
-                    </TouchableOpacity>
+                    {/* Logout */}
+                    <View className="pb-8">
+                        <TouchableOpacity
+                            onPress={handleLogout}
+                            className="py-3 bg-red-50 rounded-xl items-center"
+                        >
+                            <Text className="text-red-500 font-semibold">Выйти из аккаунта</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </View>
