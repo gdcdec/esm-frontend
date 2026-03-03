@@ -1,6 +1,11 @@
+import { useThemeStore } from '@/src/store/themeStore';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'nativewind';
+import { useEffect } from 'react';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../global.css';
@@ -15,15 +20,26 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const isDarkMode = useThemeStore((s) => s.isDarkMode);
+  const { setColorScheme } = useColorScheme();
+
+  useEffect(() => {
+    setColorScheme(isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode, setColorScheme]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(main)" />
-          </Stack>
-          <StatusBar style="dark" />
+          <View className={`flex-1 ${isDarkMode ? 'dark bg-gray-900' : 'bg-white'}`}>
+            <ThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' } }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(main)" />
+              </Stack>
+            </ThemeProvider>
+            <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+          </View>
         </SafeAreaProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

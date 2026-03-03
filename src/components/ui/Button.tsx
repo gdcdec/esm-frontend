@@ -29,14 +29,14 @@ export const Button: React.FC<ButtonProps> = ({
 
     const variantClasses = {
         primary: 'bg-blue-600 shadow-lg',
-        secondary: 'bg-gray-100',
-        outline: 'border-2 border-blue-600 bg-transparent',
+        secondary: 'bg-gray-100 dark:bg-gray-800',
+        outline: 'border-2 border-blue-600 dark:border-blue-500 bg-transparent',
     };
 
     const textVariantClasses = {
         primary: 'text-white font-semibold text-base',
-        secondary: 'text-gray-900 font-semibold text-base',
-        outline: 'text-blue-600 font-semibold text-base',
+        secondary: 'text-gray-900 dark:text-gray-100 font-semibold text-base',
+        outline: 'text-blue-600 dark:text-blue-500 font-semibold text-base',
     };
 
     const disabledClass = disabled ? 'opacity-50' : '';

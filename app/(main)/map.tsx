@@ -3,6 +3,7 @@ import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
 import { MOCK_REPORTS } from '@/src/constants/mock-data';
 import { addressService } from '@/src/services/address';
+import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
@@ -171,44 +172,44 @@ function ReportDetail({
                 </TouchableOpacity>
             </View>
 
-            <Text className="text-2xl font-bold mt-3 text-gray-900">
+            <Text className="text-2xl font-bold mt-3 text-gray-900 dark:text-white">
                 {report.title}
             </Text>
 
             <View className="flex-row items-center gap-2 mt-3 mb-4">
-                <View className="w-6 h-6 bg-blue-100 rounded-full items-center justify-center">
-                    <Text className="text-blue-600 font-bold text-xs">
+                <View className="w-6 h-6 bg-blue-100 dark:bg-blue-900/40 rounded-full items-center justify-center">
+                    <Text className="text-blue-600 dark:text-blue-400 font-bold text-xs">
                         {report.author_username?.charAt(0) ?? '?'}
                     </Text>
                 </View>
-                <Text className="font-medium text-gray-900 text-sm">
+                <Text className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                     {report.author_username}
                 </Text>
-                <Text className="text-gray-400 text-sm">•</Text>
-                <Text className="text-gray-500 text-sm">{report.created_at ? new Date(report.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                <Text className="text-gray-400 dark:text-gray-500 text-sm">•</Text>
+                <Text className="text-gray-500 dark:text-gray-400 text-sm">{report.created_at ? new Date(report.created_at).toLocaleDateString('ru-RU') : ''}</Text>
             </View>
 
             <View className="flex-row items-center gap-1 mb-2">
                 <MapPin size={14} color="#9CA3AF" />
-                <Text className="text-sm text-gray-500">
+                <Text className="text-sm text-gray-500 dark:text-gray-400">
                     {report.address || 'Адрес не указан'}
                 </Text>
             </View>
 
-            <View className="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-100">
-                <Text className="text-gray-700 leading-6">
+            <View className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl mb-4 border border-gray-100 dark:border-gray-700">
+                <Text className="text-gray-700 dark:text-gray-300 leading-6">
                     {report.description || report.title}
                 </Text>
             </View>
 
             <View className="flex-row gap-3 mb-6">
-                <TouchableOpacity className="flex-1 py-3 bg-blue-50 rounded-xl flex-row items-center justify-center gap-2">
-                    <Text className="text-blue-600 font-medium">
+                <TouchableOpacity className="flex-1 py-3 bg-blue-50 dark:bg-gray-800 rounded-xl flex-row items-center justify-center gap-2">
+                    <Text className="text-blue-600 dark:text-blue-400 font-medium">
                         👍 Поддержать (0)
                     </Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-1 py-3 bg-gray-100 rounded-xl flex-row items-center justify-center gap-2">
-                    <Text className="text-gray-700 font-medium">
+                <TouchableOpacity className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl flex-row items-center justify-center gap-2 border border-gray-200 dark:border-gray-600">
+                    <Text className="text-gray-700 dark:text-gray-300 font-medium">
                         💬 Обсудить (0)
                     </Text>
                 </TouchableOpacity>
@@ -1179,6 +1180,7 @@ function NativeMapScreen() {
     const previousSheetIndex = useRef<number | null>(null);
     const [sheetIndex, setSheetIndex] = useState(0);
     const [searchFocused, setSearchFocused] = useState(false);
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     // Bottom sheet snap points: collapsed, half, 90%
     const snapPoints = useMemo(() => ['10%', '45%', '90%'], []);
@@ -1246,7 +1248,7 @@ function NativeMapScreen() {
     }, [state.searchQuery, state.selectedCoord, state.singleReport, state.activeReports, sheetIndex, handleCloseDetail, searchFocused]);
 
     return (
-        <View className="flex-1 bg-white">
+        <View className="flex-1 dark:bg-gray-900 bg-white">
             {/* Map */}
             <View className="flex-1">
                 <AppMapView
@@ -1265,7 +1267,7 @@ function NativeMapScreen() {
                 >
                     <TouchableOpacity
                         onPress={() => router.push('/(main)/profile')}
-                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100"
+                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
                     >
                         <Text className="text-2xl">🧑‍💼</Text>
                     </TouchableOpacity>
@@ -1278,21 +1280,21 @@ function NativeMapScreen() {
                 >
                     <TouchableOpacity
                         onPress={() => state.mapRef.current?.zoomIn()}
-                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100"
+                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
                     >
-                        <Plus size={24} color="#374151" />
+                        <Plus size={24} color={isDarkMode ? '#F3F4F6' : '#374151'} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => state.mapRef.current?.zoomOut()}
-                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100"
+                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
                     >
-                        <Minus size={24} color="#374151" />
+                        <Minus size={24} color={isDarkMode ? '#F3F4F6' : '#374151'} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={state.handleLocate}
-                        className="w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center border border-gray-100 mt-4"
+                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700 mt-4"
                     >
-                        <Locate size={24} color="#2563EB" />
+                        <Locate size={24} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
                     </TouchableOpacity>
                 </View>
 
@@ -1317,25 +1319,25 @@ function NativeMapScreen() {
             {/* Selected point card */}
             {state.selectedCoord && (
                 <View className="absolute bottom-0 w-full p-4" style={{ zIndex: 30 }}>
-                    <View className="bg-white p-5 rounded-3xl shadow-lg border border-gray-100">
+                    <View className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
                         <View className="flex-row justify-between items-start mb-2">
                             <View style={{ flex: 1, marginRight: 12 }}>
-                                <Text className="font-bold text-lg">{"\u041d\u043e\u0432\u0430\u044f \u043c\u0435\u0442\u043a\u0430"}</Text>
+                                <Text className="font-bold text-lg dark:text-gray-100">{"\u041d\u043e\u0432\u0430\u044f \u043c\u0435\u0442\u043a\u0430"}</Text>
                                 {state.selectedAddress && (
-                                    <Text className="text-gray-700 text-sm mt-1" numberOfLines={2}>
+                                    <Text className="text-gray-700 dark:text-gray-300 text-sm mt-1" numberOfLines={2}>
                                         {state.selectedAddress}
                                     </Text>
                                 )}
-                                <Text className="text-gray-400 text-xs mt-1">
+                                <Text className="text-gray-400 dark:text-gray-500 text-xs mt-1">
                                     {state.selectedCoord.latitude.toFixed(6)},{' '}
                                     {state.selectedCoord.longitude.toFixed(6)}
                                 </Text>
                             </View>
                             <TouchableOpacity
                                 onPress={() => state.setSelectedCoord(null)}
-                                className="p-2 bg-gray-100 rounded-full"
+                                className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full"
                             >
-                                <X size={20} color="#374151" />
+                                <X size={20} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                             </TouchableOpacity>
                         </View>
                         <Button
@@ -1371,7 +1373,7 @@ function NativeMapScreen() {
                     enablePanDownToClose={false}
                     enableOverDrag={false}
                     backgroundStyle={{
-                        backgroundColor: 'white',
+                        backgroundColor: isDarkMode ? '#1F2937' : 'white',
                         borderTopLeftRadius: 24,
                         borderTopRightRadius: 24,
                         shadowColor: '#000',
@@ -1381,7 +1383,7 @@ function NativeMapScreen() {
                         elevation: 16,
                     }}
                     handleIndicatorStyle={{
-                        backgroundColor: '#D1D5DB',
+                        backgroundColor: isDarkMode ? '#4B5563' : '#D1D5DB',
                         width: 48,
                         height: 5,
                         borderRadius: 3,
@@ -1395,15 +1397,15 @@ function NativeMapScreen() {
 
                     ) : state.activeReports && state.activeReports.length > 1 ? (
                         <View className="flex-1 px-5 pb-5">
-                            <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50">
+                            <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
                                 <View>
-                                    <Text className="font-bold text-lg">Жалобы по адресу</Text>
-                                    <Text className="text-xs text-gray-500">
+                                    <Text className="font-bold text-lg dark:text-gray-100">Жалобы по адресу</Text>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400">
                                         {state.activeReports[0].address || 'Адрес не определен'}
                                     </Text>
                                 </View>
                                 <TouchableOpacity onPress={handleCloseDetail}>
-                                    <X size={24} color="#9CA3AF" />
+                                    <X size={24} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                 </TouchableOpacity>
                             </View>
                             <Button
@@ -1428,13 +1430,13 @@ function NativeMapScreen() {
                             <View className="px-5 pb-4">
                                 <View className="relative">
                                     <View className="absolute left-3 top-3 z-10">
-                                        <Search size={20} color="#9CA3AF" />
+                                        <Search size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                     </View>
                                     <TextInput
                                         ref={searchInputRef}
                                         placeholder="Поиск по адресу..."
-                                        placeholderTextColor="#9CA3AF"
-                                        className="w-full bg-gray-100 pl-10 pr-4 py-3 rounded-2xl text-gray-900"
+                                        placeholderTextColor={isDarkMode ? '#6B7280' : '#9CA3AF'}
+                                        className="w-full bg-gray-100 dark:bg-gray-700 pl-10 pr-4 py-3 rounded-2xl text-gray-900 dark:text-gray-100 border border-transparent dark:border-gray-600"
                                         value={state.searchQuery}
                                         onChangeText={state.setSearchQuery}
                                         onFocus={() => {
@@ -1450,29 +1452,29 @@ function NativeMapScreen() {
                                 {!state.searchQuery && state.searchHistory.length > 0 && (
                                     <View className="mb-6">
                                         <View className="flex-row justify-between items-center mb-3">
-                                            <Text className="font-bold text-gray-900 text-sm">
+                                            <Text className="font-bold text-gray-900 dark:text-gray-100 text-sm">
                                                 История поиска
                                             </Text>
                                             <TouchableOpacity onPress={() => state.setSearchHistory([])}>
-                                                <Text className="text-xs text-gray-400">Очистить</Text>
+                                                <Text className="text-xs text-gray-400 dark:text-gray-500">Очистить</Text>
                                             </TouchableOpacity>
                                         </View>
                                         <View className="flex-row flex-wrap gap-2">
                                             {state.searchHistory.map((item, idx) => (
                                                 <TouchableOpacity
                                                     key={idx}
-                                                    className="px-3 py-1.5 bg-gray-100 rounded-lg flex-row items-center gap-1.5"
+                                                    className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg flex-row items-center gap-1.5"
                                                     onPress={() => state.setSearchQuery(item)}
                                                 >
-                                                    <Clock size={12} color="#9CA3AF" />
-                                                    <Text className="text-sm text-gray-700">{item}</Text>
+                                                    <Clock size={12} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                    <Text className="text-sm text-gray-700 dark:text-gray-300">{item}</Text>
                                                 </TouchableOpacity>
                                             ))}
                                         </View>
                                     </View>
                                 )}
 
-                                <Text className="font-bold text-gray-900 mb-3 text-lg">
+                                <Text className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
                                     {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
                                 </Text>
 

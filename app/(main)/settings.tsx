@@ -1,0 +1,212 @@
+import { useAuthStore } from '@/src/store/authStore';
+import { useThemeStore } from '@/src/store/themeStore';
+import { router } from 'expo-router';
+import { Bell, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
+import React, { useState } from 'react';
+import { Alert, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function SettingsScreen() {
+    const user = useAuthStore((s) => s.user);
+    const { isDarkMode, setDarkMode, fogOfWar, setFogOfWar, city, setCity } = useThemeStore();
+    const { setColorScheme } = useColorScheme();
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [showCityModal, setShowCityModal] = useState(false);
+    const [tempCity, setTempCity] = useState(city);
+
+    const handleToggleDarkMode = (value: boolean) => {
+        setDarkMode(value);
+        setColorScheme(value ? 'dark' : 'light');
+    };
+
+    const handleAbout = () => {
+        Alert.alert('О программе', 'Мой Донос v1.0.0\nСделано с заботой о городе.');
+    };
+
+    const handleChangeCity = () => {
+        setTempCity(city);
+        setShowCityModal(true);
+    };
+
+    const saveCity = () => {
+        if (tempCity.trim()) {
+            setCity(tempCity.trim());
+        }
+        setShowCityModal(false);
+    };
+
+    return (
+        <View className="flex-1 bg-gray-50 dark:bg-gray-900">
+            {/* Header */}
+            <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
+                <View className="flex-row items-center justify-between px-4 py-3">
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        className="p-2 -ml-2 rounded-full"
+                    >
+                        <X size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
+                    </TouchableOpacity>
+                    <Text className="font-bold text-lg dark:text-gray-100">Настройки</Text>
+                    <View className="w-8" />
+                </View>
+            </SafeAreaView>
+
+            <ScrollView className="flex-1">
+                {/* Section: Account */}
+                <View className="mt-6 mb-2 px-5">
+                    <Text className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                        Аккаунт
+                    </Text>
+                </View>
+                <View className="bg-white dark:bg-gray-800 px-5 py-2 border-y border-gray-100 dark:border-gray-800">
+                    <TouchableOpacity onPress={handleChangeCity} className="flex-row items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 items-center justify-center mr-3">
+                                <MapPin size={18} color="#2563EB" />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">Мой город</Text>
+                        </View>
+                        <View className="flex-row items-center">
+                            <Text className="text-sm text-gray-500 dark:text-gray-400 mr-2">{city}</Text>
+                            <ChevronRight size={20} color="#9CA3AF" />
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity className="flex-row items-center justify-between py-4">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-900/30 items-center justify-center mr-3">
+                                <Shield size={18} color="#10B981" />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">Безопасность</Text>
+                        </View>
+                        <ChevronRight size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Section: Preferences */}
+                <View className="mt-8 mb-2 px-5">
+                    <Text className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                        Приложение
+                    </Text>
+                </View>
+                <View className="bg-white dark:bg-gray-800 px-5 py-2 border-y border-gray-100 dark:border-gray-800">
+                    <View className="flex-row items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/30 items-center justify-center mr-3">
+                                <Bell size={18} color="#8B5CF6" />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">Уведомления</Text>
+                        </View>
+                        <Switch
+                            value={notificationsEnabled}
+                            onValueChange={setNotificationsEnabled}
+                            trackColor={{ false: isDarkMode ? '#374151' : '#E5E7EB', true: '#BFDBFE' }}
+                            thumbColor={notificationsEnabled ? '#2563EB' : isDarkMode ? '#9CA3AF' : '#F9FAFB'}
+                        />
+                    </View>
+
+                    <View className="flex-row items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center mr-3">
+                                <Moon size={18} color={isDarkMode ? "#D1D5DB" : "#4B5563"} />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">Тёмная тема</Text>
+                        </View>
+                        <Switch
+                            value={isDarkMode}
+                            onValueChange={handleToggleDarkMode}
+                            trackColor={{ false: isDarkMode ? '#374151' : '#E5E7EB', true: '#BFDBFE' }}
+                            thumbColor={isDarkMode ? '#2563EB' : '#F9FAFB'}
+                        />
+                    </View>
+
+                    <View className="flex-row items-center justify-between py-4">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 items-center justify-center mr-3">
+                                <CloudFog size={18} color="#6366F1" />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">Туман войны</Text>
+                        </View>
+                        <Switch
+                            value={fogOfWar}
+                            onValueChange={setFogOfWar}
+                            trackColor={{ false: isDarkMode ? '#374151' : '#E5E7EB', true: '#C7D2FE' }}
+                            thumbColor={fogOfWar ? '#4F46E5' : isDarkMode ? '#9CA3AF' : '#F9FAFB'}
+                        />
+                    </View>
+                </View>
+
+                {/* Section: About & Support */}
+                <View className="mt-8 mb-2 px-5">
+                    <Text className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                        Поддержка
+                    </Text>
+                </View>
+                <View className="bg-white dark:bg-gray-800 px-5 py-2 border-y border-gray-100 dark:border-gray-800 mb-8">
+                    <TouchableOpacity className="flex-row items-center justify-between py-4 border-b border-gray-50 dark:border-gray-700">
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-yellow-50 dark:bg-yellow-900/30 items-center justify-center mr-3">
+                                <HelpCircle size={18} color="#F59E0B" />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">Справка и FAQ</Text>
+                        </View>
+                        <ChevronRight size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        className="flex-row items-center justify-between py-4"
+                        onPress={handleAbout}
+                    >
+                        <View className="flex-row items-center">
+                            <View className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/30 items-center justify-center mr-3">
+                                <Info size={18} color="#F43F5E" />
+                            </View>
+                            <Text className="text-base text-gray-900 dark:text-gray-100">О программе</Text>
+                        </View>
+                        <ChevronRight size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+
+            {/* City Input Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showCityModal}
+                onRequestClose={() => setShowCityModal(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-center items-center px-4">
+                    <View className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-xl leading-relaxed">
+                        <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Мой город</Text>
+                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">Введите название вашего города</Text>
+
+                        <TextInput
+                            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 mb-6"
+                            value={tempCity}
+                            onChangeText={setTempCity}
+                            placeholder="Например, Самара"
+                            placeholderTextColor={isDarkMode ? "#6B7280" : "#9CA3AF"}
+                            autoFocus
+                        />
+
+                        <View className="flex-row justify-end gap-3">
+                            <TouchableOpacity
+                                onPress={() => setShowCityModal(false)}
+                                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700"
+                            >
+                                <Text className="text-gray-700 dark:text-gray-300 font-semibold">Отмена</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={saveCity}
+                                className="px-5 py-2.5 rounded-xl bg-blue-600"
+                            >
+                                <Text className="text-white font-semibold">Сохранить</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </View>
+    );
+}

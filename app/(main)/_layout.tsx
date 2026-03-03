@@ -1,8 +1,13 @@
+import { useThemeStore } from '@/src/store/themeStore';
 import { Stack } from 'expo-router';
 
 export default function MainLayout() {
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
     return (
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' }
+        }}>
             <Stack.Screen name="map" />
             <Stack.Screen
                 name="create"

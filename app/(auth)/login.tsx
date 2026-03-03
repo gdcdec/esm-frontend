@@ -1,5 +1,6 @@
 import { Button, Input } from '@/src/components/ui';
 import { useAuthStore } from '@/src/store/authStore';
+import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
 import { CheckSquare, Square } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -14,6 +15,7 @@ export default function LoginScreen() {
     const [agreed, setAgreed] = useState(false);
 
     const login = useAuthStore((state) => state.login);
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     const handleSubmit = () => {
         // Demo: skip actual API call, just log in
@@ -35,7 +37,7 @@ export default function LoginScreen() {
 
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-white"
+            className="flex-1 bg-white dark:bg-gray-900"
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
             <ScrollView
@@ -44,11 +46,11 @@ export default function LoginScreen() {
             >
                 {/* Logo */}
                 <View className="items-center mb-8">
-                    <View className="w-24 h-24 rounded-full bg-blue-50 items-center justify-center mb-6 shadow-sm">
+                    <View className="w-24 h-24 rounded-full bg-blue-50 dark:bg-gray-800 items-center justify-center mb-6 shadow-sm">
                         <Text className="text-5xl">🏙️</Text>
                     </View>
-                    <Text className="text-3xl font-bold text-gray-900 mb-2">Мой Донос*</Text>
-                    <Text className="text-gray-500 text-center px-4">
+                    <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Мой Донос*</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-center px-4">
                         Сделаем наш город лучше вместе
                     </Text>
                 </View>
@@ -87,11 +89,11 @@ export default function LoginScreen() {
                                 onPress={() => setAgreed(!agreed)}
                             >
                                 {agreed ? (
-                                    <CheckSquare size={20} color="#2563EB" />
+                                    <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
                                 ) : (
-                                    <Square size={20} color="#9CA3AF" />
+                                    <Square size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                 )}
-                                <Text className="text-sm text-gray-600">
+                                <Text className="text-sm text-gray-600 dark:text-gray-300">
                                     Я согласен с правилами приложения
                                 </Text>
                             </TouchableOpacity>
@@ -101,7 +103,7 @@ export default function LoginScreen() {
                     {isLogin && (
                         <View className="flex-row justify-end pb-2">
                             <TouchableOpacity>
-                                <Text className="text-sm text-blue-600 font-medium">
+                                <Text className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                                     Забыли пароль?
                                 </Text>
                             </TouchableOpacity>
@@ -120,7 +122,7 @@ export default function LoginScreen() {
                         className="py-4 items-center"
                         onPress={() => setIsLogin(!isLogin)}
                     >
-                        <Text className="text-blue-600 font-medium">
+                        <Text className="text-blue-600 dark:text-blue-400 font-medium">
                             {isLogin ? 'Нет аккаунта? Создать' : 'Уже есть аккаунт? Войти'}
                         </Text>
                     </TouchableOpacity>

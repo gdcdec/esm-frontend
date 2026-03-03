@@ -4,6 +4,7 @@ import { CATEGORIES } from '@/src/constants/categories';
 import { addressService } from '@/src/services/address';
 import { photosService } from '@/src/services/photos';
 import { reportsService } from '@/src/services/reports';
+import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult } from '@/src/types';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -31,6 +32,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
 export default function CreateReportScreen() {
     const params = useLocalSearchParams<{ address?: string; lat?: string; lon?: string }>();
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     const [category, setCategory] = useState<string | null>(null);
     const [title, setTitle] = useState('');
@@ -161,17 +163,17 @@ export default function CreateReportScreen() {
     };
 
     return (
-        <View className="flex-1 bg-white">
+        <View className="flex-1 bg-white dark:bg-gray-900">
             {/* Header */}
-            <SafeAreaView edges={['top']} className="bg-white border-b border-gray-100">
+            <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
                         onPress={() => router.back()}
                         className="p-2 -ml-2 rounded-full"
                     >
-                        <X size={24} color="#111827" />
+                        <X size={24} color={isDarkMode ? '#F3F4F6' : '#111827'} />
                     </TouchableOpacity>
-                    <Text className="font-bold text-lg">Новая заявка</Text>
+                    <Text className="font-bold text-lg dark:text-gray-100">Новая заявка</Text>
                     <View className="w-8" />
                 </View>
             </SafeAreaView>
@@ -186,7 +188,7 @@ export default function CreateReportScreen() {
                     keyboardShouldPersistTaps="handled"
                 >
                     {/* Step 1: Category */}
-                    <Text className="text-sm font-bold text-gray-900 mb-3">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
                         1. Что случилось?
                     </Text>
                     <ScrollView
@@ -199,8 +201,8 @@ export default function CreateReportScreen() {
                                 key={cat.id}
                                 onPress={() => setCategory(cat.id)}
                                 className={`w-20 items-center p-3 rounded-xl border mr-3 ${category === cat.id
-                                    ? 'bg-blue-50 border-blue-500'
-                                    : 'bg-gray-50 border-transparent'
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500'
+                                    : 'bg-gray-50 dark:bg-gray-800 border-transparent'
                                     }`}
                             >
                                 <View
@@ -210,7 +212,7 @@ export default function CreateReportScreen() {
                                     <Text className="text-xl">{cat.icon}</Text>
                                 </View>
                                 <Text
-                                    className="text-xs font-medium text-center"
+                                    className={`text-xs font-medium text-center ${category === cat.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-300'}`}
                                     numberOfLines={1}
                                 >
                                     {cat.name}
@@ -220,7 +222,7 @@ export default function CreateReportScreen() {
                     </ScrollView>
 
                     {/* Step 2: Details */}
-                    <Text className="text-sm font-bold text-gray-900 mb-3">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
                         2. Детали
                     </Text>
                     <Input
@@ -243,7 +245,7 @@ export default function CreateReportScreen() {
                         />
                         {/* Address Autocomplete Dropdown */}
                         {(suggestions.length > 0 || isSearching) && (
-                            <View className="absolute top-[52px] left-0 right-0 bg-white rounded-xl shadow-lg border border-gray-100 z-50 p-2"
+                            <View className="absolute top-[52px] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50 p-2"
                                 style={{
                                     shadowOffset: { width: 0, height: 4 },
                                     shadowOpacity: 0.1,
@@ -252,18 +254,18 @@ export default function CreateReportScreen() {
                                 }}>
                                 {isSearching ? (
                                     <View className="p-4 items-center">
-                                        <Loader2 size={24} color="#9CA3AF" />
+                                        <Loader2 size={24} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                     </View>
                                 ) : (
                                     suggestions.map((item, index) => (
                                         <TouchableOpacity
                                             key={index}
                                             onPress={() => handleSelectAddress(item)}
-                                            className={`flex-row items-center p-3 ${index < suggestions.length - 1 ? 'border-b border-gray-50' : ''
+                                            className={`flex-row items-center p-3 ${index < suggestions.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''
                                                 }`}
                                         >
-                                            <MapPin size={16} color="#9CA3AF" style={{ marginRight: 12 }} />
-                                            <Text className="flex-1 text-sm text-gray-700" numberOfLines={2}>
+                                            <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} style={{ marginRight: 12 }} />
+                                            <Text className="flex-1 text-sm text-gray-700 dark:text-gray-300" numberOfLines={2}>
                                                 {item.display_name}
                                             </Text>
                                         </TouchableOpacity>
@@ -281,10 +283,10 @@ export default function CreateReportScreen() {
                     />
 
                     {/* Step 3: Photos */}
-                    <Text className="text-sm font-bold text-gray-900 mb-3">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
                         3. Фотографии{' '}
                         {photos.length > 0 && (
-                            <Text className="text-gray-400 font-normal">
+                            <Text className="text-gray-400 dark:text-gray-500 font-normal">
                                 ({photos.length}/{MAX_PHOTOS})
                             </Text>
                         )}
@@ -334,11 +336,11 @@ export default function CreateReportScreen() {
                             // Web: file picker immediately
                             <TouchableOpacity
                                 onPress={pickFromGalleryWeb}
-                                className="w-full h-28 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 items-center justify-center"
+                                className="w-full h-28 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 items-center justify-center"
                             >
-                                <ImagePlus size={28} color="#9CA3AF" />
-                                <Text className="text-sm text-gray-400 mt-2">Выбрать файл</Text>
-                                <Text className="text-xs text-gray-300 mt-1">
+                                <ImagePlus size={28} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                <Text className="text-sm text-gray-400 dark:text-gray-500 mt-2">Выбрать файл</Text>
+                                <Text className="text-xs text-gray-300 dark:text-gray-600 mt-1">
                                     JPG, PNG, WebP · до 10 МБ
                                 </Text>
                             </TouchableOpacity>
@@ -346,10 +348,10 @@ export default function CreateReportScreen() {
                             // Native: open gallery sheet
                             <TouchableOpacity
                                 onPress={openGallery}
-                                className="flex-row items-center justify-center gap-2 py-3 bg-gray-50 rounded-xl"
+                                className="flex-row items-center justify-center gap-2 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl"
                             >
-                                <Camera size={18} color="#6B7280" />
-                                <Text className="text-sm font-medium text-gray-600">
+                                <Camera size={18} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                <Text className="text-sm font-medium text-gray-600 dark:text-gray-300">
                                     Добавить фото
                                 </Text>
                             </TouchableOpacity>
@@ -361,7 +363,7 @@ export default function CreateReportScreen() {
             </KeyboardAvoidingView>
 
             {/* Submit */}
-            <SafeAreaView edges={['bottom']} className="border-t border-gray-100 bg-white px-5 py-3">
+            <SafeAreaView edges={['bottom']} className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3">
                 <Button title="Отправить" onPress={handleSubmit} />
             </SafeAreaView>
 

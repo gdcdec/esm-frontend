@@ -1,5 +1,9 @@
 import { CATEGORIES } from '@/src/constants/categories';
+import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
+import { calculateCentroid, fetchCityBoundary, GeoCoordinate } from '@/src/utils/fetchCityBoundary';
+import { generateCloudyHole } from '@/src/utils/generateCloudyHole';
+import { generateCloudyPolygon } from '@/src/utils/generateCloudyPolygon';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -34,10 +38,61 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 }, ref) => {
     const [LeafletComponents, setLeafletComponents] = useState<any>(null);
     const mapInstanceRef = useRef<any>(null);
+    const { isDarkMode, fogOfWar, city } = useThemeStore();
+    const [cloudPhase, setCloudPhase] = useState(0);
+    const [cityBoundary, setCityBoundary] = useState<GeoCoordinate[] | null>(null);
 
     const center: [number, number] = initialRegion
         ? [initialRegion.latitude, initialRegion.longitude]
         : DEFAULT_CENTER;
+
+    // Fetch the real OSM boundaries of the user's city on mount or change
+    useEffect(() => {
+        fetchCityBoundary(city).then(coords => {
+            if (coords && coords.length > 0) {
+                setCityBoundary(coords);
+                if (mapInstanceRef.current) {
+                    const centroid = calculateCentroid(coords);
+                    mapInstanceRef.current.flyTo([centroid.latitude, centroid.longitude], DEFAULT_ZOOM);
+                }
+            }
+        });
+    }, [city]);
+
+    // Run interval to creep clouds over time at a fast frame rate
+    useEffect(() => {
+        if (!fogOfWar) return;
+        const interval = setInterval(() => {
+            setCloudPhase((prev) => prev + 0.05);
+        }, 32);
+        return () => clearInterval(interval);
+    }, [fogOfWar]);
+
+    const fogBaseCoords = React.useMemo(() => {
+        const centerLat = cityBoundary?.[0]?.latitude ?? center[0];
+        const centerLng = cityBoundary?.[0]?.longitude ?? center[1];
+        return [
+            [centerLat + 10.0, centerLng - 15.0],
+            [centerLat + 10.0, centerLng + 15.0],
+            [centerLat - 10.0, centerLng + 15.0],
+            [centerLat - 10.0, centerLng - 15.0],
+        ] as [number, number][];
+    }, [cityBoundary, center]);
+
+    const holeBoundary = React.useMemo(() => {
+        if (!cityBoundary) {
+            return generateCloudyHole(
+                DEFAULT_CENTER[0],
+                DEFAULT_CENTER[1],
+                0.15,
+                cloudPhase,
+                40
+            ).map(pt => [pt.latitude, pt.longitude]) as [number, number][];
+        }
+
+        return generateCloudyPolygon(cityBoundary, cloudPhase, 0.005)
+            .map(pt => [pt.latitude, pt.longitude]) as [number, number][];
+    }, [cityBoundary, cloudPhase]);
 
     // Group reports by coordinates for clustering
     const clusters = React.useMemo(() => {
@@ -101,7 +156,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     }
 
     const { L, RL } = LeafletComponents;
-    const { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } = RL;
+    const { MapContainer, TileLayer, Marker, Popup, Polygon, useMapEvents, useMap } = RL;
 
     // Create custom colored marker icons
     const createIcon = (color: string) =>
@@ -165,12 +220,30 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         iconAnchor: [16, 32],
     });
 
-    // Save map instance ref + handle click
+    // Save map instance ref + handle click + set bounds dynamically
     function MapSetup() {
         const map = useMap();
         React.useEffect(() => {
             mapInstanceRef.current = map;
         }, [map]);
+
+        React.useEffect(() => {
+            if (fogOfWar) {
+                const centerLat = cityBoundary?.[0]?.latitude ?? center[0];
+                const centerLng = cityBoundary?.[0]?.longitude ?? center[1];
+
+                map.setMaxBounds([
+                    [centerLat - 2.0, centerLng - 3.0],
+                    [centerLat + 2.0, centerLng + 3.0]
+                ]);
+            } else {
+                // Free roam using absurdly large bounds to essentially disable it completely in Leaflet
+                map.setMaxBounds([
+                    [-900, -1800],
+                    [900, 1800]
+                ]);
+            }
+        }, [map, fogOfWar, cityBoundary]);
 
         useMapEvents({
             click(e: any) {
@@ -185,14 +258,30 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
             <MapContainer
                 center={center}
                 zoom={DEFAULT_ZOOM}
+                minZoom={fogOfWar ? 10 : 0}
+                maxBoundsViscosity={1.0}
                 style={{ width: '100%', height: '100%' }}
                 zoomControl={false}
             >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"
+                    url={isDarkMode ? "https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png" : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"}
                 />
                 <MapSetup />
+
+                {fogOfWar && (
+                    <Polygon
+                        key={'fog_overlay'}
+                        positions={[fogBaseCoords, holeBoundary]}
+                        pathOptions={{
+                            color: 'transparent',
+                            fillColor: isDarkMode ? '#111827' : '#6B7280',
+                            fillOpacity: 1,
+                            stroke: false,
+                            interactive: false,
+                        }}
+                    />
+                )}
 
                 {clusters.map((cluster: Report[], i: number) => {
                     const main = cluster[0];
