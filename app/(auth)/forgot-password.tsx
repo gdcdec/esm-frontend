@@ -1,4 +1,5 @@
 import { Button, Input } from '@/src/components/ui';
+import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
 import { ArrowLeft, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -11,6 +12,8 @@ export default function ForgotPasswordScreen() {
     const [code, setCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     const handleRequestReset = async () => {
         if (!email) {
@@ -88,7 +91,7 @@ export default function ForgotPasswordScreen() {
 
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-white"
+            className="flex-1 bg-white dark:bg-gray-900"
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
             <ScrollView
@@ -101,18 +104,18 @@ export default function ForgotPasswordScreen() {
                         onPress={() => router.back()}
                         className="mb-6 flex-row items-center"
                     >
-                        <ArrowLeft size={24} color="#2563EB" />
-                        <Text className="ml-2 text-blue-600 font-medium">Назад</Text>
+                        <ArrowLeft size={24} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                        <Text className="ml-2 text-blue-600 dark:text-blue-400 font-medium">Назад</Text>
                     </TouchableOpacity>
 
                     <View className="items-center">
-                        <View className="w-20 h-20 rounded-full bg-blue-50 items-center justify-center mb-4">
-                            <Mail size={40} color="#2563EB" />
+                        <View className="w-20 h-20 rounded-full bg-blue-50 dark:bg-gray-800 items-center justify-center mb-4">
+                            <Mail size={40} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
                         </View>
-                        <Text className="text-2xl font-bold text-gray-900 mb-2">
+                        <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
                             {isCodeSent ? 'Восстановление пароля' : 'Забыли пароль?'}
                         </Text>
-                        <Text className="text-gray-600 text-center">
+                        <Text className="text-gray-600 dark:text-gray-400 text-center">
                             {!isCodeSent 
                                 ? 'Введите email для получения кода восстановления'
                                 : 'Введите код из письма и новый пароль'
@@ -125,7 +128,7 @@ export default function ForgotPasswordScreen() {
                     // Шаг 1: Ввод email
                     <View className="w-full max-w-sm self-center space-y-4">
                         <View>
-                            <Text className="text-gray-700 font-medium mb-2">Email</Text>
+                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Email</Text>
                             <Input
                                 placeholder="your@email.com"
                                 value={email}
@@ -148,7 +151,7 @@ export default function ForgotPasswordScreen() {
                     // Шаг 2: Ввод кода и нового пароля
                     <View className="w-full max-w-sm self-center space-y-4">
                         <View>
-                            <Text className="text-gray-700 font-medium mb-2">Код из письма</Text>
+                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Код из письма</Text>
                             <Input
                                 placeholder="123456"
                                 value={code}
@@ -160,7 +163,7 @@ export default function ForgotPasswordScreen() {
                         </View>
 
                         <View>
-                            <Text className="text-gray-700 font-medium mb-2">Новый пароль</Text>
+                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Новый пароль</Text>
                             <Input
                                 placeholder="Минимум 6 символов"
                                 value={newPassword}
@@ -171,7 +174,7 @@ export default function ForgotPasswordScreen() {
                         </View>
 
                         <View>
-                            <Text className="text-gray-700 font-medium mb-2">Подтвердите пароль</Text>
+                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Подтвердите пароль</Text>
                             <Input
                                 placeholder="Повторите пароль"
                                 value={confirmPassword}
@@ -192,7 +195,7 @@ export default function ForgotPasswordScreen() {
 
                 {/* Дополнительная информация */}
                 <View className="mt-8 items-center">
-                    <Text className="text-gray-500 text-sm text-center">
+                    <Text className="text-gray-500 dark:text-gray-400 text-sm text-center">
                         {!isCodeSent 
                             ? 'Мы отправим вам код подтверждения на указанный email'
                             : 'Если письмо не пришло, проверьте папку Спам'
