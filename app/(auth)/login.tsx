@@ -100,7 +100,7 @@ export default function LoginScreen() {
 
                     {isLogin && (
                         <View className="flex-row justify-end pb-2">
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
                                 <Text className="text-sm text-blue-600 font-medium">
                                     Забыли пароль?
                                 </Text>
