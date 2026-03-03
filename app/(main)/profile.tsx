@@ -86,18 +86,23 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* My reports */}
-                <Text className="font-bold text-gray-900 dark:text-gray-100 px-6 mb-3 text-lg">
-                    Мои заявки
-                </Text>
+                <View className="px-6 mb-6">
+                    <View className="w-full max-w-sm self-center">
+                        <Text className="font-bold text-gray-900 dark:text-gray-100 text-lg text-center mb-3">
+                            Мои заявки
+                        </Text>
+                    </View>
+                </View>
 
-                <View className="px-4 pb-4">
-                    {MOCK_REPORTS.map((r) => {
-                        const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
-                        return (
-                            <View
-                                key={r.id}
-                                className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex-row items-center gap-3 mb-3"
-                            >
+                <View className="px-6 pb-8">
+                    <View className="w-full max-w-sm self-center">
+                        {MOCK_REPORTS.map((r) => {
+                            const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
+                            return (
+                                <View
+                                    key={r.id}
+                                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex-row items-center gap-3 mb-3"
+                                >
                                 <View
                                     className="w-10 h-10 rounded-xl items-center justify-center"
                                     style={{
@@ -119,16 +124,19 @@ export default function ProfileScreen() {
                             </View>
                         );
                     })}
+                    </View>
                 </View>
 
                 {/* Logout */}
-                <View className="px-4 pb-8">
-                    <TouchableOpacity
-                        onPress={handleLogout}
-                        className="py-3 bg-red-50 dark:bg-red-900/20 rounded-xl items-center"
-                    >
-                        <Text className="text-red-500 font-semibold">Выйти из аккаунта</Text>
-                    </TouchableOpacity>
+                <View className="px-6 pb-8">
+                    <View className="w-full max-w-sm self-center">
+                        <TouchableOpacity
+                            onPress={handleLogout}
+                            className="py-3 bg-red-50 dark:bg-red-900/20 rounded-xl items-center"
+                        >
+                            <Text className="text-red-500 font-semibold">Выйти из аккаунта</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </View>
