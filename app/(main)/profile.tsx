@@ -18,6 +18,43 @@ export default function ProfileScreen() {
     const nextLevelXp = user?.nextLevelXp ?? 500;
     const progress = (xp / nextLevelXp) * 100;
 
+    // Считаем статистику по заявкам
+    const totalReports = MOCK_REPORTS.length;
+    const solvedReports = MOCK_REPORTS.filter(r => r.status === 'solved').length;
+    const progressReports = MOCK_REPORTS.filter(r => r.status === 'progress').length;
+    const activeReports = solvedReports + progressReports; // решенные + в работе
+    const influence = Math.floor((activeReports / totalReports) * 100) || 0;
+
+    // Расчет уровня на основе активных заявок (решенных + в работе)
+    const calculateLevel = (activeCount: number) => {
+        if (activeCount >= 50) return 10;
+        if (activeCount >= 35) return 9;
+        if (activeCount >= 25) return 8;
+        if (activeCount >= 18) return 7;
+        if (activeCount >= 12) return 6;
+        if (activeCount >= 8) return 5;
+        if (activeCount >= 5) return 4;
+        if (activeCount >= 3) return 3;
+        if (activeCount >= 1) return 2;
+        return 1;
+    };
+
+    const userLevel = calculateLevel(activeReports);
+    
+    // Расчет XP для следующего уровня
+    const getLevelRequirements = (level: number) => {
+        const requirements = [0, 1, 3, 5, 8, 12, 18, 25, 35, 50];
+        return {
+            currentLevelMin: requirements[level - 1] || 0,
+            nextLevelMin: requirements[level] || 50,
+        };
+    };
+
+    const { currentLevelMin, nextLevelMin } = getLevelRequirements(userLevel);
+    const currentXp = activeReports - currentLevelMin;
+    const neededXp = nextLevelMin - currentLevelMin;
+    const xpProgress = neededXp > 0 ? (currentXp / neededXp) * 100 : 100;
+
     const handleLogout = () => {
         logout();
         router.replace('/(auth)/login');
@@ -46,41 +83,47 @@ export default function ProfileScreen() {
 
             <ScrollView className="flex-1">
                 {/* Profile card */}
-                <View className="bg-white dark:bg-gray-800 p-6 m-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 items-center">
-                    <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center mb-4 border-2 border-white dark:border-gray-800 shadow-sm">
-                        <Text className="text-4xl">🧑‍💼</Text>
-                    </View>
-                    <Text className="text-xl font-bold mb-1 dark:text-gray-100">
-                        {user?.name || 'Алексей Н.'}
-                    </Text>
-                    <Text className="text-blue-600 font-semibold text-sm mb-4">
-                        Уровень {user?.level ?? 5}
-                    </Text>
-
-                    {/* XP bar */}
-                    <View className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
-                        <View
-                            className="h-full bg-green-500 rounded-full"
-                            style={{ width: `${progress}%` }}
-                        />
-                    </View>
-                    <Text className="text-xs text-gray-400 dark:text-gray-500 mb-6">
-                        {xp} / {nextLevelXp} XP
-                    </Text>
-
-                    {/* Stats */}
-                    <View className="flex-row w-full pt-4 border-t border-gray-50 dark:border-gray-700">
-                        <View className="flex-1 items-center">
-                            <Text className="text-lg font-bold dark:text-gray-100">12</Text>
-                            <Text className="text-xs text-gray-400 dark:text-gray-500">Заявок</Text>
+                <View className="bg-white dark:bg-gray-800 p-4 mx-4 mb-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 items-center">
+                    <View className="w-full max-w-md self-center">
+                        <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center mb-3 border-2 border-white dark:border-gray-800 shadow-sm self-center">
+                            <Text className="text-3xl">🧑‍💼</Text>
                         </View>
-                        <View className="flex-1 items-center border-l border-r border-gray-50 dark:border-gray-700">
-                            <Text className="text-lg font-bold dark:text-gray-100">8</Text>
-                            <Text className="text-xs text-gray-400 dark:text-gray-500">Решено</Text>
+                        <Text className="text-lg font-bold mb-1 dark:text-gray-100 text-center">
+                            {user?.name || 'Алексей Н.'}
+                        </Text>
+                        <Text className="text-blue-600 font-semibold text-sm mb-3 text-center">
+                            Уровень {userLevel}
+                        </Text>
+
+                        {/* XP bar */}
+                        <View className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-1.5">
+                            <View
+                                className="h-full bg-green-500 rounded-full"
+                                style={{ width: `${xpProgress}%` }}
+                            />
                         </View>
-                        <View className="flex-1 items-center">
-                            <Text className="text-lg font-bold dark:text-gray-100">🔥</Text>
-                            <Text className="text-xs text-gray-400 dark:text-gray-500">Влияние</Text>
+                        <Text className="text-xs text-gray-400 dark:text-gray-500 mb-4 text-center">
+                            {xp} / {nextLevelXp} XP
+                        </Text>
+
+                        {/* Stats */}
+                        <View className="flex-row w-full pt-3 border-t border-gray-50 dark:border-gray-700">
+                            <View className="flex-1 items-center">
+                                <Text className="text-base font-bold dark:text-gray-100">{totalReports}</Text>
+                                <Text className="text-xs text-gray-400 dark:text-gray-500">Заявок</Text>
+                            </View>
+                            <View className="flex-1 items-center border-l border-r border-gray-50 dark:border-gray-700">
+                                <Text className="text-base font-bold dark:text-gray-100">{solvedReports}</Text>
+                                <Text className="text-xs text-gray-400 dark:text-gray-500">Решено</Text>
+                            </View>
+                            <View className="flex-1 items-center">
+                                <Text className="text-base font-bold dark:text-gray-100">{progressReports}</Text>
+                                <Text className="text-xs text-gray-400 dark:text-gray-500">В работе</Text>
+                            </View>
+                            <View className="flex-1 items-center">
+                                <Text className="text-base font-bold dark:text-gray-100">{influence}%</Text>
+                                <Text className="text-xs text-gray-400 dark:text-gray-500">Влияние</Text>
+                            </View>
                         </View>
                     </View>
                 </View>
