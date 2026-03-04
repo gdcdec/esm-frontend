@@ -40,7 +40,7 @@ export default function ProfileScreen() {
     };
 
     const userLevel = calculateLevel(activeReports);
-    
+
     // Расчет XP для следующего уровня
     const getLevelRequirements = (level: number) => {
         const requirements = [0, 1, 3, 5, 8, 12, 18, 25, 35, 50];
@@ -81,7 +81,7 @@ export default function ProfileScreen() {
                 </View>
             </SafeAreaView>
 
-            <ScrollView className="flex-1">
+            <ScrollView className="flex-1 pt-4">
                 {/* Profile card */}
                 <View className="bg-white dark:bg-gray-800 p-4 mx-4 mb-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 items-center">
                     <View className="w-full max-w-md self-center">
@@ -146,27 +146,27 @@ export default function ProfileScreen() {
                                     key={r.id}
                                     className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex-row items-center gap-3 mb-3"
                                 >
-                                <View
-                                    className="w-10 h-10 rounded-xl items-center justify-center"
-                                    style={{
-                                        backgroundColor: (cat?.color || '#999') + '20',
-                                    }}
-                                >
-                                    <Text className="text-lg">{cat?.icon || '❗'}</Text>
-                                </View>
-                                <View className="flex-1">
-                                    <Text
-                                        className="font-semibold text-gray-900 dark:text-gray-100"
-                                        numberOfLines={1}
+                                    <View
+                                        className="w-10 h-10 rounded-xl items-center justify-center"
+                                        style={{
+                                            backgroundColor: (cat?.color || '#999') + '20',
+                                        }}
                                     >
-                                        {r.title}
-                                    </Text>
-                                    <Text className="text-xs text-gray-400 dark:text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                        <Text className="text-lg">{cat?.icon || '❗'}</Text>
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text
+                                            className="font-semibold text-gray-900 dark:text-gray-100"
+                                            numberOfLines={1}
+                                        >
+                                            {r.title}
+                                        </Text>
+                                        <Text className="text-xs text-gray-400 dark:text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                    </View>
+                                    <Badge status={r.status} />
                                 </View>
-                                <Badge status={r.status} />
-                            </View>
-                        );
-                    })}
+                            );
+                        })}
                     </View>
                 </View>
 

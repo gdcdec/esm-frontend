@@ -12,14 +12,12 @@ export default function MainLayout() {
             <Stack.Screen
                 name="create"
                 options={{
-                    presentation: 'modal',
                     animation: 'slide_from_right',
                 }}
             />
             <Stack.Screen
                 name="profile"
                 options={{
-                    presentation: 'modal',
                     animation: 'slide_from_bottom',
                 }}
             />
