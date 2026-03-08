@@ -9,6 +9,7 @@ export default function AuthLayout() {
             contentStyle: { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' }
         }}>
             <Stack.Screen name="login" />
+            <Stack.Screen name="forgot-password" />
         </Stack>
     );
 }

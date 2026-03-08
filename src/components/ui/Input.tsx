@@ -5,6 +5,7 @@ import { Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-n
 interface InputProps extends TextInputProps {
     label?: string;
     className?: string;
+    hideClearButton?: boolean;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(({
@@ -13,9 +14,10 @@ export const Input = forwardRef<TextInput, InputProps>(({
     multiline,
     value,
     onChangeText,
+    hideClearButton,
     ...props
 }, ref) => {
-    const showClearBtn = !multiline && value && value.length > 0 && onChangeText;
+    const showClearBtn = !multiline && !hideClearButton && value && value.length > 0 && onChangeText;
 
     return (
         <View className={`mb-3 ${className}`}>

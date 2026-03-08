@@ -89,7 +89,7 @@ export default function ProfileScreen() {
                             <Text className="text-3xl">🧑‍💼</Text>
                         </View>
                         <Text className="text-lg font-bold mb-1 dark:text-gray-100 text-center">
-                            {user?.name || 'Алексей Н.'}
+                            {user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'Пользователь'}
                         </Text>
                         <Text className="text-blue-600 font-semibold text-sm mb-3 text-center">
                             Уровень {userLevel}

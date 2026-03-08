@@ -33,11 +33,16 @@ export interface Report {
 
 export interface User {
     id: number;
-    name: string;
+    username: string;
     email: string;
-    level: number;
-    xp: number;
-    nextLevelXp: number;
+    first_name: string;
+    last_name: string;
+    patronymic?: string;
+    phone_number?: string;
+    city?: string;
+    level?: number;
+    xp?: number;
+    nextLevelXp?: number;
     avatar?: string;
 }
 

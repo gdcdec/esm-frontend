@@ -1,7 +1,8 @@
 import { Button, Input } from '@/src/components/ui';
+import { authService } from '@/src/services/auth';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { ArrowLeft, Mail } from 'lucide-react-native';
+import { Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -12,25 +13,29 @@ export default function ForgotPasswordScreen() {
     const [code, setCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    
+    const [error, setError] = useState('');
+    const [isCodeVerified, setIsCodeVerified] = useState(false);
+
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     const handleRequestReset = async () => {
         if (!email) {
-            alert('Пожалуйста, введите email');
+            setError('Пожалуйста, введите email');
             return;
         }
 
         setIsLoading(true);
+        setError('');
         try {
-            // TODO: Заменить на реальный API вызов
-            // await authApi.requestPasswordReset(email);
-            
-            // Имитация API запроса
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await authService.requestPasswordReset(email);
             setIsCodeSent(true);
-        } catch (error) {
-            alert('Ошибка при отправке кода. Попробуйте еще раз.');
+        } catch (err: any) {
+            const msg =
+                err?.response?.data?.email?.[0] ||
+                err?.response?.data?.error ||
+                err?.response?.data?.detail ||
+                'Ошибка при отправке кода. Проверьте email и попробуйте еще раз.';
+            setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         } finally {
             setIsLoading(false);
         }
@@ -38,20 +43,24 @@ export default function ForgotPasswordScreen() {
 
     const handleVerifyCode = async () => {
         if (!code) {
-            alert('Пожалуйста, введите код');
+            setError('Пожалуйста, введите код');
             return;
         }
 
         setIsLoading(true);
+        setError('');
         try {
-            // TODO: Заменить на реальный API вызов
-            // await authApi.verifyResetCode(email, code);
-            
-            // Имитация API запроса
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // Здесь можно показать поле для нового пароля
-        } catch (error) {
-            alert('Неверный код. Попробуйте еще раз.');
+            const res = await authService.verifyResetCode(email, code);
+            if (res.verified) {
+                setIsCodeVerified(true);
+            }
+        } catch (err: any) {
+            const msg =
+                err?.response?.data?.code?.[0] ||
+                err?.response?.data?.error ||
+                err?.response?.data?.detail ||
+                'Неверный код. Попробуйте еще раз.';
+            setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         } finally {
             setIsLoading(false);
         }
@@ -59,34 +68,53 @@ export default function ForgotPasswordScreen() {
 
     const handleSetNewPassword = async () => {
         if (!newPassword || !confirmPassword) {
-            alert('Пожалуйста, введите новый пароль и подтверждение');
+            setError('Пожалуйста, введите новый пароль и подтверждение');
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            alert('Пароли не совпадают');
+            setError('Пароли не совпадают');
             return;
         }
 
         if (newPassword.length < 6) {
-            alert('Пароль должен содержать минимум 6 символов');
+            setError('Пароль должен содержать минимум 6 символов');
             return;
         }
 
         setIsLoading(true);
+        setError('');
         try {
-            // TODO: Заменить на реальный API вызов
-            // await authApi.confirmPasswordReset(email, code, newPassword);
-            
-            // Имитация API запроса
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            alert('Пароль успешно изменен!');
+            await authService.confirmPasswordReset(email, code, newPassword);
+            // Success — show alert and go back
+            setError('');
             router.replace('/(auth)/login');
-        } catch (error) {
-            alert('Ошибка при изменении пароля. Попробуйте еще раз.');
+            // Use setTimeout to show alert after navigation
+            setTimeout(() => {
+                alert('Пароль успешно изменен! Теперь вы можете войти с новым паролем.');
+            }, 300);
+        } catch (err: any) {
+            const msg =
+                err?.response?.data?.new_password?.[0] ||
+                err?.response?.data?.error ||
+                err?.response?.data?.detail ||
+                'Ошибка при изменении пароля. Попробуйте еще раз.';
+            setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const getTitle = () => {
+        if (!isCodeSent) return 'Забыли пароль?';
+        if (!isCodeVerified) return 'Введите код';
+        return 'Новый пароль';
+    };
+
+    const getSubtitle = () => {
+        if (!isCodeSent) return 'Введите email для получения кода восстановления';
+        if (!isCodeVerified) return `Мы отправили 6-значный код на ${email}`;
+        return 'Придумайте новый надёжный пароль';
     };
 
     return (
@@ -99,33 +127,27 @@ export default function ForgotPasswordScreen() {
                 keyboardShouldPersistTaps="handled"
             >
                 {/* Header */}
-                <View className="mb-8">
-                    <TouchableOpacity
-                        onPress={() => router.back()}
-                        className="mb-6 flex-row items-center"
-                    >
-                        <ArrowLeft size={24} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                        <Text className="ml-2 text-blue-600 dark:text-blue-400 font-medium">Назад</Text>
-                    </TouchableOpacity>
-
-                    <View className="items-center">
-                        <View className="w-20 h-20 rounded-full bg-blue-50 dark:bg-gray-800 items-center justify-center mb-4">
-                            <Mail size={40} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                        </View>
-                        <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                            {isCodeSent ? 'Восстановление пароля' : 'Забыли пароль?'}
-                        </Text>
-                        <Text className="text-gray-600 dark:text-gray-400 text-center">
-                            {!isCodeSent 
-                                ? 'Введите email для получения кода восстановления'
-                                : 'Введите код из письма и новый пароль'
-                            }
-                        </Text>
+                <View className="items-center mb-8">
+                    <View className="w-20 h-20 rounded-full bg-blue-50 dark:bg-gray-800 items-center justify-center mb-4">
+                        <Mail size={40} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
                     </View>
+                    <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                        {getTitle()}
+                    </Text>
+                    <Text className="text-gray-600 dark:text-gray-400 text-center">
+                        {getSubtitle()}
+                    </Text>
                 </View>
 
+                {/* Error */}
+                {error ? (
+                    <View className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl mb-4 w-full max-w-sm self-center">
+                        <Text className="text-red-600 dark:text-red-400 text-sm text-center">{error}</Text>
+                    </View>
+                ) : null}
+
                 {!isCodeSent ? (
-                    // Шаг 1: Ввод email
+                    // Step 1: Enter email
                     <View className="w-full max-w-sm self-center space-y-4">
                         <View>
                             <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Email</Text>
@@ -147,8 +169,8 @@ export default function ForgotPasswordScreen() {
                             className="mt-6"
                         />
                     </View>
-                ) : (
-                    // Шаг 2: Ввод кода и нового пароля
+                ) : !isCodeVerified ? (
+                    // Step 2: Enter verification code
                     <View className="w-full max-w-sm self-center space-y-4">
                         <View>
                             <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Код из письма</Text>
@@ -162,6 +184,24 @@ export default function ForgotPasswordScreen() {
                             />
                         </View>
 
+                        <Button
+                            title={isLoading ? 'Проверка...' : 'Подтвердить код'}
+                            onPress={handleVerifyCode}
+                            disabled={!code || isLoading}
+                            className="mt-6"
+                        />
+
+                        <TouchableOpacity
+                            className="py-3 items-center"
+                            onPress={handleRequestReset}
+                            disabled={isLoading}
+                        >
+                            <Text className="text-blue-600 dark:text-blue-400 text-sm">Отправить код повторно</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    // Step 3: Set new password
+                    <View className="w-full max-w-sm self-center space-y-4">
                         <View>
                             <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Новый пароль</Text>
                             <Input
@@ -187,21 +227,30 @@ export default function ForgotPasswordScreen() {
                         <Button
                             title={isLoading ? 'Сохранение...' : 'Изменить пароль'}
                             onPress={handleSetNewPassword}
-                            disabled={!code || !newPassword || !confirmPassword || isLoading}
+                            disabled={!newPassword || !confirmPassword || isLoading}
                             className="mt-6"
                         />
                     </View>
                 )}
 
-                {/* Дополнительная информация */}
-                <View className="mt-8 items-center">
+                {/* Info text */}
+                <View className="mt-6 items-center">
                     <Text className="text-gray-500 dark:text-gray-400 text-sm text-center">
-                        {!isCodeSent 
+                        {!isCodeSent
                             ? 'Мы отправим вам код подтверждения на указанный email'
                             : 'Если письмо не пришло, проверьте папку Спам'
                         }
                     </Text>
                 </View>
+
+                <TouchableOpacity
+                    className="py-4 items-center"
+                    onPress={() => router.back()}
+                >
+                    <Text className="text-blue-600 dark:text-blue-400 font-medium">
+                        Вспомнили пароль? Войти
+                    </Text>
+                </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
     );

@@ -1,8 +1,8 @@
 import { useAuthStore } from '@/src/store/authStore';
 import axios from 'axios';
 
-// Base URL — change to your Django server address
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Base URL
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://109.120.135.24:8000/api';
 
 const api = axios.create({
     baseURL: BASE_URL,
