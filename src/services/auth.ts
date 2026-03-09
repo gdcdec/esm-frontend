@@ -112,7 +112,7 @@ export const authService = {
     ): Promise<PasswordResetConfirmResponse> => {
         const { data } = await api.post<PasswordResetConfirmResponse>(
             '/auth/password-reset/confirm/',
-            { email, code, new_password }
+            { email, code, new_password, confirm_password: new_password }
         );
         return data;
     },

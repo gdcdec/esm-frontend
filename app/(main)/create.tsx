@@ -40,6 +40,7 @@ export default function CreateReportScreen() {
     const [desc, setDesc] = useState('');
     const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
     const [galleryOpen, setGalleryOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Address Autocomplete state
     const [suggestions, setSuggestions] = useState<AddressSearchResult[]>([]);
@@ -141,6 +142,11 @@ export default function CreateReportScreen() {
         }
         const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
         const lon = selectedLocation?.lon ?? (params.lon ? parseFloat(params.lon) : 0);
+
+        // Find the category name to send as rubric (Rubric PK = name)
+        const selectedCat = CATEGORIES.find(c => c.id === category);
+
+        setIsSubmitting(true);
         try {
             const report = await reportsService.create({
                 title,
@@ -148,17 +154,41 @@ export default function CreateReportScreen() {
                 address,
                 latitude: lat,
                 longitude: lon,
-                rubric: category,
-                status: 'published',
+                rubric: selectedCat?.name ?? category,
             });
+
             if (photos.length > 0) {
-                await photosService.upload(report.id, photos);
+                try {
+                    await photosService.upload(report.id, photos);
+                } catch (photoErr: any) {
+                    const photoMsg =
+                        photoErr?.response?.data?.photos?.[0] ||
+                        photoErr?.response?.data?.post_id?.[0] ||
+                        photoErr?.response?.data?.non_field_errors?.[0] ||
+                        photoErr?.response?.data?.detail ||
+                        photoErr?.message;
+                    Alert.alert(
+                        'Заявка создана',
+                        `Заявка создана, но фото не загружены: ${photoMsg}`,
+                        [{ text: 'OK', onPress: () => router.back() }]
+                    );
+                    return;
+                }
             }
-            Alert.alert('Успех', 'Заявка отправлена!', [
+
+            Alert.alert('Успех', 'Заявка отправлена на рассмотрение!', [
                 { text: 'OK', onPress: () => router.back() },
             ]);
         } catch (e: any) {
-            Alert.alert('Ошибка', e?.message ?? 'Не удалось отправить заявку');
+            const serverMsg =
+                e?.response?.data?.detail ||
+                e?.response?.data?.title?.[0] ||
+                e?.response?.data?.rubric?.[0] ||
+                e?.response?.data?.non_field_errors?.[0] ||
+                e?.message;
+            Alert.alert('Ошибка', serverMsg ?? 'Не удалось отправить заявку');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -364,7 +394,11 @@ export default function CreateReportScreen() {
 
             {/* Submit */}
             <SafeAreaView edges={['bottom']} className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3">
-                <Button title="Отправить" onPress={handleSubmit} />
+                <Button
+                    title={isSubmitting ? 'Отправка...' : 'Отправить'}
+                    onPress={handleSubmit}
+                    disabled={isSubmitting}
+                />
             </SafeAreaView>
 
             {/* Tap outside to close gallery */}

@@ -1,4 +1,5 @@
 import { ReportPhoto } from '@/src/types';
+import { Platform } from 'react-native';
 import api from './api';
 
 export const photosService = {
@@ -9,19 +10,30 @@ export const photosService = {
         const formData = new FormData();
         formData.append('post_id', String(postId));
 
-        photos.forEach((photo) => {
-            formData.append('photos', {
-                uri: photo.uri,
-                name: photo.name || 'photo.jpg',
-                type: photo.type || 'image/jpeg',
-            } as any);
-        });
+        for (const photo of photos) {
+            if (Platform.OS === 'web') {
+                const response = await fetch(photo.uri);
+                const blob = await response.blob();
+                const file = new File(
+                    [blob],
+                    photo.name || 'photo.jpg',
+                    { type: photo.type || 'image/jpeg' }
+                );
+                formData.append('photos', file);
+            } else {
+                formData.append('photos', {
+                    uri: photo.uri,
+                    name: photo.name || 'photo.jpg',
+                    type: photo.type || 'image/jpeg',
+                } as any);
+            }
+        }
 
         const { data } = await api.post<ReportPhoto[]>(
             '/posts/photos/upload/',
             formData,
             {
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: { 'Content-Type': undefined },
             }
         );
         return data;

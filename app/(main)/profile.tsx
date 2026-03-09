@@ -1,12 +1,13 @@
 import { Badge } from '@/src/components/ui';
 import { CATEGORIES } from '@/src/constants/categories';
-import { MOCK_REPORTS } from '@/src/constants/mock-data';
+import { reportsService } from '@/src/services/reports';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
+import { Report } from '@/src/types';
 import { router } from 'expo-router';
 import { Settings, X } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
@@ -14,16 +15,32 @@ export default function ProfileScreen() {
     const logout = useAuthStore((s) => s.logout);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
+    const [myReports, setMyReports] = useState<Report[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await reportsService.getMine();
+                setMyReports(data);
+            } catch (err) {
+                console.warn('Failed to fetch my reports:', err);
+            } finally {
+                setIsLoading(false);
+            }
+        })();
+    }, []);
+
     const xp = user?.xp ?? 350;
     const nextLevelXp = user?.nextLevelXp ?? 500;
     const progress = (xp / nextLevelXp) * 100;
 
     // Считаем статистику по заявкам
-    const totalReports = MOCK_REPORTS.length;
-    const solvedReports = MOCK_REPORTS.filter(r => r.status === 'solved').length;
-    const progressReports = MOCK_REPORTS.filter(r => r.status === 'progress').length;
-    const activeReports = solvedReports + progressReports; // решенные + в работе
-    const influence = Math.floor((activeReports / totalReports) * 100) || 0;
+    const totalReports = myReports.length;
+    const publishedReports = myReports.filter(r => r.status === 'published').length;
+    const checkReports = myReports.filter(r => r.status === 'check').length;
+    const activeReports = publishedReports + checkReports;
+    const influence = totalReports > 0 ? Math.floor((activeReports / totalReports) * 100) : 0;
 
     // Расчет уровня на основе активных заявок (решенных + в работе)
     const calculateLevel = (activeCount: number) => {
@@ -113,12 +130,12 @@ export default function ProfileScreen() {
                                 <Text className="text-xs text-gray-400 dark:text-gray-500">Заявок</Text>
                             </View>
                             <View className="flex-1 items-center border-l border-r border-gray-50 dark:border-gray-700">
-                                <Text className="text-base font-bold dark:text-gray-100">{solvedReports}</Text>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500">Решено</Text>
+                                <Text className="text-base font-bold dark:text-gray-100">{publishedReports}</Text>
+                                <Text className="text-xs text-gray-400 dark:text-gray-500">Опубликовано</Text>
                             </View>
                             <View className="flex-1 items-center">
-                                <Text className="text-base font-bold dark:text-gray-100">{progressReports}</Text>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500">В работе</Text>
+                                <Text className="text-base font-bold dark:text-gray-100">{checkReports}</Text>
+                                <Text className="text-xs text-gray-400 dark:text-gray-500">На проверке</Text>
                             </View>
                             <View className="flex-1 items-center">
                                 <Text className="text-base font-bold dark:text-gray-100">{influence}%</Text>
@@ -139,34 +156,44 @@ export default function ProfileScreen() {
 
                 <View className="px-6 pb-8">
                     <View className="w-full max-w-sm self-center">
-                        {MOCK_REPORTS.map((r) => {
-                            const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
-                            return (
-                                <View
-                                    key={r.id}
-                                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex-row items-center gap-3 mb-3"
-                                >
+                        {isLoading ? (
+                            <View className="py-8 items-center">
+                                <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                            </View>
+                        ) : myReports.length === 0 ? (
+                            <View className="py-8 items-center">
+                                <Text className="text-gray-400 dark:text-gray-500 text-sm">У вас пока нет заявок</Text>
+                            </View>
+                        ) : (
+                            myReports.map((r) => {
+                                const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
+                                return (
                                     <View
-                                        className="w-10 h-10 rounded-xl items-center justify-center"
-                                        style={{
-                                            backgroundColor: (cat?.color || '#999') + '20',
-                                        }}
+                                        key={r.id}
+                                        className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex-row items-center gap-3 mb-3"
                                     >
-                                        <Text className="text-lg">{cat?.icon || '❗'}</Text>
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text
-                                            className="font-semibold text-gray-900 dark:text-gray-100"
-                                            numberOfLines={1}
+                                        <View
+                                            className="w-10 h-10 rounded-xl items-center justify-center"
+                                            style={{
+                                                backgroundColor: (cat?.color || '#999') + '20',
+                                            }}
                                         >
-                                            {r.title}
-                                        </Text>
-                                        <Text className="text-xs text-gray-400 dark:text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                            <Text className="text-lg">{cat?.icon || '❗'}</Text>
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text
+                                                className="font-semibold text-gray-900 dark:text-gray-100"
+                                                numberOfLines={1}
+                                            >
+                                                {r.title}
+                                            </Text>
+                                            <Text className="text-xs text-gray-400 dark:text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                        </View>
+                                        <Badge status={r.status} />
                                     </View>
-                                    <Badge status={r.status} />
-                                </View>
-                            );
-                        })}
+                                );
+                            })
+                        )}
                     </View>
                 </View>
 

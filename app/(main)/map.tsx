@@ -1,8 +1,8 @@
 import { AppMapView, MapViewRef } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
-import { MOCK_REPORTS } from '@/src/constants/mock-data';
 import { addressService } from '@/src/services/address';
+import { reportsService } from '@/src/services/reports';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -50,7 +50,8 @@ function useIsMobile(breakpoint = 768) {
 
 // ─── Shared state hook ────────────────────────────────────────
 function useMapState() {
-    const [reports] = useState<Report[]>(MOCK_REPORTS);
+    const [reports, setReports] = useState<Report[]>([]);
+    const [isLoadingReports, setIsLoadingReports] = useState(true);
     const [selectedCoord, setSelectedCoord] = useState<{
         latitude: number;
         longitude: number;
@@ -67,6 +68,24 @@ function useMapState() {
     const [userAddress, setUserAddress] = useState<string | null>(null);
 
     const mapRef = useRef<MapViewRef>(null);
+
+    // Fetch real posts from API
+    const fetchReports = useCallback(async () => {
+        setIsLoadingReports(true);
+        try {
+            const data = await reportsService.getAll();
+            setReports(data);
+        } catch (err) {
+            console.warn('Failed to fetch reports:', err);
+        } finally {
+            setIsLoadingReports(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchReports();
+    }, [fetchReports]);
+
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
 
     const filteredReports = useMemo(
@@ -143,6 +162,7 @@ function useMapState() {
         searchHistory, setSearchHistory,
         mapRef, singleReport, filteredReports,
         userLocation, userAddress,
+        isLoadingReports, fetchReports,
         handleMapPress, handleMarkerPress, handleCloseDetail, handleLocate,
     };
 }

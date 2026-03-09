@@ -5,7 +5,7 @@ export interface Category {
     color: string;
 }
 
-export type ReportStatus = 'pending' | 'progress' | 'solved';
+export type ReportStatus = 'draft' | 'published' | 'check' | 'archived' | 'banned' | 'pending' | 'progress' | 'solved';
 
 export interface ReportPhoto {
     id: number;
@@ -82,5 +82,4 @@ export interface CreateReportPayload {
     latitude: number;
     longitude: number;
     rubric?: string;
-    status?: 'draft' | 'published';
 }
