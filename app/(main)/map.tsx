@@ -883,77 +883,80 @@ function MobileWebMapScreen() {
                     zIndex: 50,
                 }}
             >
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                    {/* Search Bar Input */}
-                    <div
+                {/* Search Bar with integrated filter button */}
+                <div
+                    style={{
+                        background: 'white',
+                        borderRadius: 14,
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '0 12px',
+                        height: 48,
+                    }}
+                    onClick={() => {
+                        searchInputRef.current?.focus();
+                        setSearchFocused(true);
+                        setSheetHeight(SNAP_PEEK);
+                        state.setSelectedCoord(null);
+                        state.setActiveReports(null);
+                    }}
+                >
+                    <Search size={18} color="#9CA3AF" style={{ flexShrink: 0 }} />
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Поиск по адресу..."
+                        value={state.searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        onKeyDown={handleSearchSubmit}
+                        onFocus={() => setSearchFocused(true)}
                         style={{
                             flex: 1,
-                            background: 'white',
-                            borderRadius: 14,
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            fontSize: 14,
+                            color: '#111827',
+                            padding: '0 10px',
+                            height: '100%',
+                            minWidth: 0,
+                        }}
+                    />
+                    {state.searchQuery && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                state.setSearchQuery('');
+                            }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                        >
+                            <X size={16} color="#9CA3AF" />
+                        </button>
+                    )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            state.setShowFiltersModal(true);
+                        }}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 8,
+                            cursor: 'pointer',
+                            borderRadius: 8,
                             display: 'flex',
                             alignItems: 'center',
-                            padding: '0 12px',
-                            height: 48,
-                        }}
-                        onClick={() => {
-                            searchInputRef.current?.focus();
-                            setSearchFocused(true);
-                            setSheetHeight(SNAP_PEEK);
-                            state.setSelectedCoord(null);
-                            state.setActiveReports(null);
-                        }}
-                    >
-                        <Search size={18} color="#9CA3AF" style={{ flexShrink: 0 }} />
-                        <input
-                            ref={searchInputRef}
-                            type="text"
-                            placeholder="Поиск по адресу..."
-                            value={state.searchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            onKeyDown={handleSearchSubmit}
-                            onFocus={() => setSearchFocused(true)}
-                            style={{
-                                flex: 1,
-                                border: 'none',
-                                outline: 'none',
-                                background: 'transparent',
-                                fontSize: 14,
-                                color: '#111827',
-                                padding: '0 10px',
-                                height: '100%',
-                                minWidth: 0,
-                            }}
-                        />
-                        {state.searchQuery && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    state.setSearchQuery('');
-                                }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                            >
-                                <X size={16} color="#9CA3AF" />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Filters button */}
-                    <button
-                        onClick={() => state.setShowFiltersModal(true)}
-                        style={{
-                            width: 48, height: 48, borderRadius: 24,
-                            border: 'none', background: 'white',
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-                            cursor: 'pointer', flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            justifyContent: 'center',
                         }}
                         title="Фильтры"
                     >
-                        <Filter size={20} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : '#9CA3AF'} />
+                        <Filter size={18} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : '#9CA3AF'} />
                     </button>
+                </div>
 
-                    {/* Profile button */}
+                {/* Profile button */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
                     <button
                         onClick={() => router.push('/(main)/profile')}
                         style={{
@@ -1339,26 +1342,18 @@ function NativeMapScreen() {
                     onMarkerPress={handleMarkerPress}
                 />
 
-                {/* Profile and Filters buttons */}
+                {/* Profile button */}
                 <SafeAreaView
                     edges={['top']}
                     className="absolute top-0 left-4"
                     style={{ zIndex: 10 }}
                 >
-                    <View className="flex-row gap-3">
-                        <TouchableOpacity
-                            onPress={() => router.push('/(main)/profile')}
-                            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
-                        >
-                            <Text className="text-2xl">🧑‍💼</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => state.setShowFiltersModal(true)}
-                            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
-                        >
-                            <Filter size={24} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : (isDarkMode ? '#9CA3AF' : '#6B7280')} />
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                        onPress={() => router.push('/(main)/profile')}
+                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
+                    >
+                        <Text className="text-2xl">🧑‍💼</Text>
+                    </TouchableOpacity>
                 </SafeAreaView>
 
                 {/* Zoom controls */}
@@ -1524,7 +1519,7 @@ function NativeMapScreen() {
                                         ref={searchInputRef}
                                         placeholder="Поиск по адресу..."
                                         placeholderTextColor={isDarkMode ? '#6B7280' : '#9CA3AF'}
-                                        className="w-full bg-gray-100 dark:bg-gray-700 pl-10 pr-4 py-3 rounded-2xl text-gray-900 dark:text-gray-100 border border-transparent dark:border-gray-600"
+                                        className="w-full bg-gray-100 dark:bg-gray-700 pl-10 pr-12 py-3 rounded-2xl text-gray-900 dark:text-gray-100 border border-transparent dark:border-gray-600"
                                         value={state.searchQuery}
                                         onChangeText={state.setSearchQuery}
                                         onFocus={() => {
@@ -1533,6 +1528,12 @@ function NativeMapScreen() {
                                         }}
                                         onBlur={() => setSearchFocused(false)}
                                     />
+                                    <TouchableOpacity
+                                        onPress={() => state.setShowFiltersModal(true)}
+                                        className="absolute right-3 top-3 z-10"
+                                    >
+                                        <Filter size={20} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : (isDarkMode ? '#9CA3AF' : '#6B7280')} />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
