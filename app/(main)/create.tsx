@@ -1,9 +1,9 @@
 import { GallerySheet, SelectedPhoto } from '@/src/components/InlineGallery';
 import { Button, Input } from '@/src/components/ui';
-import { CATEGORIES } from '@/src/constants/categories';
 import { addressService } from '@/src/services/address';
 import { photosService } from '@/src/services/photos';
 import { reportsService } from '@/src/services/reports';
+import { Rubric, rubricsService } from '@/src/services/rubrics';
 import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult } from '@/src/types';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,6 +11,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, ImagePlus, Loader2, MapPin, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
     Keyboard,
@@ -26,6 +27,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Cross-platform alert helper (Alert.alert doesn't work on web)
+const showAlert = (title: string, message: string, onOk?: () => void) => {
+    if (Platform.OS === 'web') {
+        window.alert(`${title}\n${message}`);
+        onOk?.();
+    } else {
+        Alert.alert(title, message, [{ text: 'OK', onPress: onOk }]);
+    }
+};
+
 const MAX_PHOTOS = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
@@ -34,6 +45,8 @@ export default function CreateReportScreen() {
     const params = useLocalSearchParams<{ address?: string; lat?: string; lon?: string }>();
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
+    const [rubrics, setRubrics] = useState<Rubric[]>([]);
+    const [isLoadingRubrics, setIsLoadingRubrics] = useState(true);
     const [category, setCategory] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [address, setAddress] = useState(params.address ?? '');
@@ -41,6 +54,20 @@ export default function CreateReportScreen() {
     const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
     const [galleryOpen, setGalleryOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Fetch rubrics from API
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await rubricsService.getAll();
+                setRubrics(data);
+            } catch (err) {
+                console.warn('Failed to fetch rubrics:', err);
+            } finally {
+                setIsLoadingRubrics(false);
+            }
+        })();
+    }, []);
 
     // Address Autocomplete state
     const [suggestions, setSuggestions] = useState<AddressSearchResult[]>([]);
@@ -137,24 +164,22 @@ export default function CreateReportScreen() {
 
     const handleSubmit = async () => {
         if (!category || !title || !address) {
-            Alert.alert('Ошибка', 'Заполните обязательные поля');
+            showAlert('Ошибка', 'Заполните обязательные поля');
             return;
         }
         const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
         const lon = selectedLocation?.lon ?? (params.lon ? parseFloat(params.lon) : 0);
 
-        // Find the category name to send as rubric (Rubric PK = name)
-        const selectedCat = CATEGORIES.find(c => c.id === category);
-
         setIsSubmitting(true);
         try {
+            // category is already the rubric name (PK)
             const report = await reportsService.create({
                 title,
                 description: desc,
                 address,
                 latitude: lat,
                 longitude: lon,
-                rubric: selectedCat?.name ?? category,
+                rubric: category,
             });
 
             if (photos.length > 0) {
@@ -167,18 +192,16 @@ export default function CreateReportScreen() {
                         photoErr?.response?.data?.non_field_errors?.[0] ||
                         photoErr?.response?.data?.detail ||
                         photoErr?.message;
-                    Alert.alert(
+                    showAlert(
                         'Заявка создана',
                         `Заявка создана, но фото не загружены: ${photoMsg}`,
-                        [{ text: 'OK', onPress: () => router.back() }]
+                        () => router.back()
                     );
                     return;
                 }
             }
 
-            Alert.alert('Успех', 'Заявка отправлена на рассмотрение!', [
-                { text: 'OK', onPress: () => router.back() },
-            ]);
+            showAlert('Успех', 'Заявка отправлена на рассмотрение!', () => router.back());
         } catch (e: any) {
             const serverMsg =
                 e?.response?.data?.detail ||
@@ -186,7 +209,7 @@ export default function CreateReportScreen() {
                 e?.response?.data?.rubric?.[0] ||
                 e?.response?.data?.non_field_errors?.[0] ||
                 e?.message;
-            Alert.alert('Ошибка', serverMsg ?? 'Не удалось отправить заявку');
+            showAlert('Ошибка', serverMsg ?? 'Не удалось отправить заявку');
         } finally {
             setIsSubmitting(false);
         }
@@ -226,26 +249,35 @@ export default function CreateReportScreen() {
                         showsHorizontalScrollIndicator={false}
                         className="mb-6 -mx-5 px-5"
                     >
-                        {CATEGORIES.map((cat) => (
+                        {isLoadingRubrics ? (
+                            <View className="py-4 px-8">
+                                <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                            </View>
+                        ) : rubrics.map((rub) => (
                             <TouchableOpacity
-                                key={cat.id}
-                                onPress={() => setCategory(cat.id)}
-                                className={`w-20 items-center p-3 rounded-xl border mr-3 ${category === cat.id
+                                key={rub.name}
+                                onPress={() => setCategory(rub.name)}
+                                className={`w-20 items-center p-3 rounded-xl border mr-3 ${category === rub.name
                                     ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500'
                                     : 'bg-gray-50 dark:bg-gray-800 border-transparent'
                                     }`}
                             >
-                                <View
-                                    className="w-10 h-10 rounded-full items-center justify-center mb-2"
-                                    style={{ backgroundColor: cat.color + '30' }}
-                                >
-                                    <Text className="text-xl">{cat.icon}</Text>
+                                <View className="w-10 h-10 rounded-full items-center justify-center mb-2 overflow-hidden bg-gray-200 dark:bg-gray-700">
+                                    {rub.photo_url ? (
+                                        <Image
+                                            source={{ uri: rub.photo_url }}
+                                            className="w-10 h-10"
+                                            resizeMode="cover"
+                                        />
+                                    ) : (
+                                        <Text className="text-xl">📋</Text>
+                                    )}
                                 </View>
                                 <Text
-                                    className={`text-xs font-medium text-center ${category === cat.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-300'}`}
+                                    className={`text-xs font-medium text-center ${category === rub.name ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-300'}`}
                                     numberOfLines={1}
                                 >
-                                    {cat.name}
+                                    {rub.name}
                                 </Text>
                             </TouchableOpacity>
                         ))}

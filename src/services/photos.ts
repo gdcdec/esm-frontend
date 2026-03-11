@@ -12,6 +12,7 @@ export const photosService = {
 
         for (const photo of photos) {
             if (Platform.OS === 'web') {
+                // Web: convert data URI / object URL to File
                 const response = await fetch(photo.uri);
                 const blob = await response.blob();
                 const file = new File(
@@ -21,6 +22,7 @@ export const photosService = {
                 );
                 formData.append('photos', file);
             } else {
+                // Native (iOS/Android): RN FormData accepts {uri, name, type}
                 formData.append('photos', {
                     uri: photo.uri,
                     name: photo.name || 'photo.jpg',
@@ -29,12 +31,14 @@ export const photosService = {
             }
         }
 
+        const headers: Record<string, any> = Platform.OS === 'web'
+            ? { 'Content-Type': undefined }
+            : { 'Content-Type': 'multipart/form-data' };
+
         const { data } = await api.post<ReportPhoto[]>(
             '/posts/photos/upload/',
             formData,
-            {
-                headers: { 'Content-Type': undefined },
-            }
+            { headers }
         );
         return data;
     },
