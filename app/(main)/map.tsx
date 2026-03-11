@@ -1,3 +1,4 @@
+import { FiltersModal, ReportFilters } from '@/src/components/FiltersModal';
 import { AppMapView, MapViewRef } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
@@ -12,6 +13,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    Filter,
     Locate,
     MapPin,
     Minus,
@@ -66,21 +68,23 @@ function useMapState() {
     ]);
     const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [userAddress, setUserAddress] = useState<string | null>(null);
+    const [filters, setFilters] = useState<ReportFilters>({});
+    const [showFiltersModal, setShowFiltersModal] = useState(false);
 
     const mapRef = useRef<MapViewRef>(null);
 
     // Fetch real posts from API
-    const fetchReports = useCallback(async () => {
+    const fetchReports = useCallback(async (currentFilters?: ReportFilters) => {
         setIsLoadingReports(true);
         try {
-            const data = await reportsService.getAll();
+            const data = await reportsService.getAll(currentFilters || filters);
             setReports(data);
         } catch (err) {
             console.warn('Failed to fetch reports:', err);
         } finally {
             setIsLoadingReports(false);
         }
-    }, []);
+    }, [filters]);
 
     useEffect(() => {
         fetchReports();
@@ -164,6 +168,7 @@ function useMapState() {
         userLocation, userAddress,
         isLoadingReports, fetchReports,
         handleMapPress, handleMarkerPress, handleCloseDetail, handleLocate,
+        filters, setFilters, showFiltersModal, setShowFiltersModal,
     };
 }
 
@@ -306,6 +311,22 @@ function WebMapScreen() {
                     minWidth: 0,
                 }}
             />
+            <button
+                onClick={() => state.setShowFiltersModal(true)}
+                style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 8,
+                    cursor: 'pointer',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+                title="Фильтры"
+            >
+                <Filter size={18} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : '#9CA3AF'} />
+            </button>
         </div>
     );
 
@@ -478,7 +499,7 @@ function WebMapScreen() {
                             </View>
                         ) : (
                             <View>
-                                <Text className="font-bold text-gray-900 mb-3 text-lg">
+                                <Text className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
                                     {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
                                 </Text>
 
@@ -641,6 +662,17 @@ function WebMapScreen() {
                     </View>
                 </div>
             )}
+
+            {/* Filters Modal */}
+            <FiltersModal
+                visible={state.showFiltersModal}
+                filters={state.filters}
+                onFiltersChange={(newFilters: ReportFilters) => {
+                    state.setFilters(newFilters);
+                    state.fetchReports(newFilters);
+                }}
+                onClose={() => state.setShowFiltersModal(false)}
+            />
         </div>
     );
 }
@@ -906,6 +938,21 @@ function MobileWebMapScreen() {
                         )}
                     </div>
 
+                    {/* Filters button */}
+                    <button
+                        onClick={() => state.setShowFiltersModal(true)}
+                        style={{
+                            width: 48, height: 48, borderRadius: 24,
+                            border: 'none', background: 'white',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                            cursor: 'pointer', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        title="Фильтры"
+                    >
+                        <Filter size={20} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : '#9CA3AF'} />
+                    </button>
+
                     {/* Profile button */}
                     <button
                         onClick={() => router.push('/(main)/profile')}
@@ -1091,6 +1138,17 @@ function MobileWebMapScreen() {
                 </div>
             )}
 
+            {/* Filters Modal */}
+            <FiltersModal
+                visible={state.showFiltersModal}
+                filters={state.filters}
+                onFiltersChange={(newFilters: ReportFilters) => {
+                    state.setFilters(newFilters);
+                    state.fetchReports(newFilters);
+                }}
+                onClose={() => state.setShowFiltersModal(false)}
+            />
+
             {/* ═══ CSS Bottom Sheet ═══ */}
             <div
                 style={{
@@ -1165,7 +1223,7 @@ function MobileWebMapScreen() {
                         </View>
                     ) : (
                         <View>
-                            <Text className="font-bold text-gray-900 mb-3 text-base">
+                            <Text className="font-bold text-gray-900 dark:text-white mb-3 text-base">
                                 {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
                             </Text>
 
@@ -1281,18 +1339,26 @@ function NativeMapScreen() {
                     onMarkerPress={handleMarkerPress}
                 />
 
-                {/* Profile button */}
+                {/* Profile and Filters buttons */}
                 <SafeAreaView
                     edges={['top']}
                     className="absolute top-0 left-4"
                     style={{ zIndex: 10 }}
                 >
-                    <TouchableOpacity
-                        onPress={() => router.push('/(main)/profile')}
-                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
-                    >
-                        <Text className="text-2xl">🧑‍💼</Text>
-                    </TouchableOpacity>
+                    <View className="flex-row gap-3">
+                        <TouchableOpacity
+                            onPress={() => router.push('/(main)/profile')}
+                            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
+                        >
+                            <Text className="text-2xl">🧑‍💼</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => state.setShowFiltersModal(true)}
+                            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
+                        >
+                            <Filter size={24} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : (isDarkMode ? '#9CA3AF' : '#6B7280')} />
+                        </TouchableOpacity>
+                    </View>
                 </SafeAreaView>
 
                 {/* Zoom controls */}
@@ -1523,6 +1589,17 @@ function NativeMapScreen() {
                     )}
                 </BottomSheet>
             )}
+
+            {/* Filters Modal */}
+            <FiltersModal
+                visible={state.showFiltersModal}
+                filters={state.filters}
+                onFiltersChange={(newFilters: ReportFilters) => {
+                    state.setFilters(newFilters);
+                    state.fetchReports(newFilters);
+                }}
+                onClose={() => state.setShowFiltersModal(false)}
+            />
         </View>
     );
 }

@@ -8,11 +8,24 @@ export const reportsService = {
      * Optional filters: ?address=...  ?rubric=...
      */
     getAll: async (filters?: {
+        rubrics?: string[];
+        city?: string;
+        state?: string;
         address?: string;
-        rubric?: string;
+        house_number?: string;
+        author_id?: number;
+        date_start?: string;
+        date_end?: string;
     }): Promise<Report[]> => {
+        // Преобразуем массив рубрик в строку для API
+        const params = {
+            ...filters,
+            rubric: filters?.rubrics?.join(','),
+        };
+        delete params.rubrics;
+        
         const { data } = await api.get<Report[]>('/posts/', {
-            params: filters,
+            params,
         });
         return data;
     },
@@ -64,9 +77,14 @@ export const reportsService = {
      * Get posts for a specific user.
      * GET /api/users/<user_id>/posts/
      */
-    getByUser: async (userId: number): Promise<Report[]> => {
+    getByUser: async (userId: number, filters?: {
+        rubric?: string;
+        address?: string;
+        status?: string;
+    }): Promise<Report[]> => {
         const { data } = await api.get<Report[]>(
-            `/users/${userId}/posts/`
+            `/users/${userId}/posts/`,
+            { params: filters }
         );
         return data;
     },
