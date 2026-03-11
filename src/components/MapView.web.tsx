@@ -112,6 +112,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     const clusters = useMemo(() => {
         const grouped: Record<string, Report[]> = {};
         reports.forEach((r) => {
+            if (r.latitude == null || r.longitude == null) return;
             const key = `${r.latitude.toFixed(3)}-${r.longitude.toFixed(3)}`;
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(r);

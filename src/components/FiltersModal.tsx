@@ -25,14 +25,11 @@ interface FiltersModalProps {
 }
 
 const RUBRICS = [
-  'Дорожные происшествия',
-  'Проблемы с ЖКХ', 
-  'Благоустройство',
-  'Экология',
-  'Строительство',
-  'Транспорт',
-  'Безопасность',
-  'Другое'
+  'Дороги',
+  'ЖКХ',
+  'Мусор',
+  'Парки',
+  'Свет'
 ];
 
 const FilterSection: React.FC<{
@@ -104,7 +101,7 @@ const DateInput: React.FC<{
   const handlePickerChange = (date: Date) => {
     setShowPicker(false);
     if (date) {
-      const formatted = mode === 'datetime' 
+      const formatted = mode === 'datetime'
         ? date.toISOString().slice(0, 16)
         : date.toISOString().slice(0, 10);
       onChange(formatted);
@@ -119,17 +116,15 @@ const DateInput: React.FC<{
 
   return (
     <View className="flex-1">
-      <View className={`flex-1 flex-row items-center rounded-lg border ${
-        isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-      }`}>
+      <View className={`flex-1 flex-row items-center rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+        }`}>
         <TextInput
           value={inputValue}
           onChangeText={handleInputChange}
           placeholder={placeholder}
           placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-          className={`flex-1 p-3 ${
-            isDarkMode ? 'text-white' : 'text-gray-900'
-          }`}
+          className={`flex-1 p-3 ${isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}
           style={{
             fontSize: 16,
             minHeight: 48,
@@ -137,14 +132,13 @@ const DateInput: React.FC<{
         />
         <TouchableOpacity
           onPress={handlePress}
-          className={`p-3 ${
-            isDarkMode ? 'border-l border-gray-600' : 'border-l border-gray-200'
-          }`}
+          className={`p-3 ${isDarkMode ? 'border-l border-gray-600' : 'border-l border-gray-200'
+            }`}
         >
           <Calendar size={16} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
         </TouchableOpacity>
       </View>
-      
+
       {showPicker && Platform.OS !== 'web' && (
         <DateTimePicker
           date={value ? new Date(value) : new Date()}
@@ -172,21 +166,19 @@ const FilterOption: React.FC<{
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`flex-row items-center justify-between p-3 mb-2 rounded-lg ${
-        isSelected
+      className={`flex-row items-center justify-between p-3 mb-2 rounded-lg ${isSelected
           ? isDarkMode ? 'bg-blue-900 border-blue-600' : 'bg-blue-50 border-blue-300'
           : isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-      } border`}
+        } border`}
     >
       <Text className={`flex-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
         {label}
       </Text>
       <View
-        className={`w-5 h-5 rounded-full border-2 ${
-          isSelected
+        className={`w-5 h-5 rounded-full border-2 ${isSelected
             ? 'bg-blue-500 border-blue-500'
             : isDarkMode ? 'border-gray-500' : 'border-gray-300'
-        }`}
+          }`}
       >
         {isSelected && (
           <View className="w-2 h-2 bg-white rounded-full m-0.5" />
@@ -230,7 +222,7 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
     onFiltersChange({});
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => 
+  const hasActiveFilters = Object.values(filters).some(value =>
     value !== undefined && value !== '' && value !== null
   );
 
@@ -269,15 +261,13 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
             <View className="flex-row flex-wrap gap-2">
               <TouchableOpacity
                 onPress={() => updateFilter('rubrics', undefined)}
-                className={`px-3 py-2 rounded-full border ${
-                  !filters.rubrics || filters.rubrics.length === 0
+                className={`px-3 py-2 rounded-full border ${!filters.rubrics || filters.rubrics.length === 0
                     ? isDarkMode ? 'bg-blue-600 border-blue-600' : 'bg-blue-500 border-blue-500'
                     : isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200'
-                }`}
+                  }`}
               >
-                <Text className={`text-sm font-medium ${
-                  !filters.rubrics || filters.rubrics.length === 0 ? 'text-white' : isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
+                <Text className={`text-sm font-medium ${!filters.rubrics || filters.rubrics.length === 0 ? 'text-white' : isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
                   Все
                 </Text>
               </TouchableOpacity>
@@ -287,20 +277,18 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
                   onPress={() => {
                     const currentRubrics = filters.rubrics || [];
                     const isSelected = currentRubrics.includes(rubric);
-                    const newRubrics = isSelected 
+                    const newRubrics = isSelected
                       ? currentRubrics.filter(r => r !== rubric)
                       : [...currentRubrics, rubric];
                     updateFilter('rubrics', newRubrics);
                   }}
-                  className={`px-3 py-2 rounded-full border ${
-                    filters.rubrics?.includes(rubric)
+                  className={`px-3 py-2 rounded-full border ${filters.rubrics?.includes(rubric)
                       ? isDarkMode ? 'bg-blue-600 border-blue-600' : 'bg-blue-500 border-blue-500'
                       : isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200'
-                  }`}
+                    }`}
                 >
-                  <Text className={`text-sm font-medium ${
-                    filters.rubrics?.includes(rubric) ? 'text-white' : isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <Text className={`text-sm font-medium ${filters.rubrics?.includes(rubric) ? 'text-white' : isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                     {rubric}
                   </Text>
                 </TouchableOpacity>
@@ -325,9 +313,8 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
                   onChangeText={(value) => updateFilter('city', value || undefined)}
                   placeholder="Введите город"
                   placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                  className={`p-3 rounded-lg border ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
-                  }`}
+                  className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                    }`}
                 />
               </View>
 
@@ -340,9 +327,8 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
                   onChangeText={(value) => updateFilter('state', value || undefined)}
                   placeholder="Введите область или регион"
                   placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                  className={`p-3 rounded-lg border ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
-                  }`}
+                  className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                    }`}
                 />
               </View>
 
@@ -355,9 +341,8 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
                   onChangeText={(value) => updateFilter('address', value || undefined)}
                   placeholder="Введите адрес (улица, часть адреса)"
                   placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                  className={`p-3 rounded-lg border ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
-                  }`}
+                  className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                    }`}
                 />
               </View>
 
@@ -370,9 +355,8 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
                   onChangeText={(value) => updateFilter('house_number', value || undefined)}
                   placeholder="Введите номер дома"
                   placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                  className={`p-3 rounded-lg border ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
-                  }`}
+                  className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                    }`}
                 />
               </View>
             </View>
@@ -441,9 +425,8 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
         <View className={`p-4 border-t ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
           <TouchableOpacity
             onPress={onClose}
-            className={`w-full py-3 rounded-lg ${
-              isDarkMode ? 'bg-blue-600' : 'bg-blue-500'
-            }`}
+            className={`w-full py-3 rounded-lg ${isDarkMode ? 'bg-blue-600' : 'bg-blue-500'
+              }`}
           >
             <Text className="text-white font-semibold text-center">
               Сохранить фильтры

@@ -96,9 +96,8 @@ function useMapState() {
         () =>
             reports.filter(
                 (r) =>
-                    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (r.address &&
-                        r.address.toLowerCase().includes(searchQuery.toLowerCase()))
+                    r.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    r.address?.toLowerCase().includes(searchQuery.toLowerCase())
             ),
         [reports, searchQuery]
     );
