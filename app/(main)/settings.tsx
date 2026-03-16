@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { Bell, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X } from 'lucide-react-native';
+import { Bell, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X, CheckSquare } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import { Alert, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -13,7 +13,11 @@ export default function SettingsScreen() {
     const { setColorScheme } = useColorScheme();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [showCityModal, setShowCityModal] = useState(false);
-    const [tempCity, setTempCity] = useState(city);
+    const [citySearchQuery, setCitySearchQuery] = useState('');
+    
+    const CITIES = ['Самара', 'Москва', 'Санкт-Петербург', 'Владивосток', 'Казань', 'Екатеринбург', 'Нижний Новгород', 'Новосибирск'];
+
+    const filteredCities = CITIES.filter(c => c.toLowerCase().includes(citySearchQuery.toLowerCase()));
 
     const handleToggleDarkMode = (value: boolean) => {
         setDarkMode(value);
@@ -25,15 +29,7 @@ export default function SettingsScreen() {
     };
 
     const handleChangeCity = () => {
-        setTempCity(city);
         setShowCityModal(true);
-    };
-
-    const saveCity = () => {
-        if (tempCity.trim()) {
-            setCity(tempCity.trim());
-        }
-        setShowCityModal(false);
     };
 
     return (
@@ -181,29 +177,41 @@ export default function SettingsScreen() {
                 <View className="flex-1 bg-black/50 justify-center items-center px-4">
                     <View className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-xl leading-relaxed">
                         <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Мой город</Text>
-                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">Введите название вашего города</Text>
+                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">Выберите город проживания</Text>
 
                         <TextInput
-                            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 mb-6"
-                            value={tempCity}
-                            onChangeText={setTempCity}
-                            placeholder="Например, Самара"
+                            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 mb-4"
+                            placeholder="Поиск города..."
                             placeholderTextColor={isDarkMode ? "#6B7280" : "#9CA3AF"}
-                            autoFocus
+                            value={citySearchQuery}
+                            onChangeText={setCitySearchQuery}
                         />
+
+                        <ScrollView style={{ maxHeight: 250 }} className="mb-4 rounded-xl bg-gray-50 dark:bg-gray-900">
+                            {filteredCities.map((c) => (
+                                <TouchableOpacity
+                                    key={c}
+                                    onPress={() => {
+                                        setCity(c);
+                                        setShowCityModal(false);
+                                        setCitySearchQuery('');
+                                    }}
+                                    className={`p-4 border-b border-gray-200 dark:border-gray-800 flex-row justify-between items-center ${city === c ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}
+                                >
+                                    <Text className={`text-base ${city === c ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {c}
+                                    </Text>
+                                    {city === c && <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
                         <View className="flex-row justify-end gap-3">
                             <TouchableOpacity
                                 onPress={() => setShowCityModal(false)}
-                                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700"
+                                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 w-full"
                             >
-                                <Text className="text-gray-700 dark:text-gray-300 font-semibold">Отмена</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={saveCity}
-                                className="px-5 py-2.5 rounded-xl bg-blue-600"
-                            >
-                                <Text className="text-white font-semibold">Сохранить</Text>
+                                <Text className="text-gray-700 dark:text-gray-300 font-semibold text-center">Отмена</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

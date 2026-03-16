@@ -5,7 +5,7 @@ export interface Category {
     color: string;
 }
 
-export type ReportStatus = 'draft' | 'published' | 'check' | 'archived' | 'banned' | 'pending' | 'progress' | 'solved';
+export type ReportStatus = 'draft' | 'published' | 'check' | 'archived' | 'banned';
 
 export interface ReportPhoto {
     id: number;

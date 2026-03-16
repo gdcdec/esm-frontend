@@ -12,20 +12,29 @@ export const reportsService = {
         city?: string;
         state?: string;
         address?: string;
-        house_number?: string;
         author_id?: number;
         date_start?: string;
         date_end?: string;
+        status?: string;
+        ordering?: string;
     }): Promise<Report[]> => {
-        // Преобразуем массив рубрик в строку для API
-        const params = {
-            ...filters,
-            rubric: filters?.rubrics?.join(','),
-        };
-        delete params.rubrics;
+        // Clean up parameters: remove undefined/null, handle rubrics
+        const cleanParams: Record<string, any> = {};
+        
+        if (filters) {
+            Object.entries(filters).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    if (key === 'rubrics' && Array.isArray(value) && value.length > 0) {
+                        cleanParams.rubric = value.join(',');
+                    } else if (key !== 'rubrics') {
+                        cleanParams[key] = value;
+                    }
+                }
+            });
+        }
         
         const { data } = await api.get<Report[]>('/posts/', {
-            params,
+            params: cleanParams,
         });
         return data;
     },

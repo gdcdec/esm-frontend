@@ -1,8 +1,16 @@
 import { useAuthStore } from '@/src/store/authStore';
 import axios from 'axios';
+import { Platform } from 'react-native';
 
-// Base URL
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://109.120.135.24:8000/api';
+let BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://109.120.135.24:8000/api';
+
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // Force relative path on live deployments (Vercel) to use proxy
+    if (host !== 'localhost' && !host.includes('192.168.') && !host.includes('10.')) {
+        BASE_URL = '/api';
+    }
+}
 
 const api = axios.create({
     baseURL: BASE_URL,

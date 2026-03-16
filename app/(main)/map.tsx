@@ -1,19 +1,20 @@
-import { FiltersModal, ReportFilters } from '@/src/components/FiltersModal';
+import { ReportFilters } from '@/src/components/FiltersModal';
 import { AppMapView, MapViewRef } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
 import { addressService } from '@/src/services/address';
 import { reportsService } from '@/src/services/reports';
+import { rubricsService } from '@/src/services/rubrics';
 import { useThemeStore } from '@/src/store/themeStore';
-import { Report } from '@/src/types';
+import { AddressSearchResult, Report, ReportStatus } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import {
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
     Clock,
-    Filter,
     Locate,
     MapPin,
     Minus,
@@ -28,6 +29,7 @@ import {
     FlatList,
     Keyboard,
     Platform,
+    ScrollView,
     Text,
     TextInput,
     TouchableOpacity,
@@ -61,17 +63,38 @@ function useMapState() {
     const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
     const [activeReports, setActiveReports] = useState<Report[] | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchHistory, setSearchHistory] = useState([
-        'ул. Пушкина, 10',
-        'Парк Горького',
-        'Центральный рынок',
-    ]);
+    const [searchHistory, setSearchHistory] = useState<string[]>([]);
     const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [userAddress, setUserAddress] = useState<string | null>(null);
     const [filters, setFilters] = useState<ReportFilters>({});
-    const [showFiltersModal, setShowFiltersModal] = useState(false);
+    const [rubrics, setRubrics] = useState<string[]>([]);
+    const [showFilters, setShowFilters] = useState(false);
+
+    const [suggestions, setSuggestions] = useState<AddressSearchResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const mapRef = useRef<MapViewRef>(null);
+
+    // Fetch suggestions
+    const fetchSuggestions = useCallback((query: string) => {
+        if (query.trim().length < 3) {
+            setSuggestions([]);
+            return;
+        }
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const results = await addressService.search(query);
+                setSuggestions(results);
+            } catch (err) {
+                console.warn('Address search fail', err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500);
+    }, []);
 
     // Fetch real posts from API
     const fetchReports = useCallback(async (currentFilters?: ReportFilters) => {
@@ -86,9 +109,27 @@ function useMapState() {
         }
     }, [filters]);
 
+    // Load dynamic rubrics and initial posts
     useEffect(() => {
-        fetchReports();
-    }, [fetchReports]);
+        const loadInitialData = async () => {
+            try {
+                // Fetch rubrics dynamically from backend
+                const rubricsData = await rubricsService.getAll();
+                setRubrics(rubricsData.map(r => r.name));
+            } catch (err) {
+                console.warn('Failed to fetch rubrics:', err);
+                // Fallback to defaults if backend fails
+                setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
+            }
+            fetchReports();
+        };
+        loadInitialData();
+    }, []);
+
+    // Re-fetch reports when filters change
+    useEffect(() => {
+        fetchReports(filters);
+    }, [filters]);
 
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
 
@@ -167,8 +208,201 @@ function useMapState() {
         userLocation, userAddress,
         isLoadingReports, fetchReports,
         handleMapPress, handleMarkerPress, handleCloseDetail, handleLocate,
-        filters, setFilters, showFiltersModal, setShowFiltersModal,
+        filters, setFilters, rubrics,
+        suggestions, setSuggestions, isSearching, fetchSuggestions,
+        showFilters, setShowFilters,
     };
+}
+
+// ─── Inline filters (shared) ──────────────────────────────────
+function InlineFilters({
+    state,
+    isDarkMode
+}: {
+    state: ReturnType<typeof useMapState>,
+    isDarkMode: boolean
+}) {
+    const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'status' | 'ordering' | null>(null);
+
+    const statuses = [
+        { label: 'Все статусы', value: undefined },
+        { label: 'На рассмотрении', value: 'check' },
+        { label: 'Опубликовано', value: 'published' },
+        { label: 'Черновик', value: 'draft' },
+        { label: 'Архив', value: 'archived' },
+    ];
+
+    const sortings = [
+        { label: 'Сначала новые', value: '-created_at' },
+        { label: 'Сначала старые', value: 'created_at' },
+    ];
+
+    const currentStatus = statuses.find(s => s.value === state.filters.status) || statuses[0];
+    const currentSorting = sortings.find(s => s.value === (state.filters.ordering || '-created_at')) || sortings[0];
+
+    const selectedRubricsCount = state.filters.rubrics?.length || 0;
+    const rubricsLabel = selectedRubricsCount === 0
+        ? 'Все рубрики'
+        : `Рубрики: ${selectedRubricsCount}`;
+
+    return (
+        <View className="bg-white dark:bg-[#1f2937] z-50">
+            <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
+                <Text className="font-bold text-gray-900 dark:text-slate-50 text-xl tracking-tight">
+                    {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
+                </Text>
+                {Object.keys(state.filters).length > 0 && (
+                    <TouchableOpacity
+                        onPress={() => state.setFilters({})}
+                        className="bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1.5 rounded-full"
+                    >
+                        <Text className="text-blue-500 font-semibold text-xs transition-all">Сбросить</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            <View className="relative">
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center' }}
+                    className="flex-row"
+                    style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
+                    nestedScrollEnabled={true}
+                >
+                    {/* Rubrics Dropdown Trigger */}
+                    <TouchableOpacity
+                        onPress={() => setOpenDropdown(openDropdown === 'rubrics' ? null : 'rubrics')}
+                        className={`px-3 py-2 mr-3 rounded-xl border flex-row items-center gap-2 ${selectedRubricsCount > 0
+                            ? 'bg-blue-500/10 border-blue-500/30'
+                            : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
+                            }`}
+                    >
+                        <Text className={`text-[13px] font-medium ${selectedRubricsCount > 0 ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                            {rubricsLabel}
+                        </Text>
+                        <ChevronDown size={14} color={selectedRubricsCount > 0 ? '#3B82F6' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
+                    </TouchableOpacity>
+
+                    {/* Vertical Divider */}
+                    <View className="w-[1px] h-5 bg-gray-200 dark:bg-slate-800 mx-1" />
+
+                    {/* Status Dropdown Trigger */}
+                    <TouchableOpacity
+                        onPress={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
+                        className={`px-3 py-2 mx-2 rounded-xl border flex-row items-center gap-2 ${state.filters.status
+                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                            : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
+                            }`}
+                    >
+                        <Text className={`text-[13px] font-medium ${state.filters.status ? 'text-emerald-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                            {currentStatus.label}
+                        </Text>
+                        <ChevronDown size={14} color={state.filters.status ? '#10B981' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
+                    </TouchableOpacity>
+
+                    {/* Sorting Dropdown Trigger */}
+                    <TouchableOpacity
+                        onPress={() => setOpenDropdown(openDropdown === 'ordering' ? null : 'ordering')}
+                        className="px-3 py-2 mx-2 rounded-xl border border-gray-200/50 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-800/40 flex-row items-center gap-2"
+                    >
+                        <Clock size={14} color={isDarkMode ? '#94A3B8' : '#6B7280'} />
+                        <Text className="text-[13px] font-medium text-gray-500 dark:text-slate-400">
+                            {currentSorting.label}
+                        </Text>
+                        <ChevronDown size={14} color={isDarkMode ? '#94A3B8' : '#6B7280'} />
+                    </TouchableOpacity>
+                </ScrollView>
+
+                {/* Dropdown Menus */}
+                {openDropdown === 'rubrics' && (
+                    <View
+                        className="absolute left-5 top-14 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-72 py-2 overflow-hidden"
+                        style={{ elevation: 25 }}
+                    >
+                        <ScrollView style={{ maxHeight: 350 }}>
+                            <TouchableOpacity
+                                className={`px-5 py-3 border-b border-gray-50 dark:border-slate-800 ${!selectedRubricsCount ? 'bg-blue-500/5' : ''}`}
+                                onPress={() => {
+                                    state.setFilters({ ...state.filters, rubrics: undefined });
+                                    setOpenDropdown(null);
+                                }}
+                            >
+                                <Text className={`text-sm ${!selectedRubricsCount ? 'text-blue-500 font-bold' : 'text-gray-700 dark:text-slate-200'}`}>
+                                    Все рубрики
+                                </Text>
+                            </TouchableOpacity>
+                            {state.rubrics.map((rubric) => {
+                                const isActive = state.filters.rubrics?.includes(rubric);
+                                return (
+                                    <TouchableOpacity
+                                        key={rubric}
+                                        className={`px-5 py-3 flex-row items-center justify-between ${isActive ? 'bg-blue-500/5' : ''}`}
+                                        onPress={() => {
+                                            const current = state.filters.rubrics || [];
+                                            const newArr = isActive
+                                                ? current.filter(r => r !== rubric)
+                                                : [...current, rubric];
+                                            state.setFilters({ ...state.filters, rubrics: newArr.length > 0 ? newArr : undefined });
+                                        }}
+                                    >
+                                        <Text className={`text-sm flex-1 ${isActive ? 'text-blue-500 font-bold' : 'text-gray-700 dark:text-slate-200'}`}>
+                                            {rubric}
+                                        </Text>
+                                        {isActive && <View className="w-2 h-2 rounded-full bg-blue-500" />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                )}
+
+                {openDropdown === 'status' && (
+                    <View
+                        className="absolute right-5 top-14 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-56 py-2 overflow-hidden"
+                        style={{ elevation: 25 }}
+                    >
+                        {statuses.map((s) => (
+                            <TouchableOpacity
+                                key={s.label}
+                                className={`px-5 py-3 ${state.filters.status === s.value ? 'bg-blue-500/5' : ''}`}
+                                onPress={() => {
+                                    state.setFilters({ ...state.filters, status: s.value });
+                                    setOpenDropdown(null);
+                                }}
+                            >
+                                <Text className={`text-sm ${state.filters.status === s.value ? 'text-blue-500 font-bold' : 'text-gray-700 dark:text-slate-200'}`}>
+                                    {s.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                {openDropdown === 'ordering' && (
+                    <View
+                        className="absolute right-5 top-14 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-56 py-2 overflow-hidden"
+                        style={{ elevation: 25 }}
+                    >
+                        {sortings.map((s) => (
+                            <TouchableOpacity
+                                key={s.label}
+                                className={`px-5 py-3 ${state.filters.ordering === s.value ? 'bg-blue-500/5' : ''}`}
+                                onPress={() => {
+                                    state.setFilters({ ...state.filters, ordering: s.value });
+                                    setOpenDropdown(null);
+                                }}
+                            >
+                                <Text className={`text-sm ${state.filters.ordering === s.value ? 'text-blue-500 font-bold' : 'text-gray-700 dark:text-slate-200'}`}>
+                                    {s.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+            </View>
+        </View>
+    );
 }
 
 // ─── Report detail view (shared) ──────────────────────────────
@@ -179,16 +413,22 @@ function ReportDetail({
     report: Report;
     onClose: () => void;
 }) {
+    const statusMap: Record<ReportStatus, { label: string, color: string, bg: string }> = {
+        published: { label: 'Опубликовано', color: 'text-green-700', bg: 'bg-green-100' },
+        check: { label: 'На рассмотрении', color: 'text-yellow-700', bg: 'bg-yellow-100' },
+        draft: { label: 'Черновик', color: 'text-gray-600', bg: 'bg-gray-100' },
+        archived: { label: 'В архиве', color: 'text-purple-700', bg: 'bg-purple-100' },
+        banned: { label: 'Заблокировано', color: 'text-red-700', bg: 'bg-red-100' },
+    };
+
+    const status = statusMap[report.status] || statusMap.check;
+
     return (
         <View>
             <View className="flex-row justify-between items-start">
-                <View className="bg-green-100 px-2.5 py-1 rounded-full">
-                    <Text className="text-[10px] font-bold text-green-700 uppercase">
-                        {report.status === 'solved'
-                            ? 'Решено'
-                            : report.status === 'progress'
-                                ? 'В работе'
-                                : 'На рассмотрении'}
+                <View className={`${status.bg} px-2.5 py-1 rounded-full`}>
+                    <Text className={`text-[10px] font-bold ${status.color} uppercase`}>
+                        {status.label}
                     </Text>
                 </View>
                 <TouchableOpacity onPress={onClose}>
@@ -251,6 +491,7 @@ function WebMapScreen() {
     const state = useMapState();
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const [panelMode, setPanelMode] = useState<PanelMode>('open');
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const PANEL_WIDTH = 420;
@@ -258,16 +499,23 @@ function WebMapScreen() {
 
     const handleSearchChange = (value: string) => {
         state.setSearchQuery(value);
+        state.fetchSuggestions(value);
     };
 
     const handleSearchSubmit = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && state.searchQuery.trim()) {
             setPanelMode('open');
+            setIsSearchFocused(false);
         }
     };
 
     const handleSearchFocus = () => {
+        setIsSearchFocused(true);
         if (panelMode === 'collapsed') setPanelMode('dropdown');
+    };
+
+    const handleSearchBlur = () => {
+        setTimeout(() => setIsSearchFocused(false), 200);
     };
 
     const handleMapPress = (coord: { latitude: number; longitude: number }) => {
@@ -297,6 +545,7 @@ function WebMapScreen() {
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={handleSearchSubmit}
                 onFocus={handleSearchFocus}
+                onBlur={handleSearchBlur}
                 style={{
                     flex: 1,
                     border: 'none',
@@ -310,22 +559,6 @@ function WebMapScreen() {
                     minWidth: 0,
                 }}
             />
-            <button
-                onClick={() => state.setShowFiltersModal(true)}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 8,
-                    cursor: 'pointer',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}
-                title="Фильтры"
-            >
-                <Filter size={18} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : '#9CA3AF'} />
-            </button>
         </div>
     );
 
@@ -357,7 +590,7 @@ function WebMapScreen() {
                 <div
                     style={{
                         width: PANEL_WIDTH - 32,
-                        background: isDarkMode ? '#111827' : 'white',
+                        background: isDarkMode ? '#1F2937' : 'white',
                         borderRadius: isOpen ? '16px 16px 0 0' : 16,
                         boxShadow: isOpen ? 'none' : (isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)'),
                         border: isDarkMode ? '1px solid #374151' : 'none',
@@ -369,7 +602,7 @@ function WebMapScreen() {
                     </div>
 
                     {/* Dropdown: history list */}
-                    {panelMode === 'dropdown' && (
+                    {(isSearchFocused || panelMode === 'dropdown') && (
                         <div
                             style={{
                                 padding: '0 16px 16px',
@@ -377,48 +610,99 @@ function WebMapScreen() {
                                 overflowY: 'auto' as const,
                             }}
                         >
-                            {state.searchHistory.length > 0 ? (
+                            {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
                                 <>
-                                    <View className="flex-row justify-between items-center mb-3">
-                                        <Text style={{ fontWeight: '700', fontSize: 16, color: isDarkMode ? '#F9FAFB' : '#111827' }}>
-                                            История
-                                        </Text>
-                                        <TouchableOpacity onPress={() => state.setSearchHistory([])}>
-                                            <Text className="text-xs text-gray-400">Очистить</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    {state.searchHistory.map((item, idx) => (
-                                        <TouchableOpacity
-                                            key={idx}
-                                            onPress={() => {
-                                                state.setSearchQuery(item);
-                                                setPanelMode('open');
-                                            }}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                gap: 12,
-                                                paddingVertical: 10,
-                                                borderBottomWidth: idx < state.searchHistory.length - 1 ? 1 : 0,
-                                                borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
-                                            }}
-                                        >
-                                            <View style={{
-                                                width: 36, height: 36, borderRadius: 18,
-                                                backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
-                                                alignItems: 'center', justifyContent: 'center',
-                                            }}>
-                                                <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
-                                            </View>
-                                            <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</Text>
-                                            <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
-                                        </TouchableOpacity>
-                                    ))}
+                                    {state.isSearching ? (
+                                        <Text style={{ textAlign: 'center', padding: 16, color: '#9CA3AF' }}>Поиск...</Text>
+                                    ) : (
+                                        state.suggestions.map((item, idx) => {
+                                            const shortAddress = item.street
+                                                ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+                                                : item.display_name;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    onPress={() => {
+                                                        state.setSearchQuery(shortAddress);
+                                                        if (!state.searchHistory.includes(shortAddress)) {
+                                                            state.setSearchHistory([shortAddress, ...state.searchHistory]);
+                                                        }
+                                                        state.setSuggestions([]);
+
+                                                        const coord = { latitude: item.latitude, longitude: item.longitude };
+                                                        state.setSelectedCoord(coord);
+                                                        state.setSelectedAddress(shortAddress);
+                                                        state.setActiveReports(null);
+                                                        state.mapRef.current?.goToLocation(coord.latitude, coord.longitude);
+
+                                                        setPanelMode('open');
+                                                    }}
+                                                    style={{
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 12,
+                                                        paddingVertical: 10,
+                                                        borderBottomWidth: idx < state.suggestions.length - 1 ? 1 : 0,
+                                                        borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                    }}
+                                                >
+                                                    <View style={{
+                                                        width: 36, height: 36, borderRadius: 18,
+                                                        backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                        alignItems: 'center', justifyContent: 'center',
+                                                    }}>
+                                                        <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                    </View>
+                                                    <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{shortAddress}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })
+                                    )}
                                 </>
                             ) : (
-                                <Text style={{ color: '#9CA3AF', textAlign: 'center', padding: 16 }}>
-                                    История поиска пуста
-                                </Text>
+                                state.searchHistory.length > 0 ? (
+                                    <>
+                                        <View className="flex-row justify-between items-center mb-3">
+                                            <Text style={{ fontWeight: '700', fontSize: 16, color: isDarkMode ? '#F9FAFB' : '#111827' }}>
+                                                История
+                                            </Text>
+                                            <TouchableOpacity onPress={() => state.setSearchHistory([])}>
+                                                <Text className="text-xs text-gray-400">Очистить</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        {state.searchHistory.map((item, idx) => (
+                                            <TouchableOpacity
+                                                key={idx}
+                                                onPress={() => {
+                                                    state.setSearchQuery(item);
+                                                    setPanelMode('open');
+                                                }}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 12,
+                                                    paddingVertical: 10,
+                                                    borderBottomWidth: idx < state.searchHistory.length - 1 ? 1 : 0,
+                                                    borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                }}
+                                            >
+                                                <View style={{
+                                                    width: 36, height: 36, borderRadius: 18,
+                                                    backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                    alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                </View>
+                                                <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</Text>
+                                                <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </>
+                                ) : (
+                                    <Text style={{ color: '#9CA3AF', textAlign: 'center', padding: 16 }}>
+                                        История поиска пуста
+                                    </Text>
+                                )
                             )}
                         </div>
                     )}
@@ -457,7 +741,7 @@ function WebMapScreen() {
                         left: 0,
                         width: PANEL_WIDTH,
                         height: '100%',
-                        backgroundColor: isDarkMode ? '#111827' : 'white',
+                        backgroundColor: isDarkMode ? '#1F2937' : 'white',
                         borderRight: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
                         display: 'flex',
                         flexDirection: 'column' as const,
@@ -498,9 +782,7 @@ function WebMapScreen() {
                             </View>
                         ) : (
                             <View>
-                                <Text className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
-                                    {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
-                                </Text>
+                                <InlineFilters state={state} isDarkMode={isDarkMode} />
 
                                 {state.filteredReports.map((report) => (
                                     <ReportCard
@@ -574,39 +856,39 @@ function WebMapScreen() {
                     style={{
                         width: 44, height: 44,
                         borderRadius: '50%',
-                        border: '1px solid #E5E7EB',
-                        background: 'white',
+                        border: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
+                        background: isDarkMode ? '#1F2937' : 'white',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.12)',
                     }}
                 >
-                    <Plus size={22} color="#374151" />
+                    <Plus size={22} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                 </button>
                 <button
                     onClick={() => state.mapRef.current?.zoomOut()}
                     style={{
                         width: 44, height: 44,
                         borderRadius: '50%',
-                        border: '1px solid #E5E7EB',
-                        background: 'white',
+                        border: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
+                        background: isDarkMode ? '#1F2937' : 'white',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.12)',
                     }}
                 >
-                    <Minus size={22} color="#374151" />
+                    <Minus size={22} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                 </button>
                 <button
                     onClick={() => state.handleLocate()}
                     style={{
                         width: 44, height: 44,
                         borderRadius: '50%',
-                        border: '1px solid #E5E7EB',
-                        background: 'white',
+                        border: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
+                        background: isDarkMode ? '#1F2937' : 'white',
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.12)',
                         marginTop: 8,
                     }}
                 >
@@ -661,17 +943,6 @@ function WebMapScreen() {
                     </View>
                 </div>
             )}
-
-            {/* Filters Modal */}
-            <FiltersModal
-                visible={state.showFiltersModal}
-                filters={state.filters}
-                onFiltersChange={(newFilters: ReportFilters) => {
-                    state.setFilters(newFilters);
-                    state.fetchReports(newFilters);
-                }}
-                onClose={() => state.setShowFiltersModal(false)}
-            />
         </div>
     );
 }
@@ -682,6 +953,7 @@ function WebMapScreen() {
 function MobileWebMapScreen() {
     const state = useMapState();
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     // Bottom sheet snap points
     const SNAP_PEEK = 80;
@@ -807,6 +1079,29 @@ function MobileWebMapScreen() {
         }
     }, [searchFocused, state.selectedCoord, state.singleReport, state.activeReports, sheetHeight]);
 
+    const handleSelectSuggestion = useCallback((item: AddressSearchResult) => {
+        const shortAddress = item.street
+            ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+            : item.display_name;
+
+        state.setSearchQuery(shortAddress);
+        if (!state.searchHistory.includes(shortAddress)) {
+            state.setSearchHistory([shortAddress, ...state.searchHistory]);
+        }
+        state.setSuggestions([]);
+
+        const coord = { latitude: item.latitude, longitude: item.longitude };
+        state.setSelectedCoord(coord);
+        state.setSelectedAddress(shortAddress);
+        state.setActiveReports(null);
+
+        state.mapRef.current?.goToLocation(coord.latitude, coord.longitude);
+
+        setSearchFocused(false);
+        searchInputRef.current?.blur();
+        setSheetHeight(SNAP_PEEK);
+    }, [state, SNAP_PEEK]);
+
     useEffect(() => {
         if (Platform.OS !== 'web') return;
         const handlePopState = (e: PopStateEvent) => {
@@ -885,9 +1180,10 @@ function MobileWebMapScreen() {
                 {/* Search Bar with integrated filter button */}
                 <div
                     style={{
-                        background: 'white',
+                        background: isDarkMode ? '#1F2937' : 'white',
                         borderRadius: 14,
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                        boxShadow: isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)',
+                        border: isDarkMode ? '1px solid #374151' : 'none',
                         display: 'flex',
                         alignItems: 'center',
                         padding: '0 12px',
@@ -907,7 +1203,10 @@ function MobileWebMapScreen() {
                         type="text"
                         placeholder="Поиск по адресу..."
                         value={state.searchQuery}
-                        onChange={(e) => handleSearchChange(e.target.value)}
+                        onChange={(e) => {
+                            state.setSearchQuery(e.target.value);
+                            state.fetchSuggestions(e.target.value);
+                        }}
                         onKeyDown={handleSearchSubmit}
                         onFocus={() => setSearchFocused(true)}
                         style={{
@@ -916,7 +1215,7 @@ function MobileWebMapScreen() {
                             outline: 'none',
                             background: 'transparent',
                             fontSize: 14,
-                            color: '#111827',
+                            color: isDarkMode ? '#F9FAFB' : '#111827',
                             padding: '0 10px',
                             height: '100%',
                             minWidth: 0,
@@ -933,25 +1232,6 @@ function MobileWebMapScreen() {
                             <X size={16} color="#9CA3AF" />
                         </button>
                     )}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            state.setShowFiltersModal(true);
-                        }}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 8,
-                            cursor: 'pointer',
-                            borderRadius: 8,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                        title="Фильтры"
-                    >
-                        <Filter size={18} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : '#9CA3AF'} />
-                    </button>
                 </div>
 
                 {/* Profile button */}
@@ -960,8 +1240,9 @@ function MobileWebMapScreen() {
                         onClick={() => router.push('/(main)/profile')}
                         style={{
                             width: 48, height: 48, borderRadius: 24,
-                            border: 'none', background: 'white',
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+                            border: isDarkMode ? '1px solid #374151' : 'none',
+                            background: isDarkMode ? '#1F2937' : 'white',
+                            boxShadow: isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)',
                             cursor: 'pointer', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: 22,
@@ -971,53 +1252,108 @@ function MobileWebMapScreen() {
                     </button>
                 </div>
 
-                {/* Search history dropdown */}
-                {searchFocused && !state.searchQuery && state.searchHistory.length > 0 && sheetHeight <= SNAP_PEEK && (
+                {/* Search history or suggestions dropdown */}
+                {searchFocused && sheetHeight <= SNAP_PEEK && (
                     <div
                         style={{
                             marginTop: 4,
-                            background: 'white',
+                            background: isDarkMode ? '#1F2937' : 'white',
                             borderRadius: 14,
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                            boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.12)',
+                            border: isDarkMode ? '1px solid #374151' : 'none',
                             padding: 12,
                             maxHeight: 300,
                             overflowY: 'auto' as const,
                         }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>История</span>
-                            <button
-                                onClick={() => state.setSearchHistory([])}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#9CA3AF' }}
-                            >
-                                Очистить
-                            </button>
-                        </div>
-                        {state.searchHistory.map((item, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => {
-                                    state.setSearchQuery(item);
-                                    setSearchFocused(false);
-                                    setSheetHeight(SNAP_HALF);
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 10,
-                                    width: '100%',
-                                    padding: '10px 0',
-                                    background: 'none',
-                                    border: 'none',
-                                    borderBottom: idx < state.searchHistory.length - 1 ? '1px solid #F3F4F6' : 'none',
-                                    cursor: 'pointer',
-                                    textAlign: 'left' as const,
-                                }}
-                            >
-                                <Clock size={14} color="#D1D5DB" />
-                                <span style={{ fontSize: 14, color: '#374151' }}>{item}</span>
-                            </button>
-                        ))}
+                        {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
+                            <>
+                                {state.isSearching ? (
+                                    <Text style={{ textAlign: 'center', padding: 12, color: '#9CA3AF' }}>Поиск...</Text>
+                                ) : (
+                                    state.suggestions.map((item, idx) => {
+                                        const shortAddress = item.street
+                                            ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+                                            : item.display_name;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleSelectSuggestion(item)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 10,
+                                                    width: '100%',
+                                                    padding: '10px 0',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    borderBottom: idx < state.suggestions.length - 1 ? '1px solid #F3F4F6' : 'none',
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left' as const,
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: 36, height: 36, borderRadius: 18,
+                                                    backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    flexShrink: 0,
+                                                }}>
+                                                    <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                </div>
+                                                <span style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{shortAddress}</span>
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </>
+                        ) : (
+                            (!state.searchQuery && state.searchHistory.length > 0) ? (
+                                <>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>История</span>
+                                        <button
+                                            onClick={() => state.setSearchHistory([])}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#9CA3AF' }}
+                                        >
+                                            Очистить
+                                        </button>
+                                    </div>
+                                    {state.searchHistory.map((item, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                state.setSearchQuery(item);
+                                                setSearchFocused(false);
+                                                setSheetHeight(SNAP_HALF);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 10,
+                                                width: '100%',
+                                                padding: '10px 0',
+                                                background: 'none',
+                                                border: 'none',
+                                                borderBottom: idx < state.searchHistory.length - 1 ? '1px solid #F3F4F6' : 'none',
+                                                cursor: 'pointer',
+                                                textAlign: 'left' as const,
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: 18,
+                                                backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                flexShrink: 0,
+                                            }}>
+                                                <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                            </div>
+                                            <span style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</span>
+                                            <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
+                                        </button>
+                                    ))}
+                                </>
+                            ) : null
+                        )}
                     </div>
                 )}
             </div>
@@ -1033,29 +1369,31 @@ function MobileWebMapScreen() {
                 }}
             >
                 {[
-                    { icon: <Plus size={22} color="#374151" />, action: () => state.mapRef.current?.zoomIn() },
-                    { icon: <Minus size={22} color="#374151" />, action: () => state.mapRef.current?.zoomOut() },
+                    { Icon: Plus, action: () => state.mapRef.current?.zoomIn() },
+                    { Icon: Minus, action: () => state.mapRef.current?.zoomOut() },
                 ].map((btn, i) => (
                     <button
                         key={i}
                         onClick={btn.action}
                         style={{
                             width: 44, height: 44, borderRadius: 22,
-                            border: 'none', background: 'white', cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                            border: isDarkMode ? '1px solid #374151' : 'none',
+                            background: isDarkMode ? '#1F2937' : 'white', cursor: 'pointer',
+                            boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.12)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             padding: 0,
                         }}
                     >
-                        {btn.icon}
+                        <btn.Icon size={22} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                     </button>
                 ))}
                 <button
                     onClick={() => state.handleLocate()}
                     style={{
                         width: 44, height: 44, borderRadius: 22,
-                        border: 'none', background: 'white', cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        border: isDarkMode ? '1px solid #374151' : 'none',
+                        background: isDarkMode ? '#1F2937' : 'white', cursor: 'pointer',
+                        boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.12)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         marginTop: 8,
                     }}
@@ -1111,8 +1449,8 @@ function MobileWebMapScreen() {
                                 </div>
                             )}
                             <div style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>
-                                {state.selectedCoord.latitude.toFixed(6)},{' '}
-                                {state.selectedCoord.longitude.toFixed(6)}
+                                {state.selectedCoord?.latitude.toFixed(6)},{' '}
+                                {state.selectedCoord?.longitude.toFixed(6)}
                             </div>
                         </div>
                         <button
@@ -1140,17 +1478,6 @@ function MobileWebMapScreen() {
                 </div>
             )}
 
-            {/* Filters Modal */}
-            <FiltersModal
-                visible={state.showFiltersModal}
-                filters={state.filters}
-                onFiltersChange={(newFilters: ReportFilters) => {
-                    state.setFilters(newFilters);
-                    state.fetchReports(newFilters);
-                }}
-                onClose={() => state.setShowFiltersModal(false)}
-            />
-
             {/* ═══ CSS Bottom Sheet ═══ */}
             <div
                 style={{
@@ -1158,9 +1485,9 @@ function MobileWebMapScreen() {
                     bottom: 0, left: 0, right: 0,
                     height: sheetHeight,
                     zIndex: 40,
-                    background: 'white',
+                    background: isDarkMode ? '#1F2937' : 'white',
                     borderRadius: '20px 20px 0 0',
-                    boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+                    boxShadow: isDarkMode ? '0 -4px 20px rgba(0,0,0,0.4)' : '0 -4px 20px rgba(0,0,0,0.1)',
                     transition: isDragging ? 'none' : 'height 0.3s ease-out',
                     display: state.selectedCoord ? 'none' : 'flex',
                     flexDirection: 'column' as const,
@@ -1199,7 +1526,7 @@ function MobileWebMapScreen() {
                                 <View>
                                     <Text className="font-bold text-lg">Жалобы по адресу</Text>
                                     <Text className="text-xs text-gray-500">
-                                        {state.activeReports[0].address || 'Адрес не определен'}
+                                        {state.activeReports?.[0]?.address || 'Адрес не определен'}
                                     </Text>
                                 </View>
                                 <TouchableOpacity onPress={() => {
@@ -1210,10 +1537,17 @@ function MobileWebMapScreen() {
                             </View>
                             <Button
                                 title="Добавить жалобу здесь"
-                                onPress={() => router.push('/(main)/create')}
+                                onPress={() => router.push({
+                                    pathname: '/(main)/create',
+                                    params: {
+                                        address: state.activeReports?.[0]?.address || '',
+                                        lat: String(state.activeReports?.[0]?.latitude),
+                                        lon: String(state.activeReports?.[0]?.longitude)
+                                    }
+                                })}
                                 className="mb-4"
                             />
-                            {state.activeReports.map((item) => (
+                            {state.activeReports?.map((item) => (
                                 <ReportCard
                                     key={item.id}
                                     report={item}
@@ -1225,9 +1559,7 @@ function MobileWebMapScreen() {
                         </View>
                     ) : (
                         <View>
-                            <Text className="font-bold text-gray-900 dark:text-white mb-3 text-base">
-                                {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
-                            </Text>
+                            <InlineFilters state={state} isDarkMode={isDarkMode} />
 
                             {state.filteredReports.map((report) => (
                                 <ReportCard
@@ -1328,6 +1660,29 @@ function NativeMapScreen() {
         const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
         return () => subscription.remove();
     }, [state.searchQuery, state.selectedCoord, state.singleReport, state.activeReports, sheetIndex, handleCloseDetail, searchFocused]);
+
+    const handleSelectSuggestion = useCallback((item: AddressSearchResult) => {
+        const shortAddress = item.street
+            ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+            : item.display_name;
+
+        state.setSearchQuery(shortAddress);
+        if (!state.searchHistory.includes(shortAddress)) {
+            state.setSearchHistory([shortAddress, ...state.searchHistory]);
+        }
+        state.setSuggestions([]);
+
+        const coord = { latitude: item.latitude, longitude: item.longitude };
+        state.setSelectedCoord(coord);
+        state.setSelectedAddress(shortAddress);
+        state.setActiveReports(null);
+
+        state.mapRef.current?.goToLocation(coord.latitude, coord.longitude);
+
+        setSearchFocused(false);
+        searchInputRef.current?.blur();
+        Keyboard.dismiss();
+    }, [state]);
 
     return (
         <View className="flex-1 dark:bg-gray-900 bg-white">
@@ -1492,7 +1847,14 @@ function NativeMapScreen() {
                             </View>
                             <Button
                                 title="Добавить жалобу здесь"
-                                onPress={() => router.push('/(main)/create')}
+                                onPress={() => router.push({
+                                    pathname: '/(main)/create',
+                                    params: {
+                                        address: state.activeReports?.[0]?.address || '',
+                                        lat: String(state.activeReports?.[0]?.latitude),
+                                        lon: String(state.activeReports?.[0]?.longitude)
+                                    }
+                                })}
                                 className="mb-4"
                             />
                             <FlatList
@@ -1510,61 +1872,84 @@ function NativeMapScreen() {
                     ) : (
                         <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 40 }}>
                             <View className="px-5 pb-4">
-                                <View className="relative">
-                                    <View className="absolute left-3 top-3 z-10">
-                                        <Search size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                <View className="flex-row items-center gap-2">
+                                    <View className="relative flex-1">
+                                        <View className="absolute left-3 top-3 z-10">
+                                            <Search size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                        </View>
+                                        <TextInput
+                                            ref={searchInputRef}
+                                            placeholder="Поиск по адресу..."
+                                            placeholderTextColor={isDarkMode ? '#6B7280' : '#9CA3AF'}
+                                            className="w-full bg-gray-100 dark:bg-gray-700 pl-10 pr-4 py-3 rounded-2xl text-gray-900 dark:text-gray-100 border border-transparent dark:border-gray-600"
+                                            value={state.searchQuery}
+                                            onChangeText={(text) => {
+                                                state.setSearchQuery(text);
+                                                state.fetchSuggestions(text);
+                                            }}
+                                            onFocus={() => {
+                                                setSearchFocused(true);
+                                                bottomSheetRef.current?.snapToIndex(2);
+                                            }}
+                                            onBlur={() => setSearchFocused(false)}
+                                        />
                                     </View>
-                                    <TextInput
-                                        ref={searchInputRef}
-                                        placeholder="Поиск по адресу..."
-                                        placeholderTextColor={isDarkMode ? '#6B7280' : '#9CA3AF'}
-                                        className="w-full bg-gray-100 dark:bg-gray-700 pl-10 pr-12 py-3 rounded-2xl text-gray-900 dark:text-gray-100 border border-transparent dark:border-gray-600"
-                                        value={state.searchQuery}
-                                        onChangeText={state.setSearchQuery}
-                                        onFocus={() => {
-                                            setSearchFocused(true);
-                                            bottomSheetRef.current?.snapToIndex(2);
-                                        }}
-                                        onBlur={() => setSearchFocused(false)}
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => state.setShowFiltersModal(true)}
-                                        className="absolute right-3 top-3 z-10"
-                                    >
-                                        <Filter size={20} color={Object.keys(state.filters).length > 0 ? '#3B82F6' : (isDarkMode ? '#9CA3AF' : '#6B7280')} />
-                                    </TouchableOpacity>
                                 </View>
                             </View>
 
                             <View className="px-5">
-                                {!state.searchQuery && state.searchHistory.length > 0 && (
-                                    <View className="mb-6">
-                                        <View className="flex-row justify-between items-center mb-3">
-                                            <Text className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                                                История поиска
-                                            </Text>
-                                            <TouchableOpacity onPress={() => state.setSearchHistory([])}>
-                                                <Text className="text-xs text-gray-400 dark:text-gray-500">Очистить</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <View className="flex-row flex-wrap gap-2">
-                                            {state.searchHistory.map((item, idx) => (
-                                                <TouchableOpacity
-                                                    key={idx}
-                                                    className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg flex-row items-center gap-1.5"
-                                                    onPress={() => state.setSearchQuery(item)}
-                                                >
-                                                    <Clock size={12} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
-                                                    <Text className="text-sm text-gray-700 dark:text-gray-300">{item}</Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
+                                {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
+                                    <View className="mb-6 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden">
+                                        {state.isSearching ? (
+                                            <Text className="text-center py-4 text-gray-500">Поиск...</Text>
+                                        ) : (
+                                            state.suggestions.map((item, idx) => {
+                                                const shortAddress = item.street
+                                                    ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+                                                    : item.display_name;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={idx}
+                                                        onPress={() => handleSelectSuggestion(item)}
+                                                        className={`flex-row items-center px-4 py-3 ${idx < state.suggestions.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''}`}
+                                                    >
+                                                        <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#6B7280'} className="mr-3" />
+                                                        <Text className="flex-1 text-gray-900 dark:text-gray-100">{shortAddress}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })
+                                        )}
                                     </View>
+                                ) : (
+                                    <>
+                                        {!state.searchQuery && state.searchHistory.length > 0 && (
+                                            <View className="mb-6">
+                                                <View className="flex-row justify-between items-center mb-3">
+                                                    <Text className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                                                        История поиска
+                                                    </Text>
+                                                    <TouchableOpacity onPress={() => state.setSearchHistory([])}>
+                                                        <Text className="text-xs text-gray-400 dark:text-gray-500">Очистить</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <View className="flex-row flex-wrap gap-2">
+                                                    {state.searchHistory.map((item, idx) => (
+                                                        <TouchableOpacity
+                                                            key={idx}
+                                                            className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg flex-row items-center gap-1.5"
+                                                            onPress={() => state.setSearchQuery(item)}
+                                                        >
+                                                            <Clock size={12} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                            <Text className="text-sm text-gray-700 dark:text-gray-300">{item}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
+                                    </>
                                 )}
 
-                                <Text className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
-                                    {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
-                                </Text>
+                                <InlineFilters state={state} isDarkMode={isDarkMode} />
 
                                 {state.filteredReports.map((report) => (
                                     <ReportCard
@@ -1590,16 +1975,6 @@ function NativeMapScreen() {
                 </BottomSheet>
             )}
 
-            {/* Filters Modal */}
-            <FiltersModal
-                visible={state.showFiltersModal}
-                filters={state.filters}
-                onFiltersChange={(newFilters: ReportFilters) => {
-                    state.setFilters(newFilters);
-                    state.fetchReports(newFilters);
-                }}
-                onClose={() => state.setShowFiltersModal(false)}
-            />
         </View>
     );
 }

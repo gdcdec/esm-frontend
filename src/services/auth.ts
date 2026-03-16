@@ -31,6 +31,9 @@ interface RegisterPayload {
     password2: string;
     first_name: string;
     last_name: string;
+    patronymic: string;
+    phone_number: string;
+    city: string;
 }
 
 interface PasswordResetRequestResponse {

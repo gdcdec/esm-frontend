@@ -5,7 +5,7 @@ import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
 import { CheckSquare, Eye, EyeOff, Square } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Modal } from 'react-native';
 
 export default function LoginScreen() {
     const [isLogin, setIsLogin] = useState(true);
@@ -14,19 +14,40 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [patronymic, setPatronymic] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [city, setCity] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [agreed, setAgreed] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    
+    // Modals
+    const [showCityModal, setShowCityModal] = useState(false);
+    const [citySearchQuery, setCitySearchQuery] = useState('');
+    const CITIES = ['Самара', 'Москва', 'Санкт-Петербург', 'Владивосток', 'Казань', 'Екатеринбург', 'Нижний Новгород', 'Новосибирск'];
+
+    const filteredCities = CITIES.filter(c => c.toLowerCase().includes(citySearchQuery.toLowerCase()));
 
     // Password validation
-    const passwordMinLength = password.length >= 6;
-    const passwordHasLetter = /[a-zA-Zа-яА-Я]/.test(password);
+    const passwordMinLength = password.length >= 8;
+    const passwordHasUpper = /[A-ZА-ЯЁ]/.test(password);
+    const passwordHasLower = /[a-zа-яё]/.test(password);
     const passwordHasNumber = /[0-9]/.test(password);
+    const passwordHasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/? ]/.test(password);
+
     const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
-    const isPasswordValid = passwordMinLength && passwordHasLetter && passwordHasNumber;
+    const isPasswordValid = passwordMinLength && 
+        passwordHasUpper && 
+        passwordHasLower && 
+        passwordHasNumber && 
+        passwordHasSpecial;
+
+    // Phone validation
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    const isPhoneValid = digitsOnly.length === 11 && digitsOnly.startsWith('7');
 
     const login = useAuthStore((state) => state.login);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
@@ -62,6 +83,11 @@ export default function LoginScreen() {
                     setIsLoading(false);
                     return;
                 }
+                if (!isPhoneValid) {
+                    setError('Телефон должен содержать 11 цифр и начинаться с 7 (или 8)');
+                    setIsLoading(false);
+                    return;
+                }
 
                 const data = await authService.register({
                     username: username,
@@ -70,6 +96,9 @@ export default function LoginScreen() {
                     password2: confirmPassword,
                     first_name: firstName,
                     last_name: lastName,
+                    patronymic,
+                    phone_number: `+${digitsOnly}`,
+                    city,
                 });
 
                 login(
@@ -86,14 +115,33 @@ export default function LoginScreen() {
                 router.replace('/(main)/map');
             }
         } catch (err: any) {
-            const msg =
-                err?.response?.data?.non_field_errors?.[0] ||
-                err?.response?.data?.detail ||
-                err?.response?.data?.username?.[0] ||
-                err?.response?.data?.email?.[0] ||
-                err?.response?.data?.password?.[0] ||
-                err?.response?.data?.message ||
-                'Ошибка соединения с сервером';
+            console.warn('Login/Register error:', err.response?.data || err.message);
+            let msg = 'Ошибка соединения с сервером';
+            if (err?.response?.data) {
+                const data = err.response.data;
+                if (data.non_field_errors) msg = data.non_field_errors[0];
+                else if (data.detail) msg = data.detail;
+                else if (data.message) msg = data.message;
+                else if (data.username) msg = `Имя пользователя: ${data.username[0]}`;
+                else if (data.email) msg = `Email: ${data.email[0]}`;
+                else if (data.password) msg = `Пароль: ${data.password[0]}`;
+                else if (data.password2) msg = `Повтор пароля: ${data.password2[0]}`;
+                else if (data.first_name) msg = `Имя: ${data.first_name[0]}`;
+                else if (data.last_name) msg = `Фамилия: ${data.last_name[0]}`;
+                else if (data.patronymic) msg = `Отчество: ${data.patronymic[0]}`;
+                else if (data.phone_number) msg = `Телефон: ${data.phone_number[0]}`;
+                else if (data.city) msg = `Город: ${data.city[0]}`;
+                else {
+                    const firstKey = Object.keys(data)[0];
+                    if (firstKey && Array.isArray(data[firstKey])) {
+                        msg = `${firstKey}: ${data[firstKey][0]}`;
+                    } else if (typeof data === 'string') {
+                        msg = data;
+                    }
+                }
+            } else if (err.message) {
+                msg = err.message;
+            }
             setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         } finally {
             setIsLoading(false);
@@ -136,6 +184,38 @@ export default function LoginScreen() {
                                 value={lastName}
                                 onChangeText={setLastName}
                             />
+                            <Input
+                                placeholder="Отчество (необязательно)"
+                                value={patronymic}
+                                onChangeText={setPatronymic}
+                            />
+                            <Input
+                                placeholder="Телефон"
+                                value={phoneNumber}
+                                onChangeText={(text) => {
+                                    let digits = text.replace(/\D/g, '');
+                                    if (digits.startsWith('8')) digits = '7' + digits.slice(1);
+                                    if (!digits) { setPhoneNumber(''); return; }
+                                    if (!digits.startsWith('7')) digits = '7' + digits;
+                                    
+                                    let res = '+7';
+                                    if (digits.length > 1) res += ' (' + digits.slice(1, 4);
+                                    if (digits.length >= 5) res += ') ' + digits.slice(4, 7);
+                                    if (digits.length >= 8) res += '-' + digits.slice(7, 9);
+                                    if (digits.length >= 10) res += '-' + digits.slice(9, 11);
+                                    
+                                    setPhoneNumber(res);
+                                }}
+                                keyboardType="phone-pad"
+                            />
+                            <TouchableOpacity 
+                                onPress={() => setShowCityModal(true)}
+                                className="flex-row items-center h-12 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 border border-gray-200 dark:border-gray-700 mb-4"
+                            >
+                                <Text className={city ? 'text-gray-900 dark:text-gray-100 flex-1' : 'text-gray-400 dark:text-gray-500 flex-1'}>
+                                    {city || 'Выберите город'}
+                                </Text>
+                            </TouchableOpacity>
                         </>
                     )}
 
@@ -208,19 +288,31 @@ export default function LoginScreen() {
                                     <View className="flex-row items-center gap-2 mb-1">
                                         <View className={`w-1.5 h-1.5 rounded-full ${passwordMinLength ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
                                         <Text className={`text-xs ${passwordMinLength ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Минимум 6 символов
+                                            Минимум 8 символов
                                         </Text>
                                     </View>
                                     <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasLetter ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        <Text className={`text-xs ${passwordHasLetter ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Содержит букву
+                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasUpper ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                        <Text className={`text-xs ${passwordHasUpper ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                            Заглавная буква
+                                        </Text>
+                                    </View>
+                                    <View className="flex-row items-center gap-2 mb-1">
+                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasLower ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                        <Text className={`text-xs ${passwordHasLower ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                            Строчная буква
                                         </Text>
                                     </View>
                                     <View className="flex-row items-center gap-2 mb-1">
                                         <View className={`w-1.5 h-1.5 rounded-full ${passwordHasNumber ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
                                         <Text className={`text-xs ${passwordHasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Содержит цифру
+                                            Цифра
+                                        </Text>
+                                    </View>
+                                    <View className="flex-row items-center gap-2 mb-1">
+                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasSpecial ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                        <Text className={`text-xs ${passwordHasSpecial ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                            Спецсимвол или пробел
                                         </Text>
                                     </View>
                                     {confirmPassword.length > 0 && (
@@ -288,6 +380,57 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            {/* City Input Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showCityModal}
+                onRequestClose={() => setShowCityModal(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-center items-center px-4">
+                    <View className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-xl leading-relaxed">
+                        <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Выберите город</Text>
+                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">Укажите город проживания</Text>
+
+                        <TextInput
+                            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 mb-4"
+                            placeholder="Поиск города..."
+                            placeholderTextColor={isDarkMode ? "#6B7280" : "#9CA3AF"}
+                            value={citySearchQuery}
+                            onChangeText={setCitySearchQuery}
+                        />
+
+                        <ScrollView style={{ maxHeight: 250 }} className="mb-4 rounded-xl bg-gray-50 dark:bg-gray-900">
+                            {filteredCities.map((c) => (
+                                <TouchableOpacity
+                                    key={c}
+                                    onPress={() => {
+                                        setCity(c);
+                                        setShowCityModal(false);
+                                        setCitySearchQuery('');
+                                    }}
+                                    className={`p-4 border-b border-gray-200 dark:border-gray-800 flex-row justify-between items-center ${city === c ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}
+                                >
+                                    <Text className={`text-base ${city === c ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {c}
+                                    </Text>
+                                    {city === c && <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <View className="flex-row justify-end gap-3">
+                            <TouchableOpacity
+                                onPress={() => setShowCityModal(false)}
+                                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 w-full"
+                            >
+                                <Text className="text-gray-700 dark:text-gray-300 font-semibold text-center">Отмена</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }

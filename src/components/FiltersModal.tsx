@@ -13,6 +13,8 @@ export interface ReportFilters {
   author_id?: number;
   date_start?: string;
   date_end?: string;
+  status?: string;
+  ordering?: string;
 }
 
 interface FiltersModalProps {
