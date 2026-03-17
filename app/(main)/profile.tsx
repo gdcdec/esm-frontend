@@ -5,7 +5,7 @@ import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import { router, useFocusEffect } from 'expo-router';
-import { Settings, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { SlideInRight } from 'react-native-reanimated';
@@ -20,6 +20,8 @@ export default function ProfileScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const reportsPerPage = 5;
 
     const fetchMyReports = useCallback(async () => {
         setIsLoading(true);
@@ -49,6 +51,19 @@ export default function ProfileScreen() {
     const checkReports = myReports.filter(r => r.status === 'check').length;
     const activeReports = publishedReports + checkReports;
     const influence = totalReports > 0 ? Math.floor((activeReports / totalReports) * 100) : 0;
+
+    // Пагинация
+    const totalPages = Math.ceil(totalReports / reportsPerPage);
+    const indexOfLastReport = currentPage * reportsPerPage;
+    const indexOfFirstReport = indexOfLastReport - reportsPerPage;
+    const currentReports = myReports.slice(indexOfFirstReport, indexOfLastReport);
+
+    // Сброс страницы при изменении количества заявок
+    React.useEffect(() => {
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(1);
+        }
+    }, [currentPage, totalPages]);
 
     // Расчет уровня на основе активных заявок (решенных + в работе)
     const calculateLevel = (activeCount: number) => {
@@ -205,7 +220,7 @@ export default function ProfileScreen() {
                     <View className="items-center mb-10 pt-4">
                         <Text className="text-3xl font-bold dark:text-white">Мои заявки</Text>
                         <Text className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                            {totalReports} всего
+                            {totalReports} всего{totalPages > 1 && ` • ${currentPage}/${totalPages}`}
                         </Text>
                         <View className="w-12 h-1 bg-blue-500 rounded-full mt-3" />
                     </View>
@@ -226,7 +241,7 @@ export default function ProfileScreen() {
                                     Мои заявки
                                 </Text>
                                 <Text className="text-xs text-center text-gray-400 dark:text-gray-500 mt-1">
-                                    {totalReports} всего
+                                    {totalReports} всего{totalPages > 1 && ` • ${currentPage}/${totalPages}`}
                                 </Text>
                             </View>
                         )}
@@ -237,12 +252,12 @@ export default function ProfileScreen() {
                                     <View className="py-8 items-center">
                                         <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
                                     </View>
-                                ) : myReports.length === 0 ? (
+                                ) : currentReports.length === 0 ? (
                                     <View className="py-8 items-center">
                                         <Text className="text-gray-400 dark:text-gray-500 text-sm">У вас пока нет заявок</Text>
                                     </View>
                                 ) : (
-                                    myReports.map((r) => {
+                                    currentReports.map((r) => {
                                         const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
                                         return (
                                             <TouchableOpacity
@@ -279,6 +294,49 @@ export default function ProfileScreen() {
                                 )}
                             </View>
                         </View>
+
+                        {/* Pagination */}
+                        {!isLoading && totalReports > 0 && totalPages > 1 && (
+                            <View className="px-6 pb-4">
+                                <View className="w-full max-w-sm self-center">
+                                    <View className="flex-row items-center justify-center gap-4 py-2">
+                                        <TouchableOpacity
+                                            onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                            disabled={currentPage === 1}
+                                            className={`p-1 rounded ${
+                                                currentPage === 1 
+                                                    ? 'opacity-30' 
+                                                    : 'opacity-70'
+                                            }`}
+                                        >
+                                            <ChevronLeft 
+                                                size={16} 
+                                                color={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                                            />
+                                        </TouchableOpacity>
+
+                                        <Text className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px] text-center">
+                                            {currentPage} / {totalPages}
+                                        </Text>
+
+                                        <TouchableOpacity
+                                            onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className={`p-1 rounded ${
+                                                currentPage === totalPages 
+                                                    ? 'opacity-30' 
+                                                    : 'opacity-70'
+                                            }`}
+                                        >
+                                            <ChevronRight 
+                                                size={16} 
+                                                color={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
 
                         {/* Logout */}
                         <View className="px-6 pb-8">
