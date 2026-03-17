@@ -6,9 +6,9 @@ import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import { router, useFocusEffect } from 'expo-router';
 import { Settings, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
+import Animated, { SlideInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
@@ -156,7 +156,9 @@ export default function ProfileScreen() {
                 <View className="bg-white dark:bg-gray-800 p-4 mx-4 mb-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 items-center">
                     <View className="w-full max-w-md self-center">
                         <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 items-center justify-center mb-3 border-2 border-white dark:border-gray-800 shadow-sm self-center">
-                            <Text className="text-3xl">🧑‍💼</Text>
+                            <Text className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {user?.username?.charAt(0)?.toUpperCase() ?? '?'}
+                            </Text>
                         </View>
                         <Text className="text-lg font-bold mb-1 dark:text-gray-100 text-center">
                             {user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'Пользователь'}

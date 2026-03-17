@@ -5,6 +5,7 @@ import { Button } from '@/src/components/ui';
 import { addressService } from '@/src/services/address';
 import { reportsService } from '@/src/services/reports';
 import { rubricsService } from '@/src/services/rubrics';
+import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult, Report, ReportStatus } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -490,6 +491,7 @@ type PanelMode = 'collapsed' | 'dropdown' | 'open';
 function WebMapScreen() {
     const state = useMapState();
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const user = useAuthStore((s) => s.user);
     const [panelMode, setPanelMode] = useState<PanelMode>('open');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -553,7 +555,7 @@ function WebMapScreen() {
                     background: 'transparent',
                     fontSize: 16,
                     fontWeight: 500,
-                    color: isDarkMode ? '#F9FAFB' : '#111827',
+                    color: isDarkMode ? '#FFFFFF' : '#111827',
                     padding: '0 10px',
                     height: '100%',
                     minWidth: 0,
@@ -830,16 +832,18 @@ function WebMapScreen() {
                     width: 44,
                     height: 44,
                     borderRadius: '50%',
-                    border: '1px solid #E5E7EB',
-                    background: 'white',
+                    border: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
+                    background: isDarkMode ? '#1F2937' : 'white',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 20,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    color: isDarkMode ? '#FFFFFF' : '#111827',
+                    boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.12)',
                 }}
-            >🧑‍💼</button>
+            >{user?.username?.charAt(0)?.toUpperCase() ?? '?'}</button>
 
             {/* Zoom controls */}
             <div
@@ -956,6 +960,7 @@ function MobileWebMapScreen() {
     const state = useMapState();
     const searchInputRef = useRef<HTMLInputElement>(null);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const user = useAuthStore((s) => s.user);
 
     // Bottom sheet snap points
     const SNAP_PEEK = 80;
@@ -1217,7 +1222,7 @@ function MobileWebMapScreen() {
                             outline: 'none',
                             background: 'transparent',
                             fontSize: 14,
-                            color: isDarkMode ? '#F9FAFB' : '#111827',
+                            color: isDarkMode ? '#FFFFFF' : '#111827',
                             padding: '0 10px',
                             height: '100%',
                             minWidth: 0,
@@ -1241,16 +1246,22 @@ function MobileWebMapScreen() {
                     <button
                         onClick={() => router.push('/(main)/profile')}
                         style={{
-                            width: 48, height: 48, borderRadius: 24,
-                            border: isDarkMode ? '1px solid #374151' : 'none',
+                            width: 44,
+                            height: 44,
+                            borderRadius: '50%',
+                            border: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
                             background: isDarkMode ? '#1F2937' : 'white',
-                            boxShadow: isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)',
-                            cursor: 'pointer', flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 22,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 16,
+                            fontWeight: 'bold',
+                            color: isDarkMode ? '#FFFFFF' : '#111827',
+                            boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.5)' : '0 2px 8px rgba(0,0,0,0.12)',
                         }}
                     >
-                        🧑‍💼
+                        {user?.username?.charAt(0)?.toUpperCase() ?? '?'}
                     </button>
                 </div>
 
@@ -1599,6 +1610,7 @@ function NativeMapScreen() {
     const [sheetIndex, setSheetIndex] = useState(0);
     const [searchFocused, setSearchFocused] = useState(false);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const user = useAuthStore((s) => s.user);
 
     // Bottom sheet snap points: collapsed, half, 90%
     const snapPoints = useMemo(() => ['10%', '45%', '90%'], []);
@@ -1704,13 +1716,14 @@ function NativeMapScreen() {
                 <SafeAreaView
                     edges={['top']}
                     className="absolute top-0 left-4"
-                    style={{ zIndex: 10 }}
                 >
                     <TouchableOpacity
                         onPress={() => router.push('/(main)/profile')}
-                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
+                        className={`w-12 h-12 rounded-full shadow-lg items-center justify-center border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
                     >
-                        <Text className="text-2xl">🧑‍💼</Text>
+                        <Text className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                            {user?.username?.charAt(0)?.toUpperCase() ?? '?'}
+                        </Text>
                     </TouchableOpacity>
                 </SafeAreaView>
 
