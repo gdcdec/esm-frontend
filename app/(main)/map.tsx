@@ -608,6 +608,8 @@ function WebMapScreen() {
                                 padding: '0 16px 16px',
                                 maxHeight: 400,
                                 overflowY: 'auto' as const,
+                                scrollbarWidth: isDarkMode ? 'thin' : 'auto',
+                                scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto'
                             }}
                         >
                             {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
@@ -751,7 +753,7 @@ function WebMapScreen() {
                     }}
                 >
                     {/* Sidebar content */}
-                    <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 16px 16px' }}>
+                    <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 16px 16px', scrollbarWidth: isDarkMode ? 'thin' : 'auto', scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto' }}>
                         {state.singleReport ? (
                             <ReportDetail report={state.singleReport} onClose={state.handleCloseDetail} />
                         ) : state.activeReports && state.activeReports.length > 1 ? (
@@ -908,25 +910,25 @@ function WebMapScreen() {
                         width: 340,
                     }}
                 >
-                    <View className="bg-white p-5 rounded-3xl shadow-lg border border-gray-100">
+                    <View className={`p-5 rounded-3xl shadow-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
                         <View className="flex-row justify-between items-start mb-2">
                             <View style={{ flex: 1, marginRight: 12 }}>
-                                <Text className="font-bold text-lg">Новая метка</Text>
+                                <Text className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Новая метка</Text>
                                 {state.selectedAddress && (
-                                    <Text className="text-gray-700 text-sm" style={{ marginTop: 4 }}>
+                                    <Text className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`} style={{ marginTop: 4 }}>
                                         {state.selectedAddress}
                                     </Text>
                                 )}
-                                <Text className="text-gray-400" style={{ fontSize: 11, marginTop: 4 }}>
+                                <Text className={isDarkMode ? 'text-gray-400' : 'text-gray-400'} style={{ fontSize: 11, marginTop: 4 }}>
                                     {state.selectedCoord.latitude.toFixed(6)},{' '}
                                     {state.selectedCoord.longitude.toFixed(6)}
                                 </Text>
                             </View>
                             <TouchableOpacity
                                 onPress={() => state.setSelectedCoord(null)}
-                                className="p-2 bg-gray-100 rounded-full"
+                                className={`p-2 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                             >
-                                <X size={20} color="#374151" />
+                                <X size={20} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                             </TouchableOpacity>
                         </View>
                         <Button
@@ -1264,6 +1266,8 @@ function MobileWebMapScreen() {
                             padding: 12,
                             maxHeight: 300,
                             overflowY: 'auto' as const,
+                            scrollbarWidth: isDarkMode ? 'thin' : 'auto',
+                            scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto',
                         }}
                     >
                         {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
@@ -1456,12 +1460,12 @@ function MobileWebMapScreen() {
                         <button
                             onClick={() => state.setSelectedCoord(null)}
                             style={{
-                                background: '#F3F4F6', border: 'none', borderRadius: 20,
+                                background: isDarkMode ? '#374151' : '#F3F4F6', border: 'none', borderRadius: 20,
                                 width: 36, height: 36, cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
                         >
-                            <X size={18} color="#374151" />
+                            <X size={18} color={isDarkMode ? '#D1D5DB' : '#374151'} />
                         </button>
                     </div>
                     <Button
@@ -1515,7 +1519,7 @@ function MobileWebMapScreen() {
                 </div>
 
                 {/* Sheet content */}
-                <div style={{ flex: 1, overflowY: sheetHeight > SNAP_PEEK ? 'auto' : 'hidden', padding: '0 16px 16px' }}>
+                <div style={{ flex: 1, overflowY: sheetHeight > SNAP_PEEK ? 'auto' : 'hidden', padding: '0 16px 16px', scrollbarWidth: isDarkMode ? 'thin' : 'auto', scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto' }}>
                     {state.singleReport ? (
                         <ReportDetail report={state.singleReport} onClose={() => {
                             executeCloseDetail();
@@ -1866,6 +1870,8 @@ function NativeMapScreen() {
                                         onPress={() => state.setActiveReports([item])}
                                     />
                                 )}
+                                showsVerticalScrollIndicator={true}
+                                indicatorStyle={isDarkMode ? 'white' : 'default'}
                             />
                         </View>
 

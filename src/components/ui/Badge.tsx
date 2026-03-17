@@ -7,11 +7,11 @@ interface BadgeProps {
 }
 
 const STATUS_CONFIG: Record<ReportStatus, { bg: string; text: string; label: string }> = {
-    published: { bg: 'bg-green-100', text: 'text-green-700', label: 'Опубликовано' },
-    check: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'На рассмотрении' },
-    draft: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Черновик' },
-    archived: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Архив' },
-    banned: { bg: 'bg-red-100', text: 'text-red-700', label: 'Заблокировано' },
+    published: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Опубликовано' },
+    check: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', label: 'На рассмотрении' },
+    draft: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300', label: 'Черновик' },
+    archived: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', label: 'Архив' },
+    banned: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', label: 'Заблокировано' },
 };
 
 export const Badge: React.FC<BadgeProps> = ({ status }) => {

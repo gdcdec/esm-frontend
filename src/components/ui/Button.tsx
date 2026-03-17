@@ -1,3 +1,4 @@
+import { useThemeStore } from '@/src/store/themeStore';
 import React from 'react';
 import {
     ActivityIndicator,
@@ -25,6 +26,8 @@ export const Button: React.FC<ButtonProps> = ({
     loading = false,
     className = '',
 }) => {
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    
     const baseClass = 'py-3 px-5 rounded-xl flex-row items-center justify-center gap-2';
 
     const variantClasses = {
@@ -50,12 +53,12 @@ export const Button: React.FC<ButtonProps> = ({
         >
             {loading ? (
                 <ActivityIndicator
-                    color={variant === 'primary' ? '#FFFFFF' : '#2563EB'}
+                    color={variant === 'primary' ? '#FFFFFF' : isDarkMode ? '#60A5FA' : '#2563EB'}
                     size="small"
                 />
             ) : (
                 <>
-                    {Icon && <Icon width={18} height={18} color={variant === 'primary' ? '#FFFFFF' : '#2563EB'} />}
+                    {Icon && <Icon width={18} height={18} color={variant === 'primary' ? '#FFFFFF' : isDarkMode ? '#60A5FA' : '#2563EB'} />}
                     <Text className={textVariantClasses[variant]}>{title}</Text>
                 </>
             )}

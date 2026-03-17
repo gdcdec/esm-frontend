@@ -3,6 +3,7 @@ export interface Category {
     name: string;
     icon: string;
     color: string;
+    darkColor?: string;
 }
 
 export type ReportStatus = 'draft' | 'published' | 'check' | 'archived' | 'banned';

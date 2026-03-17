@@ -46,7 +46,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
             <View className="flex-row gap-3">
                 <View
                     className="w-10 h-10 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: (category?.color || '#999') + '20' }}
+                    style={{ backgroundColor: ((category?.darkColor && isDarkMode) ? category.darkColor : (category?.color || '#999')) + '20' }}
                 >
                     <Text className="text-xl">{category?.icon || '❓'}</Text>
                 </View>
@@ -57,7 +57,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
                     </Text>
 
                     <View className="flex-row items-center gap-1 mb-1">
-                        <MapPin size={10} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                        <MapPin size={10} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
                         <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
                             {report.address || 'Адрес не указан'}
                         </Text>
@@ -83,11 +83,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
                         <Badge status={report.status} />
                         <View className="flex-row items-center gap-3">
                             <View className="flex-row items-center gap-1">
-                                <ThumbsUp size={14} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                <ThumbsUp size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
                                 <Text className="text-xs text-gray-400 dark:text-gray-500">0</Text>
                             </View>
                             <View className="flex-row items-center gap-1">
-                                <MessageCircle size={14} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                <MessageCircle size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
                                 <Text className="text-xs text-gray-400 dark:text-gray-500">0</Text>
                             </View>
                         </View>
