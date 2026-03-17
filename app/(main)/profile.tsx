@@ -7,9 +7,173 @@ import { Report } from '@/src/types';
 import { router, useFocusEffect } from 'expo-router';
 import { ChevronLeft, ChevronRight, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { SlideInRight } from 'react-native-reanimated';
+import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+// Компонент карусели фотографий
+function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: boolean }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+    
+    if (!photos || photos.length === 0) {
+        return null;
+    }
+    
+    const goToPrevious = () => {
+        setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1);
+    };
+    
+    const goToNext = () => {
+        setCurrentIndex((prev) => prev === photos.length - 1 ? 0 : prev + 1);
+    };
+    
+    const handlePhotoPress = (photo: any) => {
+        console.log('Opening photo:', photo.photo_url);
+        setSelectedPhoto(photo);
+    };
+    
+    const closeModal = () => {
+        console.log('Closing photo modal');
+        setSelectedPhoto(null);
+    };
+    
+    return (
+        <>
+            <View className="mb-6">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Фотографии ({currentIndex + 1} / {photos.length})
+                </Text>
+                
+                <View className="relative">
+                    {/* Кнопка навигации слева */}
+                    {photos.length > 1 && (
+                        <TouchableOpacity
+                            onPress={goToPrevious}
+                            className="absolute left-0 top-0 bottom-0 w-12 items-center justify-center z-10"
+                            style={{ left: -16 }}
+                        >
+                            <View className="w-10 h-10 bg-white dark:bg-gray-800 rounded-full items-center justify-center shadow-lg border border-gray-200 dark:border-gray-700">
+                                <ChevronLeft size={20} color={isDarkMode ? '#F9FAFB' : '#374151'} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    
+                    {/* Кнопка навигации справа */}
+                    {photos.length > 1 && (
+                        <TouchableOpacity
+                            onPress={goToNext}
+                            className="absolute right-0 top-0 bottom-0 w-12 items-center justify-center z-10"
+                            style={{ right: -16 }}
+                        >
+                            <View className="w-10 h-10 bg-white dark:bg-gray-800 rounded-full items-center justify-center shadow-lg border border-gray-200 dark:border-gray-700">
+                                <ChevronRight size={20} color={isDarkMode ? '#F9FAFB' : '#374151'} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    
+                    {/* Основное изображение */}
+                    <View className="w-full h-64 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 relative border border-gray-200 dark:border-gray-700">
+                        <TouchableOpacity
+                            onPress={() => handlePhotoPress(photos[currentIndex])}
+                            className="flex-1 relative"
+                            activeOpacity={0.9}
+                        >
+                            <Image 
+                                source={{ uri: photos[currentIndex].photo_url }} 
+                                className="w-full h-full"
+                                resizeMode="cover"
+                                onError={(e) => {
+                                    console.log(`Carousel image ${currentIndex + 1} error:`, e.nativeEvent.error);
+                                }}
+                                onLoad={() => {
+                                    console.log(`Carousel image ${currentIndex + 1} loaded: ${photos[currentIndex].photo_url}`);
+                                }}
+                            />
+                            
+                            {/* Подпись к фото */}
+                            {photos[currentIndex].caption && (
+                                <View className="absolute bottom-3 left-3 right-3 bg-black/60 dark:bg-black/80 rounded-lg p-3">
+                                    <Text className="text-white text-sm leading-relaxed">
+                                        {photos[currentIndex].caption}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                    
+                    {/* Индикаторы */}
+                    {photos.length > 1 && (
+                        <View className="flex-row justify-center items-center mt-4 gap-2">
+                            {photos.map((_, index) => (
+                                <View
+                                    key={index}
+                                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                        index === currentIndex 
+                                            ? 'bg-blue-600 dark:bg-blue-400 w-6' 
+                                            : 'bg-gray-300 dark:bg-gray-600'
+                                    }`}
+                                />
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </View>
+            
+            {/* Модальное окно для полного просмотра фото */}
+            <Modal
+                visible={!!selectedPhoto}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={closeModal}
+            >
+                {/* Область для закрытия по фону */}
+                <TouchableOpacity 
+                    style={{ flex: 1 }} 
+                    activeOpacity={1} 
+                    onPress={closeModal}
+                >
+                    <View className="flex-1 bg-black/80 relative">
+                        {/* Кнопка закрытия */}
+                        <TouchableOpacity
+                            onPress={closeModal}
+                            className="absolute top-12 right-4 p-2 -mr-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 z-50"
+                        >
+                            <X size={24} color="white" />
+                        </TouchableOpacity>
+                        
+                        {/* Область изображения (не закрывает модальное окно) */}
+                        {selectedPhoto && (
+                            <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={(e) => e.stopPropagation()}
+                                style={{ flex: 1 }}
+                            >
+                                <View className="flex-1 justify-center items-center">
+                                    <Image 
+                                        source={{ uri: selectedPhoto.photo_url }} 
+                                        className="w-full h-full max-w-full max-h-full"
+                                        resizeMode="contain"
+                                    />
+                                    
+                                    {/* Подпись к фото */}
+                                    {selectedPhoto.caption && (
+                                        <View className="absolute bottom-8 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                                            <Text className="text-white text-base leading-relaxed">
+                                                {selectedPhoto.caption}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+        </>
+    );
+}
 
 export default function ProfileScreen() {
     const user = useAuthStore((s) => s.user);
@@ -21,6 +185,7 @@ export default function ProfileScreen() {
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [reportDetailLoading, setReportDetailLoading] = useState(false);
     const reportsPerPage = 5;
 
     const fetchMyReports = useCallback(async () => {
@@ -34,6 +199,40 @@ export default function ProfileScreen() {
             setIsLoading(false);
         }
     }, []);
+
+    const fetchReportDetails = useCallback(async (reportId: number) => {
+        setReportDetailLoading(true);
+        try {
+            const detailedReport = await reportsService.getById(reportId);
+            console.log('=== DETAILED REPORT DEBUG ===');
+            console.log('Report ID:', detailedReport.id);
+            console.log('Photos array:', detailedReport.photos);
+            console.log('Photos length:', detailedReport.photos?.length || 0);
+            console.log('Photo count field:', detailedReport.photo_count);
+            console.log('Preview photo:', detailedReport.preview_photo);
+            if (detailedReport.photos && detailedReport.photos.length > 0) {
+                detailedReport.photos.forEach((photo, index) => {
+                    console.log(`Photo ${index + 1}:`, {
+                        id: photo.id,
+                        url: photo.photo_url,
+                        caption: photo.caption,
+                        order: photo.order
+                    });
+                });
+            }
+            console.log('=== END DEBUG ===');
+            setSelectedReport(detailedReport);
+        } catch (err) {
+            console.warn('Failed to fetch report details:', err);
+            // Если не удалось загрузить детали, показываем базовую информацию
+            const basicReport = myReports.find(r => r.id === reportId);
+            if (basicReport) {
+                setSelectedReport(basicReport);
+            }
+        } finally {
+            setReportDetailLoading(false);
+        }
+    }, [myReports]);
 
     useFocusEffect(
         useCallback(() => {
@@ -227,13 +426,9 @@ export default function ProfileScreen() {
                 )}
 
                 {/* Main Content Area */}
-                <View className={`flex-1 ${Platform.OS === 'web' ? 'flex-row px-4 w-full gap-10 justify-center items-start' : ''}`}>
-                    
+                <View className="px-4">
                     {/* List Column */}
-                    <View 
-                        className={Platform.OS === 'web' ? 'w-full max-w-md' : ''}
-                        style={Platform.OS === 'web' ? { minWidth: 420 } : {}}
-                    >
+                    <View className="w-full max-w-md self-center">
                         {/* Header (Native only) */}
                         {Platform.OS !== 'web' && (
                             <View className="mb-6">
@@ -262,7 +457,7 @@ export default function ProfileScreen() {
                                         return (
                                             <TouchableOpacity
                                                 key={r.id}
-                                                onPress={() => setSelectedReport(r)}
+                                                onPress={() => fetchReportDetails(r.id)}
                                                 activeOpacity={0.7}
                                                 className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex-row items-center gap-3 mb-3 ${
                                                     selectedReport?.id === r.id 
@@ -350,51 +545,36 @@ export default function ProfileScreen() {
                             </View>
                         </View>
                     </View>
-
-                    {/* Web Detail Column */}
-                    {Platform.OS === 'web' && selectedReport && (
-                        <Animated.View 
-                            entering={SlideInRight.springify().damping(20).stiffness(100)}
-                            className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 p-8"
-                        >
-                            <ReportDetailInner 
-                                report={selectedReport} 
-                                isDarkMode={isDarkMode} 
-                                onClose={() => setSelectedReport(null)}
-                                onEdit={handleEdit}
-                                onDelete={handleDelete}
-                                isDeleting={isDeleting}
-                            />
-                        </Animated.View>
-                    )}
                 </View>
             </ScrollView>
 
-            {/* Mobile Report Detail Modal */}
-            {Platform.OS !== 'web' && (
-                <Modal
-                    visible={!!selectedReport}
-                    animationType="slide"
-                    transparent={true}
-                    onRequestClose={() => setSelectedReport(null)}
-                >
-                    <View className="flex-1 justify-end">
-                        <TouchableOpacity 
-                            className="flex-1" 
-                            onPress={() => setSelectedReport(null)} 
-                        />
-                        <View 
-                            className="bg-white dark:bg-gray-900 rounded-t-3xl p-6 min-h-[50%]"
-                            style={{
-                                shadowColor: "#000",
-                                shadowOffset: { width: 0, height: -4 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 12,
-                                elevation: 20,
-                            }}
-                        >
-                            <View className="w-12 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full self-center mb-6" />
-                            {selectedReport && (
+            {/* Unified Report Detail Modal */}
+            <Modal
+                visible={!!selectedReport || reportDetailLoading}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => !reportDetailLoading && setSelectedReport(null)}
+            >
+                <View className="flex-1 bg-black/50 justify-center items-center px-4">
+                    <View 
+                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg max-h-[80vh] shadow-xl"
+                        style={{
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 10 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 20,
+                            elevation: 20,
+                        }}
+                    >
+                        <View className="p-6">
+                            {reportDetailLoading ? (
+                                <View className="flex-1 justify-center items-center py-8">
+                                    <ActivityIndicator size="large" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                                    <Text className="text-gray-500 dark:text-gray-400 mt-3">
+                                        Загрузка деталей...
+                                    </Text>
+                                </View>
+                            ) : selectedReport ? (
                                 <ReportDetailInner 
                                     report={selectedReport} 
                                     isDarkMode={isDarkMode} 
@@ -403,11 +583,11 @@ export default function ProfileScreen() {
                                     onDelete={handleDelete}
                                     isDeleting={isDeleting}
                                 />
-                            )}
+                            ) : null}
                         </View>
                     </View>
-                </Modal>
-            )}
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -428,58 +608,112 @@ function ReportDetailInner({
     onDelete: (id: number) => void,
     isDeleting: boolean
 }) {
+    // Находим категорию
+    const cat = CATEGORIES.find((c) => c.name === report.rubric_name);
+    
+    console.log('=== REPORT DETAIL INNER ===');
+    console.log('Report photos:', report.photos);
+    console.log('Report preview:', report.preview_photo);
+    console.log('Photo count:', report.photo_count);
+    
+    // Создаем массив фотографий для карусели
+    const carouselPhotos = [];
+    
+    // Сначала добавляем preview_photo если есть
+    if (report.preview_photo) {
+        carouselPhotos.push({
+            id: 'preview',
+            photo_url: report.preview_photo,
+            caption: null,
+            order: 0
+        });
+    }
+    
+    // Затем добавляем все фото из массива photos
+    if (report.photos && report.photos.length > 0) {
+        carouselPhotos.push(...report.photos);
+    }
+    
+    console.log('Carousel photos:', carouselPhotos);
+
     return (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <View className="flex-1">
             <View className="flex-row justify-between items-start mb-4">
                 <Badge status={report.status} />
                 <TouchableOpacity onPress={onClose}>
-                    <X size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
+                    <X size={20} color={isDarkMode ? "#F9FAFB" : "#111827"} />
                 </TouchableOpacity>
             </View>
 
-            <Text className="text-2xl font-bold dark:text-white mb-2">
-                {report.title}
-            </Text>
-            
-            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                {report.address}
-            </Text>
+            <ScrollView 
+                showsVerticalScrollIndicator={false}
+                className="flex-1"
+            >
+                <Text className="text-xl font-bold dark:text-white mb-2">
+                    {report.title}
+                </Text>
+                
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {report.address}
+                </Text>
 
-            {report.description && (
-                <View className="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl mb-6">
-                    <Text className="text-gray-700 dark:text-gray-300 leading-6">
-                        {report.description}
+                {/* Рубрика */}
+                {report.rubric_name && (
+                    <View className="flex-row items-center mb-4">
+                        <View
+                            className="w-8 h-8 rounded-lg items-center justify-center mr-2"
+                            style={{
+                                backgroundColor: (cat?.color || '#999') + '20',
+                            }}
+                        >
+                            <Text className="text-sm">{cat?.icon || '❗'}</Text>
+                        </View>
+                        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {report.rubric_name}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Описание */}
+                {report.description && (
+                    <View className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl mb-6">
+                        <Text className="text-gray-700 dark:text-gray-300 leading-6">
+                            {report.description}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Карусель фотографий */}
+                <PhotoCarousel photos={carouselPhotos} isDarkMode={isDarkMode} />
+
+                {/* Метаданные */}
+                <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 mb-4">
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
+                        Создано: {report.created_at ? new Date(report.created_at).toLocaleDateString('ru-RU') : ''}
+                    </Text>
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
+                        ID: #{report.id}
                     </Text>
                 </View>
-            )}
+            </ScrollView>
 
-            {report.preview_photo && (
-                <View className="w-full h-64 rounded-2xl overflow-hidden mb-6 bg-gray-100 dark:bg-gray-800">
-                    <Image 
-                        source={{ uri: report.preview_photo }} 
-                        className="w-full h-full"
-                        resizeMode="cover"
-                    />
-                </View>
-            )}
-
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <TouchableOpacity 
                     onPress={() => onEdit(report)}
-                    className="flex-1 py-4 bg-blue-600 rounded-2xl items-center"
+                    className="flex-1 py-3 bg-blue-600 rounded-xl items-center"
                 >
-                    <Text className="text-white font-bold">Изменить</Text>
+                    <Text className="text-white font-bold text-sm">Изменить</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                     onPress={() => onDelete(report.id)}
                     disabled={isDeleting}
-                    className="flex-1 py-4 bg-red-50 dark:bg-red-900/20 rounded-2xl items-center"
+                    className="flex-1 py-3 bg-red-50 dark:bg-red-900/20 rounded-xl items-center"
                 >
-                    <Text className="text-red-500 font-bold">
+                    <Text className="text-red-500 font-bold text-sm">
                         {isDeleting ? 'Удаление...' : 'Удалить'}
                     </Text>
                 </TouchableOpacity>
             </View>
-        </ScrollView>
+        </View>
     );
 }
