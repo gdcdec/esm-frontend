@@ -223,22 +223,13 @@ function InlineFilters({
     state: ReturnType<typeof useMapState>,
     isDarkMode: boolean
 }) {
-    const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'status' | 'ordering' | null>(null);
-
-    const statuses = [
-        { label: 'Все статусы', value: undefined },
-        { label: 'На рассмотрении', value: 'check' },
-        { label: 'Опубликовано', value: 'published' },
-        { label: 'Черновик', value: 'draft' },
-        { label: 'Архив', value: 'archived' },
-    ];
+    const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'ordering' | null>(null);
 
     const sortings = [
         { label: 'Сначала новые', value: '-created_at' },
         { label: 'Сначала старые', value: 'created_at' },
     ];
 
-    const currentStatus = statuses.find(s => s.value === state.filters.status) || statuses[0];
     const currentSorting = sortings.find(s => s.value === (state.filters.ordering || '-created_at')) || sortings[0];
 
     const selectedRubricsCount = state.filters.rubrics?.length || 0;
@@ -283,23 +274,6 @@ function InlineFilters({
                             {rubricsLabel}
                         </Text>
                         <ChevronDown size={14} color={selectedRubricsCount > 0 ? '#3B82F6' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
-                    </TouchableOpacity>
-
-                    {/* Vertical Divider */}
-                    <View className="w-[1px] h-5 bg-gray-200 dark:bg-slate-800 mx-1" />
-
-                    {/* Status Dropdown Trigger */}
-                    <TouchableOpacity
-                        onPress={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
-                        className={`px-3 py-2 mx-2 rounded-xl border flex-row items-center gap-2 ${state.filters.status
-                            ? 'bg-emerald-500/10 border-emerald-500/30'
-                            : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
-                            }`}
-                    >
-                        <Text className={`text-[13px] font-medium ${state.filters.status ? 'text-emerald-500' : 'text-gray-500 dark:text-slate-400'}`}>
-                            {currentStatus.label}
-                        </Text>
-                        <ChevronDown size={14} color={state.filters.status ? '#10B981' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
                     </TouchableOpacity>
 
                     {/* Sorting Dropdown Trigger */}
@@ -355,28 +329,6 @@ function InlineFilters({
                                 );
                             })}
                         </ScrollView>
-                    </View>
-                )}
-
-                {openDropdown === 'status' && (
-                    <View
-                        className="absolute right-5 top-14 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-56 py-2 overflow-hidden"
-                        style={{ elevation: 25 }}
-                    >
-                        {statuses.map((s) => (
-                            <TouchableOpacity
-                                key={s.label}
-                                className={`px-5 py-3 ${state.filters.status === s.value ? 'bg-blue-500/5' : ''}`}
-                                onPress={() => {
-                                    state.setFilters({ ...state.filters, status: s.value });
-                                    setOpenDropdown(null);
-                                }}
-                            >
-                                <Text className={`text-sm ${state.filters.status === s.value ? 'text-blue-500 font-bold' : 'text-gray-700 dark:text-slate-200'}`}>
-                                    {s.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
                     </View>
                 )}
 

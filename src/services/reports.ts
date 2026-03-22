@@ -41,11 +41,17 @@ export const reportsService = {
 
     /**
      * Get a single post by ID.
-     * GET /api/posts/<id>/
      */
+    // Fetch report details by ID
     getById: async (id: number): Promise<Report> => {
-        const { data } = await api.get<Report>(`/posts/${id}/`);
-        return data;
+        const response = await api.get(`/posts/${id}/`);
+        return response.data;
+    },
+
+    // Export report document text
+    export: async (id: number): Promise<{ letter: string; message: string }> => {
+        const response = await api.get(`/posts/${id}/?doc=1`);
+        return response.data;
     },
 
     /**

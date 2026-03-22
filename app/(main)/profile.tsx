@@ -4,8 +4,10 @@ import { reportsService } from '@/src/services/reports';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
+import * as Print from 'expo-print';
 import { router, useFocusEffect } from 'expo-router';
-import { ChevronLeft, ChevronRight, Settings, X } from 'lucide-react-native';
+import * as Sharing from 'expo-sharing';
+import { ChevronLeft, ChevronRight, Download, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,7 +43,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
         <>
             <View className="mb-6">
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Фотографии ({currentIndex + 1} / {photos.length})
+                    Фотографии ({currentIndex + 1}/{photos.length})
                 </Text>
 
                 <View className="relative">
@@ -181,6 +183,7 @@ export default function ProfileScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [reportDetailLoading, setReportDetailLoading] = useState(false);
     const reportsPerPage = 5;
@@ -214,6 +217,70 @@ export default function ProfileScreen() {
             setReportDetailLoading(false);
         }
     }, [myReports]);
+
+    const handleExport = async (id: number) => {
+        setIsExporting(true);
+        try {
+            const data = await reportsService.export(id);
+            const reportInfo = myReports.find(r => r.id === id) || selectedReport;
+
+            if (data.letter && reportInfo) {
+                const html = `
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+    <style>
+      body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; line-height: 1.6; color: #333; }
+      h1 { font-size: 24px; margin-bottom: 10px; color: #111827; }
+      .meta { color: #6B7280; font-size: 14px; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 15px; line-height: 1.8; }
+      .letter { white-space: pre-wrap; margin-top: 20px; font-size: 15px; color: #1F2937; }
+      img { max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 30px; display: block; object-fit: contain; }
+    </style>
+  </head>
+  <body>
+    <h1>${'Обращение: ' + reportInfo.title || 'Обращение'}</h1>
+    
+    <div class="letter">${data.letter.replace(/\n/g, '<br/>')}</div>
+    
+    ${reportInfo.preview_photo ? `<img src="${reportInfo.preview_photo}" />` : ''}
+  </body>
+</html>`;
+
+                if (Platform.OS === 'web') {
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                        printWindow.document.write(html);
+                        printWindow.document.close();
+                        printWindow.focus();
+                        setTimeout(() => {
+                            printWindow.print();
+                            printWindow.close();
+                        }, 250);
+                    } else {
+                        Alert.alert('Экспорт', 'Заблокировано всплывающее окно. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+                    }
+                } else {
+                    const { uri } = await Print.printToFileAsync({ html });
+                    if (await Sharing.isAvailableAsync()) {
+                        await Sharing.shareAsync(uri, {
+                            mimeType: 'application/pdf',
+                            dialogTitle: 'Экспорт обращения',
+                            UTI: 'com.adobe.pdf'
+                        });
+                    } else {
+                        Alert.alert('Экспорт', 'Функция "Поделиться" недоступна на вашем устройстве');
+                    }
+                }
+            } else {
+                Alert.alert('Экспорт', data.message || 'Ошибка генерации документа.');
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            Alert.alert('Ошибка', 'Не удалось экспортировать обращение.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -571,7 +638,9 @@ export default function ProfileScreen() {
                                     onClose={() => setSelectedReport(null)}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
+                                    onExport={handleExport}
                                     isDeleting={isDeleting}
+                                    isExporting={isExporting}
                                 />
                             ) : null}
                         </View>
@@ -589,14 +658,18 @@ function ReportDetailInner({
     onClose,
     onEdit,
     onDelete,
-    isDeleting
+    onExport,
+    isDeleting,
+    isExporting
 }: {
     report: Report,
     isDarkMode: boolean,
     onClose: () => void,
     onEdit: (r: Report) => void,
     onDelete: (id: number) => void,
-    isDeleting: boolean
+    onExport: (id: number) => void,
+    isDeleting: boolean,
+    isExporting: boolean
 }) {
     // Находим категорию
     const cat = CATEGORIES.find((c) => c.name === report.rubric_name);
@@ -682,8 +755,19 @@ function ReportDetailInner({
 
             <View className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <TouchableOpacity
+                    onPress={() => onExport(report.id)}
+                    disabled={isExporting}
+                    className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl items-center justify-center border border-gray-200 dark:border-gray-600"
+                >
+                    {isExporting ? (
+                        <ActivityIndicator size="small" color={isDarkMode ? '#D1D5DB' : '#4B5563'} />
+                    ) : (
+                        <Download size={20} color={isDarkMode ? '#D1D5DB' : '#4B5563'} />
+                    )}
+                </TouchableOpacity>
+                <TouchableOpacity
                     onPress={() => onEdit(report)}
-                    className="flex-1 py-3 bg-blue-600 rounded-xl items-center"
+                    className="flex-1 py-3 bg-blue-600 rounded-xl items-center justify-center"
                 >
                     <Text className="text-white font-bold text-sm">Изменить</Text>
                 </TouchableOpacity>
