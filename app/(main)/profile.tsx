@@ -16,36 +16,34 @@ const { width: screenWidth } = Dimensions.get('window');
 function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: boolean }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
-    
+
     if (!photos || photos.length === 0) {
         return null;
     }
-    
+
     const goToPrevious = () => {
         setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1);
     };
-    
+
     const goToNext = () => {
         setCurrentIndex((prev) => prev === photos.length - 1 ? 0 : prev + 1);
     };
-    
+
     const handlePhotoPress = (photo: any) => {
-        console.log('Opening photo:', photo.photo_url);
         setSelectedPhoto(photo);
     };
-    
+
     const closeModal = () => {
-        console.log('Closing photo modal');
         setSelectedPhoto(null);
     };
-    
+
     return (
         <>
             <View className="mb-6">
                 <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     Фотографии ({currentIndex + 1} / {photos.length})
                 </Text>
-                
+
                 <View className="relative">
                     {/* Кнопка навигации слева */}
                     {photos.length > 1 && (
@@ -59,7 +57,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                             </View>
                         </TouchableOpacity>
                     )}
-                    
+
                     {/* Кнопка навигации справа */}
                     {photos.length > 1 && (
                         <TouchableOpacity
@@ -72,7 +70,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                             </View>
                         </TouchableOpacity>
                     )}
-                    
+
                     {/* Основное изображение */}
                     <View className="w-full h-64 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 relative border border-gray-200 dark:border-gray-700">
                         <TouchableOpacity
@@ -80,8 +78,8 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                             className="flex-1 relative"
                             activeOpacity={0.9}
                         >
-                            <Image 
-                                source={{ uri: photos[currentIndex].photo_url }} 
+                            <Image
+                                source={{ uri: photos[currentIndex].photo_url }}
                                 className="w-full h-full"
                                 resizeMode="cover"
                                 onError={(e) => {
@@ -91,7 +89,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                                     console.log(`Carousel image ${currentIndex + 1} loaded: ${photos[currentIndex].photo_url}`);
                                 }}
                             />
-                            
+
                             {/* Подпись к фото */}
                             {photos[currentIndex].caption && (
                                 <View className="absolute bottom-3 left-3 right-3 bg-black/60 dark:bg-black/80 rounded-lg p-3">
@@ -102,25 +100,24 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                             )}
                         </TouchableOpacity>
                     </View>
-                    
+
                     {/* Индикаторы */}
                     {photos.length > 1 && (
                         <View className="flex-row justify-center items-center mt-4 gap-2">
                             {photos.map((_, index) => (
                                 <View
                                     key={index}
-                                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                                        index === currentIndex 
-                                            ? 'bg-blue-600 dark:bg-blue-400 w-6' 
-                                            : 'bg-gray-300 dark:bg-gray-600'
-                                    }`}
+                                    className={`w-2 h-2 rounded-full transition-all duration-200 ${index === currentIndex
+                                        ? 'bg-blue-600 dark:bg-blue-400 w-6'
+                                        : 'bg-gray-300 dark:bg-gray-600'
+                                        }`}
                                 />
                             ))}
                         </View>
                     )}
                 </View>
             </View>
-            
+
             {/* Модальное окно для полного просмотра фото */}
             <Modal
                 visible={!!selectedPhoto}
@@ -129,9 +126,9 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                 onRequestClose={closeModal}
             >
                 {/* Область для закрытия по фону */}
-                <TouchableOpacity 
-                    style={{ flex: 1 }} 
-                    activeOpacity={1} 
+                <TouchableOpacity
+                    style={{ flex: 1 }}
+                    activeOpacity={1}
                     onPress={closeModal}
                 >
                     <View className="flex-1 bg-black/80 relative">
@@ -142,7 +139,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                         >
                             <X size={24} color="white" />
                         </TouchableOpacity>
-                        
+
                         {/* Область изображения (не закрывает модальное окно) */}
                         {selectedPhoto && (
                             <TouchableOpacity
@@ -151,12 +148,12 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: bool
                                 style={{ flex: 1 }}
                             >
                                 <View className="flex-1 justify-center items-center">
-                                    <Image 
-                                        source={{ uri: selectedPhoto.photo_url }} 
+                                    <Image
+                                        source={{ uri: selectedPhoto.photo_url }}
                                         className="w-full h-full max-w-full max-h-full"
                                         resizeMode="contain"
                                     />
-                                    
+
                                     {/* Подпись к фото */}
                                     {selectedPhoto.caption && (
                                         <View className="absolute bottom-8 left-4 right-4 bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/10">
@@ -204,23 +201,7 @@ export default function ProfileScreen() {
         setReportDetailLoading(true);
         try {
             const detailedReport = await reportsService.getById(reportId);
-            console.log('=== DETAILED REPORT DEBUG ===');
-            console.log('Report ID:', detailedReport.id);
-            console.log('Photos array:', detailedReport.photos);
-            console.log('Photos length:', detailedReport.photos?.length || 0);
-            console.log('Photo count field:', detailedReport.photo_count);
-            console.log('Preview photo:', detailedReport.preview_photo);
-            if (detailedReport.photos && detailedReport.photos.length > 0) {
-                detailedReport.photos.forEach((photo, index) => {
-                    console.log(`Photo ${index + 1}:`, {
-                        id: photo.id,
-                        url: photo.photo_url,
-                        caption: photo.caption,
-                        order: photo.order
-                    });
-                });
-            }
-            console.log('=== END DEBUG ===');
+
             setSelectedReport(detailedReport);
         } catch (err) {
             console.warn('Failed to fetch report details:', err);
@@ -246,8 +227,14 @@ export default function ProfileScreen() {
 
     // Считаем статистику по заявкам
     const totalReports = myReports.length;
-    const publishedReports = myReports.filter(r => r.status === 'published').length;
-    const checkReports = myReports.filter(r => r.status === 'check').length;
+    const publishedReports = myReports.filter(r => {
+        const s = (r.status || '').toString().toLowerCase();
+        return s === 'published';
+    }).length;
+    const checkReports = myReports.filter(r => {
+        const s = (r.status || '').toString().toLowerCase();
+        return s === 'check';
+    }).length;
     const activeReports = publishedReports + checkReports;
     const influence = totalReports > 0 ? Math.floor((activeReports / totalReports) * 100) : 0;
 
@@ -419,7 +406,7 @@ export default function ProfileScreen() {
                     <View className="items-center mb-10 pt-4">
                         <Text className="text-3xl font-bold dark:text-white">Мои заявки</Text>
                         <Text className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                            {totalReports} всего{totalPages > 1 && ` • ${currentPage}/${totalPages}`}
+                            {totalReports} всего
                         </Text>
                         <View className="w-12 h-1 bg-blue-500 rounded-full mt-3" />
                     </View>
@@ -436,7 +423,7 @@ export default function ProfileScreen() {
                                     Мои заявки
                                 </Text>
                                 <Text className="text-xs text-center text-gray-400 dark:text-gray-500 mt-1">
-                                    {totalReports} всего{totalPages > 1 && ` • ${currentPage}/${totalPages}`}
+                                    {totalReports} всего
                                 </Text>
                             </View>
                         )}
@@ -459,11 +446,10 @@ export default function ProfileScreen() {
                                                 key={r.id}
                                                 onPress={() => fetchReportDetails(r.id)}
                                                 activeOpacity={0.7}
-                                                className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex-row items-center gap-3 mb-3 ${
-                                                    selectedReport?.id === r.id 
-                                                        ? 'border-blue-500 dark:border-blue-400' 
-                                                        : 'border-gray-100 dark:border-gray-800'
-                                                }`}
+                                                className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex-row items-center gap-3 mb-3 ${selectedReport?.id === r.id
+                                                    ? 'border-blue-500 dark:border-blue-400'
+                                                    : 'border-gray-100 dark:border-gray-800'
+                                                    }`}
                                             >
                                                 <View
                                                     className="w-10 h-10 rounded-xl items-center justify-center"
@@ -498,14 +484,13 @@ export default function ProfileScreen() {
                                         <TouchableOpacity
                                             onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                             disabled={currentPage === 1}
-                                            className={`p-1 rounded ${
-                                                currentPage === 1 
-                                                    ? 'opacity-30' 
-                                                    : 'opacity-70'
-                                            }`}
+                                            className={`p-1 rounded ${currentPage === 1
+                                                ? 'opacity-30'
+                                                : 'opacity-70'
+                                                }`}
                                         >
-                                            <ChevronLeft 
-                                                size={16} 
+                                            <ChevronLeft
+                                                size={16}
                                                 color={isDarkMode ? '#9CA3AF' : '#6B7280'}
                                             />
                                         </TouchableOpacity>
@@ -517,14 +502,13 @@ export default function ProfileScreen() {
                                         <TouchableOpacity
                                             onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                             disabled={currentPage === totalPages}
-                                            className={`p-1 rounded ${
-                                                currentPage === totalPages 
-                                                    ? 'opacity-30' 
-                                                    : 'opacity-70'
-                                            }`}
+                                            className={`p-1 rounded ${currentPage === totalPages
+                                                ? 'opacity-30'
+                                                : 'opacity-70'
+                                                }`}
                                         >
-                                            <ChevronRight 
-                                                size={16} 
+                                            <ChevronRight
+                                                size={16}
                                                 color={isDarkMode ? '#9CA3AF' : '#6B7280'}
                                             />
                                         </TouchableOpacity>
@@ -555,15 +539,21 @@ export default function ProfileScreen() {
                 transparent={true}
                 onRequestClose={() => !reportDetailLoading && setSelectedReport(null)}
             >
-                <View className="flex-1 bg-black/50 justify-center items-center px-4">
-                    <View 
-                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg max-h-[80vh] shadow-xl"
+                <View
+                    style={{ flex: 1, paddingHorizontal: 16 }}
+                    className="justify-center items-center bg-black/50"
+                >
+                    <View
+                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-xl"
                         style={{
+                            maxHeight: Platform.OS === 'web' ? '90%' : '85%',
                             shadowColor: "#000",
                             shadowOffset: { width: 0, height: 10 },
                             shadowOpacity: 0.25,
                             shadowRadius: 20,
                             elevation: 20,
+                            borderWidth: Platform.OS === 'web' ? 0 : 1,
+                            borderColor: isDarkMode ? '#374151' : '#F3F4F6'
                         }}
                     >
                         <View className="p-6">
@@ -575,9 +565,9 @@ export default function ProfileScreen() {
                                     </Text>
                                 </View>
                             ) : selectedReport ? (
-                                <ReportDetailInner 
-                                    report={selectedReport} 
-                                    isDarkMode={isDarkMode} 
+                                <ReportDetailInner
+                                    report={selectedReport}
+                                    isDarkMode={isDarkMode}
                                     onClose={() => setSelectedReport(null)}
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
@@ -593,16 +583,16 @@ export default function ProfileScreen() {
 }
 
 // ─── Internal Detail Component ──────────────────────────────────
-function ReportDetailInner({ 
-    report, 
-    isDarkMode, 
-    onClose, 
-    onEdit, 
-    onDelete, 
-    isDeleting 
-}: { 
-    report: Report, 
-    isDarkMode: boolean, 
+function ReportDetailInner({
+    report,
+    isDarkMode,
+    onClose,
+    onEdit,
+    onDelete,
+    isDeleting
+}: {
+    report: Report,
+    isDarkMode: boolean,
     onClose: () => void,
     onEdit: (r: Report) => void,
     onDelete: (id: number) => void,
@@ -610,15 +600,10 @@ function ReportDetailInner({
 }) {
     // Находим категорию
     const cat = CATEGORIES.find((c) => c.name === report.rubric_name);
-    
-    console.log('=== REPORT DETAIL INNER ===');
-    console.log('Report photos:', report.photos);
-    console.log('Report preview:', report.preview_photo);
-    console.log('Photo count:', report.photo_count);
-    
+
     // Создаем массив фотографий для карусели
     const carouselPhotos = [];
-    
+
     // Сначала добавляем preview_photo если есть
     if (report.preview_photo) {
         carouselPhotos.push({
@@ -628,16 +613,14 @@ function ReportDetailInner({
             order: 0
         });
     }
-    
+
     // Затем добавляем все фото из массива photos
     if (report.photos && report.photos.length > 0) {
         carouselPhotos.push(...report.photos);
     }
-    
-    console.log('Carousel photos:', carouselPhotos);
 
     return (
-        <View className="flex-1">
+        <View style={{ flexShrink: 1 }}>
             <View className="flex-row justify-between items-start mb-4">
                 <Badge status={report.status} />
                 <TouchableOpacity onPress={onClose}>
@@ -645,14 +628,14 @@ function ReportDetailInner({
                 </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
                 showsVerticalScrollIndicator={false}
-                className="flex-1"
+                style={{ flexShrink: 1 }}
             >
                 <Text className="text-xl font-bold dark:text-white mb-2">
                     {report.title}
                 </Text>
-                
+
                 <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     {report.address}
                 </Text>
@@ -698,13 +681,13 @@ function ReportDetailInner({
             </ScrollView>
 
             <View className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => onEdit(report)}
                     className="flex-1 py-3 bg-blue-600 rounded-xl items-center"
                 >
                     <Text className="text-white font-bold text-sm">Изменить</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => onDelete(report.id)}
                     disabled={isDeleting}
                     className="flex-1 py-3 bg-red-50 dark:bg-red-900/20 rounded-xl items-center"

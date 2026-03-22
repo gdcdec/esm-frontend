@@ -565,7 +565,7 @@ function WebMapScreen() {
     );
 
     return (
-        <div style={{ width: '100%', height: '100vh', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: '100dvh', position: 'relative' as const, overflow: 'hidden' }}>
             {/* Full-screen map */}
             <div style={{ position: 'absolute' as const, inset: 0, zIndex: 0 }}>
                 <AppMapView
@@ -593,7 +593,7 @@ function WebMapScreen() {
                     style={{
                         width: PANEL_WIDTH - 32,
                         background: isDarkMode ? '#1F2937' : 'white',
-                        borderRadius: isOpen ? '16px 16px 0 0' : 16,
+                        borderRadius: isOpen ? '16px 16px 16px 16px' : 16,
                         boxShadow: isOpen ? 'none' : (isDarkMode ? '0 2px 12px rgba(0,0,0,0.5)' : '0 2px 12px rgba(0,0,0,0.12)'),
                         border: isDarkMode ? '1px solid #374151' : 'none',
                         overflow: 'hidden',
@@ -604,41 +604,82 @@ function WebMapScreen() {
                     </div>
 
                     {/* Dropdown: history list */}
-                    {(isSearchFocused || panelMode === 'dropdown') && (
-                        <div
-                            style={{
-                                padding: '0 16px 16px',
-                                maxHeight: 400,
-                                overflowY: 'auto' as const,
-                                scrollbarWidth: isDarkMode ? 'thin' : 'auto',
-                                scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto'
-                            }}
-                        >
-                            {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
-                                <>
-                                    {state.isSearching ? (
-                                        <Text style={{ textAlign: 'center', padding: 16, color: '#9CA3AF' }}>Поиск...</Text>
-                                    ) : (
-                                        state.suggestions.map((item, idx) => {
-                                            const shortAddress = item.street
-                                                ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
-                                                : item.display_name;
-                                            return (
+                    {((isSearchFocused || panelMode === 'dropdown') &&
+                        ((state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0)) || (!state.searchQuery && state.searchHistory.length > 0))) && (
+                            <div
+                                style={{
+                                    padding: '0 16px 16px',
+                                    maxHeight: 400,
+                                    overflowY: 'auto' as const,
+                                    scrollbarWidth: isDarkMode ? 'thin' : 'auto',
+                                    scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto'
+                                }}
+                            >
+                                {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
+                                    <>
+                                        {state.isSearching ? (
+                                            <Text style={{ textAlign: 'center', padding: 16, color: '#9CA3AF' }}>Поиск...</Text>
+                                        ) : (
+                                            state.suggestions.map((item, idx) => {
+                                                const shortAddress = item.street
+                                                    ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+                                                    : item.display_name;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={idx}
+                                                        onPress={() => {
+                                                            state.setSearchQuery(shortAddress);
+                                                            if (!state.searchHistory.includes(shortAddress)) {
+                                                                state.setSearchHistory([shortAddress, ...state.searchHistory]);
+                                                            }
+                                                            state.setSuggestions([]);
+
+                                                            const coord = { latitude: item.latitude, longitude: item.longitude };
+                                                            state.setSelectedCoord(coord);
+                                                            state.setSelectedAddress(shortAddress);
+                                                            state.setActiveReports(null);
+                                                            state.mapRef.current?.goToLocation(coord.latitude, coord.longitude);
+
+                                                            setPanelMode('open');
+                                                        }}
+                                                        style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            gap: 12,
+                                                            paddingVertical: 10,
+                                                            borderBottomWidth: idx < state.suggestions.length - 1 ? 1 : 0,
+                                                            borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                        }}
+                                                    >
+                                                        <View style={{
+                                                            width: 36, height: 36, borderRadius: 18,
+                                                            backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                            alignItems: 'center', justifyContent: 'center',
+                                                        }}>
+                                                            <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                        </View>
+                                                        <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{shortAddress}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })
+                                        )}
+                                    </>
+                                ) : (
+                                    state.searchHistory.length > 0 ? (
+                                        <>
+                                            <View className="flex-row justify-between items-center mb-3">
+                                                <Text style={{ fontWeight: '700', fontSize: 16, color: isDarkMode ? '#F9FAFB' : '#111827' }}>
+                                                    История
+                                                </Text>
+                                                <TouchableOpacity onPress={() => state.setSearchHistory([])}>
+                                                    <Text className="text-xs text-gray-400">Очистить</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            {state.searchHistory.map((item, idx) => (
                                                 <TouchableOpacity
                                                     key={idx}
                                                     onPress={() => {
-                                                        state.setSearchQuery(shortAddress);
-                                                        if (!state.searchHistory.includes(shortAddress)) {
-                                                            state.setSearchHistory([shortAddress, ...state.searchHistory]);
-                                                        }
-                                                        state.setSuggestions([]);
-
-                                                        const coord = { latitude: item.latitude, longitude: item.longitude };
-                                                        state.setSelectedCoord(coord);
-                                                        state.setSelectedAddress(shortAddress);
-                                                        state.setActiveReports(null);
-                                                        state.mapRef.current?.goToLocation(coord.latitude, coord.longitude);
-
+                                                        state.setSearchQuery(item);
                                                         setPanelMode('open');
                                                     }}
                                                     style={{
@@ -646,7 +687,7 @@ function WebMapScreen() {
                                                         alignItems: 'center',
                                                         gap: 12,
                                                         paddingVertical: 10,
-                                                        borderBottomWidth: idx < state.suggestions.length - 1 ? 1 : 0,
+                                                        borderBottomWidth: idx < state.searchHistory.length - 1 ? 1 : 0,
                                                         borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
                                                     }}
                                                 >
@@ -655,61 +696,21 @@ function WebMapScreen() {
                                                         backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
                                                         alignItems: 'center', justifyContent: 'center',
                                                     }}>
-                                                        <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                        <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                                     </View>
-                                                    <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{shortAddress}</Text>
+                                                    <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</Text>
+                                                    <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
                                                 </TouchableOpacity>
-                                            );
-                                        })
-                                    )}
-                                </>
-                            ) : (
-                                state.searchHistory.length > 0 ? (
-                                    <>
-                                        <View className="flex-row justify-between items-center mb-3">
-                                            <Text style={{ fontWeight: '700', fontSize: 16, color: isDarkMode ? '#F9FAFB' : '#111827' }}>
-                                                История
-                                            </Text>
-                                            <TouchableOpacity onPress={() => state.setSearchHistory([])}>
-                                                <Text className="text-xs text-gray-400">Очистить</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        {state.searchHistory.map((item, idx) => (
-                                            <TouchableOpacity
-                                                key={idx}
-                                                onPress={() => {
-                                                    state.setSearchQuery(item);
-                                                    setPanelMode('open');
-                                                }}
-                                                style={{
-                                                    flexDirection: 'row',
-                                                    alignItems: 'center',
-                                                    gap: 12,
-                                                    paddingVertical: 10,
-                                                    borderBottomWidth: idx < state.searchHistory.length - 1 ? 1 : 0,
-                                                    borderBottomColor: isDarkMode ? '#374151' : '#F3F4F6',
-                                                }}
-                                            >
-                                                <View style={{
-                                                    width: 36, height: 36, borderRadius: 18,
-                                                    backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
-                                                    alignItems: 'center', justifyContent: 'center',
-                                                }}>
-                                                    <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
-                                                </View>
-                                                <Text style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</Text>
-                                                <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
-                                            </TouchableOpacity>
-                                        ))}
-                                    </>
-                                ) : (
-                                    <Text style={{ color: '#9CA3AF', textAlign: 'center', padding: 16 }}>
-                                        История поиска пуста
-                                    </Text>
-                                )
-                            )}
-                        </div>
-                    )}
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <Text style={{ color: '#9CA3AF', textAlign: 'center', padding: 16 }}>
+                                            История поиска пуста
+                                        </Text>
+                                    )
+                                )}
+                            </div>
+                        )}
                 </div>
 
                 <button
@@ -965,7 +966,7 @@ function MobileWebMapScreen() {
     // Bottom sheet snap points
     const SNAP_PEEK = 80;
     const SNAP_HALF = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.45) : 400;
-    const SNAP_FULL = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.9) : 700;
+    const SNAP_FULL = typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.8) : 700;
     const snapPoints = useMemo(() => [SNAP_PEEK, SNAP_HALF, SNAP_FULL], []);
 
     const [sheetHeight, setSheetHeight] = useState(SNAP_PEEK);
@@ -1160,7 +1161,7 @@ function MobileWebMapScreen() {
     }, [state.handleMarkerPress, sheetHeight, SNAP_PEEK, SNAP_HALF]);
 
     return (
-        <div style={{ width: '100%', height: '100vh', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: '100dvh', position: 'relative' as const, overflow: 'hidden' }}>
             {/* Map */}
             <div style={{ position: 'absolute' as const, inset: 0, zIndex: 0 }}>
                 <AppMapView
@@ -1266,34 +1267,82 @@ function MobileWebMapScreen() {
                 </div>
 
                 {/* Search history or suggestions dropdown */}
-                {searchFocused && sheetHeight <= SNAP_PEEK && (
-                    <div
-                        style={{
-                            marginTop: 4,
-                            background: isDarkMode ? '#1F2937' : 'white',
-                            borderRadius: 14,
-                            boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.12)',
-                            border: isDarkMode ? '1px solid #374151' : 'none',
-                            padding: 12,
-                            maxHeight: 300,
-                            overflowY: 'auto' as const,
-                            scrollbarWidth: isDarkMode ? 'thin' : 'auto',
-                            scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto',
-                        }}
-                    >
-                        {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
-                            <>
-                                {state.isSearching ? (
-                                    <Text style={{ textAlign: 'center', padding: 12, color: '#9CA3AF' }}>Поиск...</Text>
-                                ) : (
-                                    state.suggestions.map((item, idx) => {
-                                        const shortAddress = item.street
-                                            ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
-                                            : item.display_name;
-                                        return (
+                {(searchFocused && sheetHeight <= SNAP_PEEK &&
+                    ((state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0)) || (!state.searchQuery && state.searchHistory.length > 0))) && (
+                        <div
+                            style={{
+                                marginTop: 4,
+                                background: isDarkMode ? '#1F2937' : 'white',
+                                borderRadius: 14,
+                                boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.12)',
+                                border: isDarkMode ? '1px solid #374151' : 'none',
+                                padding: 12,
+                                maxHeight: 300,
+                                overflowY: 'auto' as const,
+                                scrollbarWidth: isDarkMode ? 'thin' : 'auto',
+                                scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto',
+                            }}
+                        >
+                            {state.searchQuery.length >= 3 && (state.isSearching || state.suggestions.length > 0) ? (
+                                <>
+                                    {state.isSearching ? (
+                                        <Text style={{ textAlign: 'center', padding: 12, color: '#9CA3AF' }}>Поиск...</Text>
+                                    ) : (
+                                        state.suggestions.map((item, idx) => {
+                                            const shortAddress = item.street
+                                                ? `${item.street}${item.house ? ', ' + item.house : ''}${item.city ? ', ' + item.city : ''}`
+                                                : item.display_name;
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => handleSelectSuggestion(item)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 10,
+                                                        width: '100%',
+                                                        padding: '10px 0',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        borderBottom: idx < state.suggestions.length - 1 ? '1px solid #F3F4F6' : 'none',
+                                                        cursor: 'pointer',
+                                                        textAlign: 'left' as const,
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: 36, height: 36, borderRadius: 18,
+                                                        backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        flexShrink: 0,
+                                                    }}>
+                                                        <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                    </div>
+                                                    <span style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{shortAddress}</span>
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </>
+                            ) : (
+                                (!state.searchQuery && state.searchHistory.length > 0) ? (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                            <span style={{ fontWeight: 700, fontSize: 14, color: isDarkMode ? '#F9FAFB' : '#111827' }}>История</span>
+                                            <button
+                                                onClick={() => state.setSearchHistory([])}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#9CA3AF' }}
+                                            >
+                                                Очистить
+                                            </button>
+                                        </div>
+                                        {state.searchHistory.map((item, idx) => (
                                             <button
                                                 key={idx}
-                                                onClick={() => handleSelectSuggestion(item)}
+                                                onClick={() => {
+                                                    state.setSearchQuery(item);
+                                                    setSearchFocused(false);
+                                                    setSheetHeight(SNAP_HALF);
+                                                }}
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -1302,7 +1351,7 @@ function MobileWebMapScreen() {
                                                     padding: '10px 0',
                                                     background: 'none',
                                                     border: 'none',
-                                                    borderBottom: idx < state.suggestions.length - 1 ? '1px solid #F3F4F6' : 'none',
+                                                    borderBottom: idx < state.searchHistory.length - 1 ? '1px solid #F3F4F6' : 'none',
                                                     cursor: 'pointer',
                                                     textAlign: 'left' as const,
                                                 }}
@@ -1313,64 +1362,17 @@ function MobileWebMapScreen() {
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     flexShrink: 0,
                                                 }}>
-                                                    <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                                    <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                                 </div>
-                                                <span style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{shortAddress}</span>
+                                                <span style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</span>
+                                                <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
                                             </button>
-                                        );
-                                    })
-                                )}
-                            </>
-                        ) : (
-                            (!state.searchQuery && state.searchHistory.length > 0) ? (
-                                <>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                        <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>История</span>
-                                        <button
-                                            onClick={() => state.setSearchHistory([])}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#9CA3AF' }}
-                                        >
-                                            Очистить
-                                        </button>
-                                    </div>
-                                    {state.searchHistory.map((item, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => {
-                                                state.setSearchQuery(item);
-                                                setSearchFocused(false);
-                                                setSheetHeight(SNAP_HALF);
-                                            }}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 10,
-                                                width: '100%',
-                                                padding: '10px 0',
-                                                background: 'none',
-                                                border: 'none',
-                                                borderBottom: idx < state.searchHistory.length - 1 ? '1px solid #F3F4F6' : 'none',
-                                                cursor: 'pointer',
-                                                textAlign: 'left' as const,
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: 36, height: 36, borderRadius: 18,
-                                                backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                flexShrink: 0,
-                                            }}>
-                                                <Search size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
-                                            </div>
-                                            <span style={{ fontSize: 14, color: isDarkMode ? '#D1D5DB' : '#374151', flex: 1 }}>{item}</span>
-                                            <Clock size={14} color={isDarkMode ? '#6B7280' : '#D1D5DB'} />
-                                        </button>
-                                    ))}
-                                </>
-                            ) : null
-                        )}
-                    </div>
-                )}
+                                        ))}
+                                    </>
+                                ) : null
+                            )}
+                        </div>
+                    )}
             </div>
 
 
@@ -1449,25 +1451,27 @@ function MobileWebMapScreen() {
                         bottom: 24,
                         left: 12, right: 12,
                         zIndex: 50,
-                        background: 'white',
+                        background: isDarkMode ? '#1F2937' : 'white',
+                        border: isDarkMode ? '1px solid #374151' : 'none',
                         borderRadius: 20,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                        boxShadow: isDarkMode ? '0 4px 20px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.15)',
                         padding: 20,
                     }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                         <div style={{ flex: 1, marginRight: 12 }}>
-                            <div style={{ fontWeight: 700, fontSize: 16 }}>Новая метка</div>
+                            <div style={{ fontWeight: 700, fontSize: 16, color: isDarkMode ? '#F9FAFB' : '#111827' }}>Новая метка</div>
                             {state.selectedAddress && (
-                                <div style={{ color: '#374151', fontSize: 14, marginTop: 4 }}>
+                                <div style={{ color: isDarkMode ? '#D1D5DB' : '#374151', fontSize: 14, marginTop: 4 }}>
                                     {state.selectedAddress}
                                 </div>
                             )}
-                            <div style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4 }}>
+                            <div style={{ color: isDarkMode ? '#9CA3AF' : '#9CA3AF', fontSize: 11, marginTop: 4 }}>
                                 {state.selectedCoord?.latitude.toFixed(6)},{' '}
                                 {state.selectedCoord?.longitude.toFixed(6)}
                             </div>
                         </div>
+
                         <button
                             onClick={() => state.setSelectedCoord(null)}
                             style={{
