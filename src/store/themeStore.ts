@@ -4,10 +4,10 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 interface ThemeState {
     isDarkMode: boolean;
-    fogOfWar: boolean;
+    visibilityArea: boolean;
     city: string;
     setDarkMode: (enabled: boolean) => void;
-    setFogOfWar: (enabled: boolean) => void;
+    setVisibilityArea: (enabled: boolean) => void;
     setCity: (city: string) => void;
 }
 
@@ -15,10 +15,10 @@ export const useThemeStore = create<ThemeState>()(
     persist(
         (set) => ({
             isDarkMode: false,
-            fogOfWar: false,
+            visibilityArea: false,
             city: 'Самара',
             setDarkMode: (enabled) => set({ isDarkMode: enabled }),
-            setFogOfWar: (enabled) => set({ fogOfWar: enabled }),
+            setVisibilityArea: (enabled) => set({ visibilityArea: enabled }),
             setCity: (city) => set({ city }),
         }),
         {

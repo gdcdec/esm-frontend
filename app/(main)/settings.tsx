@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
     const user = useAuthStore((s) => s.user);
-    const { isDarkMode, setDarkMode, fogOfWar, setFogOfWar, city, setCity } = useThemeStore();
+    const { isDarkMode, setDarkMode, visibilityArea, setVisibilityArea, city, setCity } = useThemeStore();
     const { setColorScheme } = useColorScheme();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [showCityModal, setShowCityModal] = useState(false);
@@ -123,13 +123,13 @@ export default function SettingsScreen() {
                                 <View className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-900/30 items-center justify-center mr-3">
                                     <CloudFog size={16} color="#6366F1" />
                                 </View>
-                                <Text className="text-sm text-gray-900 dark:text-gray-100">Туман войны</Text>
+                                <Text className="text-sm text-gray-900 dark:text-gray-100">Область видимости</Text>
                             </View>
                             <Switch
-                                value={fogOfWar}
-                                onValueChange={setFogOfWar}
+                                value={visibilityArea}
+                                onValueChange={setVisibilityArea}
                                 trackColor={{ false: isDarkMode ? '#374151' : '#E5E7EB', true: '#C7D2FE' }}
-                                thumbColor={fogOfWar ? '#4F46E5' : isDarkMode ? '#9CA3AF' : '#F9FAFB'}
+                                thumbColor={visibilityArea ? '#4F46E5' : isDarkMode ? '#9CA3AF' : '#F9FAFB'}
                             />
                         </View>
                     </View>

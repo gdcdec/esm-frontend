@@ -88,7 +88,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     initialRegion = DEFAULT_REGION,
 }, ref) => {
     const mapRef = useRef<RNMapView>(null);
-    const { isDarkMode, fogOfWar, city } = useThemeStore();
+    const { isDarkMode, visibilityArea, city } = useThemeStore();
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
     const [isMapLoading, setIsMapLoading] = useState(true);
     const [mapError, setMapError] = useState<string | null>(null);
@@ -154,7 +154,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     useEffect(() => {
         if (!mapRef.current) return;
 
-        if (fogOfWar) {
+        if (visibilityArea) {
             // Calculate the true geometric centroid of the city to apply accurate camera bounds
             let centerLat = initialRegion.latitude;
             let centerLng = initialRegion.longitude;
@@ -169,12 +169,12 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 { latitude: centerLat - 2.0, longitude: centerLng - 3.0 }  // SouthWest
             );
         } else {
-            // Unlock bounding box completely if fog is disabled
+            // Unlock bounding box completely if visibilityArea is disabled
             // Passing null allows the native map engine to clear constraints completely without math freeze
             // @ts-ignore
             mapRef.current.setMapBoundaries(null, null);
         }
-    }, [fogOfWar, cityBoundary, initialRegion]);
+    }, [visibilityArea, cityBoundary, initialRegion]);
 
     const handleMapLoad = () => {
         setIsMapLoading(false);
@@ -272,7 +272,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 style={StyleSheet.absoluteFillObject}
                 provider={PROVIDER_DEFAULT}
                 initialRegion={initialRegion}
-                minZoomLevel={fogOfWar ? 10 : undefined}
+                minZoomLevel={visibilityArea ? 10 : undefined}
                 onMapReady={handleMapLoad}
                 onPress={(e) => {
                     if (e.nativeEvent.action !== 'marker-press') {
@@ -290,7 +290,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 flipY={false}
             />
 
-            {fogOfWar && <AnimatedFogOverlay isDark={isDarkMode} cityBoundary={cityBoundary} />}
+            {visibilityArea && <AnimatedFogOverlay isDark={isDarkMode} cityBoundary={cityBoundary} />}
 
             {clusters.map((cluster, i) => {
                 const main = cluster[0];

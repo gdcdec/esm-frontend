@@ -43,7 +43,7 @@ export function calculateCentroid(coords: GeoCoordinate[]): GeoCoordinate {
 
 export async function fetchCityBoundary(cityName: string, maxPoints: number = 200): Promise<CityBoundaryData | null> {
     try {
-        const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cityName)}&polygon_geojson=1&format=json`;
+        const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cityName)}&country=RU&polygon_geojson=1&format=json`;
 
         const response = await fetch(url, {
             headers: {
@@ -63,8 +63,21 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
             return null;
         }
 
-        // Find the most relevant administrative boundary (usually the first result with a polygon)
-        const bestResult = data.find((row: any) => row.geojson && (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon'));
+        // Find the most relevant administrative boundary
+        // Priority: 1) city/administrative, 2) city, 3) any with polygon
+        let bestResult = data.find((row: any) => 
+            row.geojson && 
+            (row.type === 'city' || row.type === 'administrative') &&
+            (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon')
+        );
+
+        // Fallback to any result with polygon
+        if (!bestResult) {
+            bestResult = data.find((row: any) => 
+                row.geojson && 
+                (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon')
+            );
+        }
 
         if (!bestResult) {
             console.warn(`[Nominatim] No GeoJSON polygon found for region: ${cityName}`);
@@ -78,8 +91,27 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
             rawCoords = bestResult.geojson.coordinates[0];
         } else if (bestResult.geojson.type === 'MultiPolygon') {
             // MultiPolygon structure: [[[[lng, lat], ...]], [[[lng, lat], ...]]]
-            // We'll just take the first/largest polygon from the multipolygon set for the hole
-            rawCoords = bestResult.geojson.coordinates[0][0];
+            // Combine all polygons into one by taking the largest one
+            let largestPolygon: number[][] = [];
+            let maxArea = 0;
+            
+            for (const polygon of bestResult.geojson.coordinates) {
+                const coords = polygon[0]; // First ring of each polygon
+                // Simple area calculation for comparison
+                let area = 0;
+                for (let i = 0; i < coords.length - 1; i++) {
+                    area += coords[i][0] * coords[i + 1][1] - coords[i + 1][0] * coords[i][1];
+                }
+                area = Math.abs(area) / 2;
+                
+                if (area > maxArea) {
+                    maxArea = area;
+                    largestPolygon = coords;
+                }
+            }
+            
+            rawCoords = largestPolygon;
+            console.log(`[Nominatim] Selected largest polygon from MultiPolygon for ${cityName}, area: ${maxArea.toFixed(2)}`);
         }
 
         // Convert [longitude, latitude] to {latitude, longitude}

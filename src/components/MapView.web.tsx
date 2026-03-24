@@ -40,7 +40,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     initialRegion,
 }, ref) => {
     const mapRef = useRef<MapRef>(null);
-    const { isDarkMode, fogOfWar, city } = useThemeStore();
+    const { isDarkMode, visibilityArea, city } = useThemeStore();
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
     const [isMapLoading, setIsMapLoading] = useState(true);
     const [mapError, setMapError] = useState<string | null>(null);
@@ -268,17 +268,17 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 }}
                 interactiveLayerIds={['cartodb-layer']}
                 maxZoom={19}
-                minZoom={fogOfWar ? 10 : 0}
-                maxBounds={fogOfWar ? [
-                    [center.longitude - 3.0, center.latitude - 2.0], // SW
-                    [center.longitude + 3.0, center.latitude + 2.0]  // NE
+                minZoom={visibilityArea ? 10 : 0}
+                maxBounds={visibilityArea && cityBoundary ? [
+                    [cityBoundary.center.longitude - 3.0, cityBoundary.center.latitude - 2.0], // SW
+                    [cityBoundary.center.longitude + 3.0, cityBoundary.center.latitude + 2.0]  // NE
                 ] : undefined}
                 dragRotate={isMobile}
                 touchPitch={isMobile}
                 touchZoomRotate={isMobile}
                 keyboard={isMobile}
             >
-                {fogOfWar && (
+                {visibilityArea && (
                     <Source id="fog-source" type="geojson" data={fogGeoJSON}>
                         <Layer {...fogLayerStyle} />
                     </Source>
