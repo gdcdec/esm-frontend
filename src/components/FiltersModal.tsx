@@ -199,6 +199,9 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
   availableAuthors = []
 }) => {
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
+  const themeStore = useThemeStore();
+  const visibilityArea = themeStore.visibilityArea;
+  const city = themeStore.city;
   const [expandedSections, setExpandedSections] = useState({
     rubric: true,
     location: false,
@@ -308,10 +311,10 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
             <View className="space-y-3">
               <View>
                 <Text className={`mb-2 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Город
+                  Город {visibilityArea && city && `(авто: ${city})`}
                 </Text>
                 <TextInput
-                  value={filters.city || ''}
+                  value={filters.city || (visibilityArea && city ? city : '')}
                   onChangeText={(value) => updateFilter('city', value || undefined)}
                   placeholder="Введите город"
                   placeholderTextColor={isDarkMode ? '#9CA3AF' : '#6B7280'}

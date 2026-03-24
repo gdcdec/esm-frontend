@@ -55,6 +55,7 @@ function useIsMobile(breakpoint = 768) {
 
 // ─── Shared state hook ────────────────────────────────────────
 function useMapState() {
+    const { visibilityArea, city } = useThemeStore();
     const [reports, setReports] = useState<Report[]>([]);
     const [isLoadingReports, setIsLoadingReports] = useState(true);
     const [selectedCoord, setSelectedCoord] = useState<{
@@ -101,14 +102,19 @@ function useMapState() {
     const fetchReports = useCallback(async (currentFilters?: ReportFilters) => {
         setIsLoadingReports(true);
         try {
-            const data = await reportsService.getAll(currentFilters || filters);
+            // Add city filter if visibility area is enabled
+            let finalFilters = currentFilters || filters;
+            if (visibilityArea && city) {
+                finalFilters = { ...finalFilters, city };
+            }
+            const data = await reportsService.getAll(finalFilters);
             setReports(data);
         } catch (err) {
             console.warn('Failed to fetch reports:', err);
         } finally {
             setIsLoadingReports(false);
         }
-    }, [filters]);
+    }, [filters, visibilityArea, city]);
 
     // Load dynamic rubrics and initial posts
     useEffect(() => {
@@ -127,10 +133,10 @@ function useMapState() {
         loadInitialData();
     }, []);
 
-    // Re-fetch reports when filters change
+    // Re-fetch reports when filters or visibility settings change
     useEffect(() => {
         fetchReports(filters);
-    }, [filters]);
+    }, [filters, visibilityArea, city]);
 
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
 
@@ -223,6 +229,7 @@ function InlineFilters({
     state: ReturnType<typeof useMapState>,
     isDarkMode: boolean
 }) {
+    const { visibilityArea, city } = useThemeStore();
     const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'ordering' | null>(null);
 
     const sortings = [
@@ -241,11 +248,20 @@ function InlineFilters({
         <View className="bg-white dark:bg-[#1f2937] z-50">
             <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
                 <Text className="font-bold text-gray-900 dark:text-slate-50 text-xl tracking-tight">
-                    {state.searchQuery ? 'Результаты поиска' : 'Лента происшествий'}
+                    {state.searchQuery 
+                        ? 'Результаты поиска' 
+                        : visibilityArea && city 
+                            ? `Лента: ${city}` 
+                            : 'Лента происшествий'
+                    }
                 </Text>
                 {Object.keys(state.filters).length > 0 && (
                     <TouchableOpacity
-                        onPress={() => state.setFilters({})}
+                        onPress={() => {
+                            // Keep city filter if visibilityArea is enabled
+                            const newFilters = visibilityArea && city ? { city } : {};
+                            state.setFilters(newFilters);
+                        }}
                         className="bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1.5 rounded-full"
                     >
                         <Text className="text-blue-500 font-semibold text-xs transition-all">Сбросить</Text>
@@ -1678,8 +1694,7 @@ function NativeMapScreen() {
                         className={`w-12 h-12 rounded-full shadow-lg items-center justify-center border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
                     >
                         <Text className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
-                            {user?.username?.charAt(0)?.toUpperCase() ?? '?'}
-                        </Text>
+                            {user?.username?.charAt(0)?.toUpperCase() ?? '?'}</Text>
                     </TouchableOpacity>
                 </SafeAreaView>
 
