@@ -42,6 +42,8 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     const mapRef = useRef<MapRef>(null);
     const { isDarkMode, fogOfWar, city } = useThemeStore();
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
+    const [isMapLoading, setIsMapLoading] = useState(true);
+    const [mapError, setMapError] = useState<string | null>(null);
 
     const center = initialRegion
         ? { latitude: initialRegion.latitude, longitude: initialRegion.longitude }
@@ -164,8 +166,90 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     // Check if the client is a mobile browser to enable touch gestures
     const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(window.navigator.userAgent);
 
+    const handleMapLoad = () => {
+        setIsMapLoading(false);
+        setMapError(null);
+    };
+
+    const handleMapError = (error: any) => {
+        console.error('Map loading error:', error);
+        setIsMapLoading(false);
+        setMapError('Не удалось загрузить карту. Проверьте подключение к интернету.');
+    };
+
+    const handleRetry = () => {
+        setIsMapLoading(true);
+        setMapError(null);
+        // Перезагрузка карты
+        if (mapRef.current) {
+            mapRef.current.resize();
+        }
+    };
+
     return (
-        <View style={{ width: '100%', height: '100%' }}>
+        <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+            {/* Индикатор загрузки */}
+            {isMapLoading && (
+                <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: isDarkMode ? '#111827' : '#F3F4F6',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{ 
+                        color: isDarkMode ? '#FFFFFF' : '#111827',
+                        fontSize: 16,
+                        marginBottom: 8
+                    }}>
+                        Загрузка карты...
+                    </div>
+                </View>
+            )}
+
+            {/* Сообщение об ошибке */}
+            {mapError && (
+                <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: isDarkMode ? '#111827' : '#F3F4F6',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000,
+                    padding: 20
+                }}>
+                    <div style={{ 
+                        color: '#EF4444',
+                        fontSize: 16,
+                        marginBottom: 16,
+                        textAlign: 'center'
+                    }}>
+                        {mapError}
+                    </div>
+                    <button
+                        onClick={handleRetry}
+                        style={{
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            padding: '12px 24px',
+                            borderRadius: 8,
+                            border: 'none',
+                            fontSize: 14,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Попробовать снова
+                    </button>
+                </View>
+            )}
+
             <Map
                 ref={mapRef}
                 initialViewState={{
@@ -177,6 +261,8 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 }}
                 mapStyle={mapStyle}
                 style={{ width: '100%', height: '100%' }}
+                onLoad={handleMapLoad}
+                onError={handleMapError}
                 onClick={(e) => {
                     onMapPress?.({ latitude: e.lngLat.lat, longitude: e.lngLat.lng });
                 }}

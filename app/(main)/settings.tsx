@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { Bell, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X, CheckSquare } from 'lucide-react-native';
+import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import { Alert, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';

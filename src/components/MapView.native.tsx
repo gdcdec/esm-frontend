@@ -5,7 +5,7 @@ import { CityBoundaryData, fetchCityBoundary } from '@/src/utils/fetchCityBounda
 import { generateCloudyHole } from '@/src/utils/generateCloudyHole';
 import { generateCloudyPolygon } from '@/src/utils/generateCloudyPolygon';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import RNMapView, { Marker, Polygon, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 
 export interface MapViewRef {
@@ -90,6 +90,8 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     const mapRef = useRef<RNMapView>(null);
     const { isDarkMode, fogOfWar, city } = useThemeStore();
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
+    const [isMapLoading, setIsMapLoading] = useState(true);
+    const [mapError, setMapError] = useState<string | null>(null);
 
     // Fetch the real OSM boundaries of the user's city dynamically
     useEffect(() => {
@@ -174,22 +176,113 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         }
     }, [fogOfWar, cityBoundary, initialRegion]);
 
+    const handleMapLoad = () => {
+        setIsMapLoading(false);
+        setMapError(null);
+    };
+
+    const handleTileError = () => {
+        console.warn('Map tiles failed to load');
+        setMapError('Не удалось загрузить карту. Проверьте подключение к интернету.');
+        setIsMapLoading(false);
+    };
+
+    const handleRetry = () => {
+        setIsMapLoading(true);
+        setMapError(null);
+        // Принудительная перезагрузка карты
+        setTimeout(() => {
+            setIsMapLoading(false);
+        }, 1000);
+    };
+
     return (
-        <RNMapView
-            ref={mapRef}
-            style={StyleSheet.absoluteFillObject}
-            provider={PROVIDER_DEFAULT}
-            initialRegion={initialRegion}
-            minZoomLevel={fogOfWar ? 10 : undefined}
-            onPress={(e) => {
-                if (e.nativeEvent.action !== 'marker-press') {
-                    onMapPress?.(e.nativeEvent.coordinate);
-                }
-            }}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-            zoomControlEnabled={false}
-        >
+        <View style={{ flex: 1, position: 'relative' }}>
+            {/* Индикатор загрузки */}
+            {isMapLoading && (
+                <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: isDarkMode ? '#111827' : '#F3F4F6',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000
+                }}>
+                    <ActivityIndicator 
+                        size="large" 
+                        color={isDarkMode ? '#FFFFFF' : '#111827'} 
+                        style={{ marginBottom: 16 }}
+                    />
+                    <Text style={{ 
+                        color: isDarkMode ? '#FFFFFF' : '#111827',
+                        fontSize: 16
+                    }}>
+                        Загрузка карты...
+                    </Text>
+                </View>
+            )}
+
+            {/* Сообщение об ошибке */}
+            {mapError && (
+                <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: isDarkMode ? '#111827' : '#F3F4F6',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000,
+                    padding: 20
+                }}>
+                    <Text style={{ 
+                        color: '#EF4444',
+                        fontSize: 16,
+                        marginBottom: 16,
+                        textAlign: 'center'
+                    }}>
+                        {mapError}
+                    </Text>
+                    <TouchableOpacity
+                        onPress={handleRetry}
+                        style={{
+                            backgroundColor: '#3B82F6',
+                            paddingHorizontal: 24,
+                            paddingVertical: 12,
+                            borderRadius: 8
+                        }}
+                    >
+                        <Text style={{
+                            color: 'white',
+                            fontSize: 14,
+                            fontWeight: '600'
+                        }}>
+                            Попробовать снова
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            <RNMapView
+                ref={mapRef}
+                style={StyleSheet.absoluteFillObject}
+                provider={PROVIDER_DEFAULT}
+                initialRegion={initialRegion}
+                minZoomLevel={fogOfWar ? 10 : undefined}
+                onMapReady={handleMapLoad}
+                onPress={(e) => {
+                    if (e.nativeEvent.action !== 'marker-press') {
+                        onMapPress?.(e.nativeEvent.coordinate);
+                    }
+                }}
+                showsUserLocation={true}
+                showsMyLocationButton={false}
+                zoomControlEnabled={false}
+            >
             {/* OpenStreetMap tiles via CartoDB CDN (avoids OSM 403 block) почему-то меня блокирует osm заменил https://tile.openstreetmap.org/{z}/{x}/{y}.png на это, надо думать*/}
             <UrlTile
                 urlTemplate={"https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"}
@@ -227,5 +320,6 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 />
             )}
         </RNMapView>
+        </View>
     );
 });
