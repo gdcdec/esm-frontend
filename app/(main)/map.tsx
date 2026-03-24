@@ -759,7 +759,7 @@ function WebMapScreen() {
                     </div>
 
                     {/* New report button */}
-                    <div style={{ padding: 16, borderTop: '1px solid #F3F4F6' }}>
+                    <div style={{ padding: 16 }}>
                         <Button
                             title="+ Сообщить о проблеме"
                             onPress={() => router.push({
