@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
-import { Alert, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -25,7 +25,7 @@ export default function SettingsScreen() {
     };
 
     const handleAbout = () => {
-        Alert.alert('О программе', 'Мой Донос v1.0.0\nСделано с заботой о городе.');
+        router.push('/(main)/about');
     };
 
     const handleChangeCity = () => {
