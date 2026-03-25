@@ -4,7 +4,7 @@ import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
 import { Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ForgotPasswordScreen() {
     const [email, setEmail] = useState('');
@@ -91,7 +91,7 @@ export default function ForgotPasswordScreen() {
             router.replace('/(auth)/login');
             // Use setTimeout to show alert after navigation
             setTimeout(() => {
-                alert('Пароль успешно изменен! Теперь вы можете войти с новым паролем.');
+                Alert.alert('Успех', 'Пароль успешно изменен! Теперь вы можете войти с новым паролем.');
             }, 300);
         } catch (err: any) {
             const msg =

@@ -42,10 +42,15 @@ export const addressService = {
         query: string,
         limit: number = 5
     ): Promise<AddressSearchResult[]> => {
-        const { data } = await api.get<AddressSearchResult[]>(
-            '/address/search/',
-            { params: { q: query, limit } }
-        );
-        return data;
+        try {
+            const { data } = await api.get<AddressSearchResult[]>(
+                '/address/search/',
+                { params: { q: query, limit } }
+            );
+            return Array.isArray(data) ? data : [];
+        } catch (error) {
+            console.warn('Address search error:', error);
+            return [];
+        }
     },
 };

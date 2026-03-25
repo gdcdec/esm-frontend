@@ -43,104 +43,113 @@ export function calculateCentroid(coords: GeoCoordinate[]): GeoCoordinate {
 
 export async function fetchCityBoundary(cityName: string, maxPoints: number = 200): Promise<CityBoundaryData | null> {
     try {
-        const url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cityName)}&country=RU&polygon_geojson=1&format=json`;
+        let url: string;
+        let headers: Record<string, string> = {
+            'User-Agent': 'MoyDonos-App/1.0',
+        };
 
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'MoyDonos-App/1.0',
+        // For now, always use direct API calls with fallback
+        // TODO: Implement proper CORS proxy when needed
+        url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cityName)}&country=RU&polygon_geojson=1&format=json`;
+        
+        try {
+            const response = await fetch(url, { headers });
+
+            if (!response.ok) {
+                console.warn(`[Nominatim] Fetch failed with status ${response.status}`);
+                return null;
             }
-        });
 
-        if (!response.ok) {
-            console.warn(`[Nominatim] Fetch failed with status ${response.status}`);
-            return null;
-        }
+            const data = await response.json();
 
-        const data = await response.json();
+            if (!data || data.length === 0) {
+                console.warn(`[Nominatim] No results found for region: ${cityName}`);
+                return null;
+            }
 
-        if (!data || data.length === 0) {
-            console.warn(`[Nominatim] No results found for region: ${cityName}`);
-            return null;
-        }
-
-        // Find the most relevant administrative boundary
-        // Priority: 1) city/administrative, 2) city, 3) any with polygon
-        let bestResult = data.find((row: any) => 
-            row.geojson && 
-            (row.type === 'city' || row.type === 'administrative') &&
-            (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon')
-        );
-
-        // Fallback to any result with polygon
-        if (!bestResult) {
-            bestResult = data.find((row: any) => 
+            // Find the most relevant administrative boundary
+            // Priority: 1) city/administrative, 2) city, 3) any with polygon
+            let bestResult = data.find((row: any) => 
                 row.geojson && 
+                (row.type === 'city' || row.type === 'administrative') &&
                 (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon')
             );
-        }
 
-        if (!bestResult) {
-            console.warn(`[Nominatim] No GeoJSON polygon found for region: ${cityName}`);
+            // Fallback to any result with polygon
+            if (!bestResult) {
+                bestResult = data.find((row: any) => 
+                    row.geojson && 
+                    (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon')
+                );
+            }
+
+            if (!bestResult) {
+                console.warn(`[Nominatim] No GeoJSON polygon found for region: ${cityName}`);
+                return null;
+            }
+
+            let rawCoords: number[][] = [];
+
+            if (bestResult.geojson.type === 'Polygon') {
+                // Polygon structure: [[[lng, lat], [lng, lat], ...]]]
+                rawCoords = bestResult.geojson.coordinates[0];
+            } else if (bestResult.geojson.type === 'MultiPolygon') {
+                // MultiPolygon structure: [[[[lng, lat], ...]], [[[lng, lat], ...]]]
+                // Combine all polygons into one by taking the largest one
+                let largestPolygon: number[][] = [];
+                let maxArea = 0;
+                
+                for (const polygon of bestResult.geojson.coordinates) {
+                    const coords = polygon[0]; // First ring of each polygon
+                    // Simple area calculation for comparison
+                    let area = 0;
+                    for (let i = 0; i < coords.length - 1; i++) {
+                        area += coords[i][0] * coords[i + 1][1] - coords[i + 1][0] * coords[i][1];
+                    }
+                    area = Math.abs(area) / 2;
+                    
+                    if (area > maxArea) {
+                        maxArea = area;
+                        largestPolygon = coords;
+                    }
+                }
+                
+                rawCoords = largestPolygon;
+                console.log(`[Nominatim] Selected largest polygon from MultiPolygon for ${cityName}, area: ${maxArea.toFixed(2)}`);
+            }
+
+            // Convert [longitude, latitude] to {latitude, longitude}
+            let mappedCoords: GeoCoordinate[] = rawCoords.map((coord: number[]) => ({
+                latitude: coord[1],
+                longitude: coord[0]
+            }));
+
+            // Decimate (simplify) the polygon to reduce rendering load
+            if (mappedCoords.length > maxPoints) {
+                const step = Math.ceil(mappedCoords.length / maxPoints);
+                const decimated = [];
+                for (let i = 0; i < mappedCoords.length; i += step) {
+                    decimated.push(mappedCoords[i]);
+                }
+                // Ensure polygon is closed
+                if (decimated.length > 0) {
+                    decimated.push(decimated[0]);
+                }
+                mappedCoords = decimated;
+            }
+
+            return {
+                coords: mappedCoords.reverse(),
+                center: {
+                    latitude: parseFloat(bestResult.lat),
+                    longitude: parseFloat(bestResult.lon)
+                }
+            };
+        } catch (fetchError) {
+            // Handle CORS and network errors gracefully
+            console.warn(`[Nominatim] Network/CORS error for ${cityName}:`, fetchError);
             return null;
         }
-
-        let rawCoords: number[][] = [];
-
-        if (bestResult.geojson.type === 'Polygon') {
-            // Polygon structure: [[[lng, lat], [lng, lat], ...]]]
-            rawCoords = bestResult.geojson.coordinates[0];
-        } else if (bestResult.geojson.type === 'MultiPolygon') {
-            // MultiPolygon structure: [[[[lng, lat], ...]], [[[lng, lat], ...]]]
-            // Combine all polygons into one by taking the largest one
-            let largestPolygon: number[][] = [];
-            let maxArea = 0;
-            
-            for (const polygon of bestResult.geojson.coordinates) {
-                const coords = polygon[0]; // First ring of each polygon
-                // Simple area calculation for comparison
-                let area = 0;
-                for (let i = 0; i < coords.length - 1; i++) {
-                    area += coords[i][0] * coords[i + 1][1] - coords[i + 1][0] * coords[i][1];
-                }
-                area = Math.abs(area) / 2;
-                
-                if (area > maxArea) {
-                    maxArea = area;
-                    largestPolygon = coords;
-                }
-            }
-            
-            rawCoords = largestPolygon;
-            console.log(`[Nominatim] Selected largest polygon from MultiPolygon for ${cityName}, area: ${maxArea.toFixed(2)}`);
-        }
-
-        // Convert [longitude, latitude] to {latitude, longitude}
-        let mappedCoords: GeoCoordinate[] = rawCoords.map((coord: number[]) => ({
-            latitude: coord[1],
-            longitude: coord[0]
-        }));
-
-        // Decimate (simplify) the polygon to reduce rendering load
-        if (mappedCoords.length > maxPoints) {
-            const step = Math.ceil(mappedCoords.length / maxPoints);
-            const decimated = [];
-            for (let i = 0; i < mappedCoords.length; i += step) {
-                decimated.push(mappedCoords[i]);
-            }
-            // Ensure polygon is closed
-            if (decimated.length > 0) {
-                decimated.push(decimated[0]);
-            }
-            mappedCoords = decimated;
-        }
-
-        return {
-            coords: mappedCoords.reverse(),
-            center: {
-                latitude: parseFloat(bestResult.lat),
-                longitude: parseFloat(bestResult.lon)
-            }
-        };
 
     } catch (error) {
         console.error(`[Nominatim] Error fetching boundary for ${cityName}:`, error);

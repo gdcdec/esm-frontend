@@ -171,8 +171,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         } else {
             // Unlock bounding box completely if visibilityArea is disabled
             // Passing null allows the native map engine to clear constraints completely without math freeze
-            // @ts-ignore
-            mapRef.current.setMapBoundaries(null, null);
+            (mapRef.current as any)?.setMapBoundaries(null, null);
         }
     }, [visibilityArea, cityBoundary, initialRegion]);
 

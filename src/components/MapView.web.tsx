@@ -29,6 +29,16 @@ interface MapViewProps {
     };
 }
 
+interface FogLayerStyle {
+    id: string;
+    type: 'fill';
+    paint?: {
+        'fill-color'?: string;
+        'fill-opacity'?: number;
+    };
+    layout?: Record<string, any>;
+}
+
 const DEFAULT_CENTER: [number, number] = [53.20, 50.15];
 const DEFAULT_ZOOM = 13;
 
@@ -114,7 +124,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     const clusters = useMemo(() => {
         const grouped: Record<string, Report[]> = {};
         reports.forEach((r) => {
-            if (r.latitude == null || r.longitude == null) return;
+            if (r.latitude === null || r.longitude === null || r.latitude === undefined || r.longitude === undefined) return;
             const key = `${r.latitude.toFixed(3)}-${r.longitude.toFixed(3)}`;
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(r);
@@ -154,7 +164,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         ]
     } as any), []);
 
-    const fogLayerStyle = useMemo((): any => ({
+    const fogLayerStyle = useMemo((): FogLayerStyle => ({
         id: 'fog-layer',
         type: 'fill',
         paint: {

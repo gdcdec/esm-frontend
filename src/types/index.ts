@@ -6,6 +6,12 @@ export interface Category {
     darkColor?: string;
 }
 
+export interface MapViewRef {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    goToLocation: (lat: number, lng: number) => void;
+}
+
 export type ReportStatus = 'draft' | 'published' | 'check' | 'archived' | 'banned';
 
 export interface ReportPhoto {

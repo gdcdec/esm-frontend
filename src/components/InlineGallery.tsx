@@ -54,10 +54,10 @@ export function GallerySheet({
 
     const bottomSheetRef = useRef<BottomSheet>(null);
     const flatListRef = useRef<FlatListType>(null);
+    const prevIds = useRef<Set<string>>(new Set());
 
     const snapPoints = useMemo(() => ['45%', '90%'], []);
-
-    const selectedUris = new Set(selected.map((p) => p.uri));
+    const selectedUris = useMemo(() => new Set(selected.map((p) => p.uri)), [selected]);
 
     useEffect(() => {
         if (visible) {
@@ -110,8 +110,8 @@ export function GallerySheet({
             sortBy: [MediaLibrary.SortBy.creationTime],
         });
         setAssets((prev) => {
-            const existingIds = new Set(prev.map((a) => a.id));
-            const unique = page.assets.filter((a) => !existingIds.has(a.id));
+            const unique = page.assets.filter((a) => !prevIds.current.has(a.id));
+            prevIds.current = new Set([...prevIds.current, ...unique.map((a) => a.id)]);
             return [...prev, ...unique];
         });
         setEndCursor(page.endCursor);
@@ -135,7 +135,10 @@ export function GallerySheet({
                     Alert.alert('Ошибка', 'Файл слишком большой (макс. 10 МБ)');
                     return;
                 }
-            } catch { }
+            } catch (error) {
+                console.warn('Failed to get asset info:', error);
+                // Продолжаем без проверки размера если не удалось получить информацию
+            }
             onSelectionChange([
                 ...selected,
                 {

@@ -15,9 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const { width: screenWidth } = Dimensions.get('window');
 
 // Компонент карусели фотографий
-function PhotoCarousel({ photos, isDarkMode }: { photos: any[], isDarkMode: boolean }) {
+interface Photo {
+    photo_url: string;
+    id?: number | string;
+    [key: string]: any;
+}
+
+function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: boolean }) {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+    const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 
     if (!photos || photos.length === 0) {
         return null;

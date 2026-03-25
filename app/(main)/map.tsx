@@ -1,5 +1,5 @@
 import { ReportFilters } from '@/src/components/FiltersModal';
-import { AppMapView, MapViewRef } from '@/src/components/MapView';
+import { AppMapView } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
 import { addressService } from '@/src/services/address';
@@ -7,7 +7,7 @@ import { reportsService } from '@/src/services/reports';
 import { rubricsService } from '@/src/services/rubrics';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
-import { AddressSearchResult, Report, ReportStatus } from '@/src/types';
+import { AddressSearchResult, MapViewRef, Report, ReportStatus } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -76,6 +76,15 @@ function useMapState() {
     const [isSearching, setIsSearching] = useState(false);
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const mapRef = useRef<MapViewRef>(null);
 
     // Fetch suggestions
@@ -118,19 +127,32 @@ function useMapState() {
 
     // Load dynamic rubrics and initial posts
     useEffect(() => {
+        let isMounted = true;
+        
         const loadInitialData = async () => {
             try {
                 // Fetch rubrics dynamically from backend
                 const rubricsData = await rubricsService.getAll();
-                setRubrics(rubricsData.map(r => r.name));
+                if (isMounted) {
+                    setRubrics(rubricsData.map(r => r.name));
+                }
             } catch (err) {
                 console.warn('Failed to fetch rubrics:', err);
                 // Fallback to defaults if backend fails
-                setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
+                if (isMounted) {
+                    setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
+                }
             }
-            fetchReports();
+            if (isMounted) {
+                fetchReports();
+            }
         };
+        
         loadInitialData();
+        
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     // Re-fetch reports when filters or visibility settings change
@@ -232,17 +254,27 @@ function InlineFilters({
     const { visibilityArea, city } = useThemeStore();
     const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'ordering' | null>(null);
 
-    const sortings = [
+    const sortings = useMemo(() => [
         { label: 'Сначала новые', value: '-created_at' },
         { label: 'Сначала старые', value: 'created_at' },
-    ];
+    ], []);
 
-    const currentSorting = sortings.find(s => s.value === (state.filters.ordering || '-created_at')) || sortings[0];
+    const currentSorting = useMemo(() => 
+        sortings.find(s => s.value === (state.filters.ordering || '-created_at')) || sortings[0],
+        [state.filters.ordering, sortings]
+    );
 
-    const selectedRubricsCount = state.filters.rubrics?.length || 0;
-    const rubricsLabel = selectedRubricsCount === 0
-        ? 'Все рубрики'
-        : `Рубрики: ${selectedRubricsCount}`;
+    const selectedRubricsCount = useMemo(() => 
+        state.filters.rubrics?.length || 0,
+        [state.filters.rubrics]
+    );
+
+    const rubricsLabel = useMemo(() => 
+        selectedRubricsCount === 0
+            ? 'Все рубрики'
+            : `Рубрики: ${selectedRubricsCount}`,
+        [selectedRubricsCount]
+    );
 
     return (
         <View className="bg-white dark:bg-[#1f2937] z-50">

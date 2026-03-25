@@ -62,7 +62,7 @@ export default function AboutScreen() {
         </View>
     );
 
-    const LinkButton = ({ title, onPress, icon: Icon }: { title: string; onPress: () => void; icon: any }) => (
+    const LinkButton = ({ title, onPress, icon: Icon }: { title: string; onPress: () => void; icon: React.ComponentType<{ size?: number; color?: string }> }) => (
         <TouchableOpacity
             onPress={onPress}
             className="flex-row items-center justify-between py-3 px-4 bg-white dark:bg-gray-800 rounded-xl mb-2 border border-gray-100 dark:border-gray-700"
