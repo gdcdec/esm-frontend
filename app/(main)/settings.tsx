@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, MapPin, Moon, Shield, X } from 'lucide-react-native';
+import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, LogOut, MapPin, Moon, Shield, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import { Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
     const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
     const { isDarkMode, setDarkMode, visibilityArea, setVisibilityArea, city, setCity } = useThemeStore();
     const { setColorScheme } = useColorScheme();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -30,6 +31,11 @@ export default function SettingsScreen() {
 
     const handleChangeCity = () => {
         setShowCityModal(true);
+    };
+
+    const handleLogout = () => {
+        logout();
+        router.replace('/(auth)/login');
     };
 
     return (
@@ -76,6 +82,16 @@ export default function SettingsScreen() {
                                     <Shield size={16} color="#10B981" />
                                 </View>
                                 <Text className="text-sm text-gray-900 dark:text-gray-100">Безопасность</Text>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={handleLogout} className="flex-row items-center justify-between py-3">
+                            <View className="flex-row items-center">
+                                <View className="w-7 h-7 rounded-full bg-red-50 dark:bg-red-900/30 items-center justify-center mr-3">
+                                    <LogOut size={16} color="#EF4444" />
+                                </View>
+                                <Text className="text-sm text-red-500 dark:text-red-400">Выйти из аккаунта</Text>
                             </View>
                             <ChevronRight size={18} color="#9CA3AF" />
                         </TouchableOpacity>

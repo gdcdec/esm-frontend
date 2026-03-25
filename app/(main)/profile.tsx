@@ -590,17 +590,6 @@ export default function ProfileScreen() {
                             </View>
                         )}
 
-                        {/* Logout */}
-                        <View className="px-6 pb-8">
-                            <View className="w-full max-w-sm self-center">
-                                <TouchableOpacity
-                                    onPress={handleLogout}
-                                    className="py-3 bg-red-50 dark:bg-red-900/20 rounded-xl items-center"
-                                >
-                                    <Text className="text-red-500 font-semibold">Выйти из аккаунта</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
                     </View>
                 </View>
             </ScrollView>
