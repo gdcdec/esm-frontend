@@ -32,9 +32,35 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401
+// Utility to recursively fix absolute media URLs missing the port
+const fixMediaUrls = (data: any): any => {
+    if (typeof data === 'string') {
+        if (data.startsWith('http://109.120.135.24/media/')) {
+            return data.replace('http://109.120.135.24/media/', 'http://109.120.135.24:8000/media/');
+        }
+        return data;
+    }
+    if (Array.isArray(data)) {
+        return data.map(item => fixMediaUrls(item));
+    }
+    if (data !== null && typeof data === 'object') {
+        const newData: any = {};
+        for (const key in data) {
+            newData[key] = fixMediaUrls(data[key]);
+        }
+        return newData;
+    }
+    return data;
+};
+
+// Response interceptor: fix image URLs and handle 401
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        if (response.data) {
+            response.data = fixMediaUrls(response.data);
+        }
+        return response;
+    },
     (error) => {
         if (error.response?.status === 401) {
             const url = error.config?.url || '';
