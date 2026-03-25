@@ -7,9 +7,9 @@ import { Report } from '@/src/types';
 import * as Print from 'expo-print';
 import { router, useFocusEffect } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { ChevronLeft, ChevronRight, Download, Settings, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Download, FileText, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -192,6 +192,8 @@ export default function ProfileScreen() {
     const [isExporting, setIsExporting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [reportDetailLoading, setReportDetailLoading] = useState(false);
+    const [exportPreview, setExportPreview] = useState<{ report: Report; letter: string } | null>(null);
+    const [editableLetterText, setEditableLetterText] = useState('');
     const reportsPerPage = 5;
 
     const fetchMyReports = useCallback(async () => {
@@ -228,55 +230,11 @@ export default function ProfileScreen() {
         setIsExporting(true);
         try {
             const data = await reportsService.export(id);
-            const reportInfo = myReports.find(r => r.id === id) || selectedReport;
+            const reportInfo = selectedReport || myReports.find(r => r.id === id);
 
             if (data.letter && reportInfo) {
-                const html = `
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-    <style>
-      body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; line-height: 1.6; color: #333; }
-      h1 { font-size: 24px; margin-bottom: 10px; color: #111827; }
-      .meta { color: #6B7280; font-size: 14px; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 15px; line-height: 1.8; }
-      .letter { white-space: pre-wrap; margin-top: 20px; font-size: 15px; color: #1F2937; }
-      img { max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 30px; display: block; object-fit: contain; }
-    </style>
-  </head>
-  <body>
-    <h1>${'Обращение: ' + reportInfo.title || 'Обращение'}</h1>
-    
-    <div class="letter">${data.letter.replace(/\n/g, '<br/>')}</div>
-    
-    ${reportInfo.preview_photo ? `<img src="${reportInfo.preview_photo}" />` : ''}
-  </body>
-</html>`;
-
-                if (Platform.OS === 'web') {
-                    const printWindow = window.open('', '_blank');
-                    if (printWindow) {
-                        printWindow.document.write(html);
-                        printWindow.document.close();
-                        printWindow.focus();
-                        setTimeout(() => {
-                            printWindow.print();
-                            printWindow.close();
-                        }, 250);
-                    } else {
-                        Alert.alert('Экспорт', 'Заблокировано всплывающее окно. Пожалуйста, разрешите всплывающие окна для этого сайта.');
-                    }
-                } else {
-                    const { uri } = await Print.printToFileAsync({ html });
-                    if (await Sharing.isAvailableAsync()) {
-                        await Sharing.shareAsync(uri, {
-                            mimeType: 'application/pdf',
-                            dialogTitle: 'Экспорт обращения',
-                            UTI: 'com.adobe.pdf'
-                        });
-                    } else {
-                        Alert.alert('Экспорт', 'Функция "Поделиться" недоступна на вашем устройстве');
-                    }
-                }
+                setEditableLetterText(data.letter);
+                setExportPreview({ report: reportInfo, letter: data.letter });
             } else {
                 Alert.alert('Экспорт', data.message || 'Ошибка генерации документа.');
             }
@@ -285,6 +243,77 @@ export default function ProfileScreen() {
             Alert.alert('Ошибка', 'Не удалось экспортировать обращение.');
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const handleConfirmExport = async () => {
+        if (!exportPreview) return;
+        const { report: reportInfo } = exportPreview;
+        const letterText = editableLetterText;
+
+        // Collect all photo URLs
+        const allPhotos: string[] = [];
+        if (reportInfo.preview_photo) allPhotos.push(reportInfo.preview_photo);
+        if (reportInfo.photos && reportInfo.photos.length > 0) {
+            reportInfo.photos.forEach((p: any) => {
+                if (p.photo_url && !allPhotos.includes(p.photo_url)) allPhotos.push(p.photo_url);
+            });
+        }
+
+        const photosHtml = allPhotos.length > 0
+            ? `<div class="photos">${allPhotos.map(url => `<img src="${url}" />`).join('')}</div>`
+            : '';
+
+        const html = `
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; line-height: 1.6; color: #333; }
+      h1 { font-size: 22px; margin-bottom: 16px; color: #111827; }
+      .letter { white-space: pre-wrap; font-size: 15px; color: #1F2937; }
+      .photos { margin-top: 30px; }
+      .photos img { max-width: 100%; max-height: 400px; border-radius: 8px; margin-bottom: 16px; display: block; object-fit: contain; }
+    </style>
+  </head>
+  <body>
+    <h1>${'Обращение: ' + (reportInfo.title || '')}</h1>
+    <div class="letter">${letterText.replace(/\n/g, '<br/>')}</div>
+    ${photosHtml}
+  </body>
+</html>`;
+
+        setExportPreview(null);
+
+        try {
+            if (Platform.OS === 'web') {
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    printWindow.document.write(html);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    setTimeout(() => {
+                        printWindow.print();
+                        printWindow.close();
+                    }, 500);
+                } else {
+                    Alert.alert('Экспорт', 'Заблокировано всплывающее окно.');
+                }
+            } else {
+                const { uri } = await Print.printToFileAsync({ html });
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(uri, {
+                        mimeType: 'application/pdf',
+                        dialogTitle: 'Экспорт обращения',
+                        UTI: 'com.adobe.pdf'
+                    });
+                } else {
+                    Alert.alert('Экспорт', 'Функция "Поделиться" недоступна на вашем устройстве');
+                }
+            }
+        } catch (err) {
+            console.error('Print error:', err);
+            Alert.alert('Ошибка', 'Не удалось создать PDF.');
         }
     };
 
@@ -642,6 +671,102 @@ export default function ProfileScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Export Preview Modal */}
+            <Modal
+                visible={!!exportPreview}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setExportPreview(null)}
+            >
+                <View
+                    style={{ flex: 1, paddingHorizontal: 16 }}
+                    className="justify-center items-center bg-black/50"
+                >
+                    <View
+                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-xl"
+                        style={{
+                            maxHeight: Platform.OS === 'web' ? '90%' : '85%',
+                            elevation: 20,
+                        }}
+                    >
+                        <View className="p-6" style={{ flexShrink: 1 }}>
+                            {/* Header */}
+                            <View className="flex-row justify-between items-center mb-4">
+                                <View className="flex-row items-center gap-2">
+                                    <FileText size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                                    <Text className="text-lg font-bold dark:text-white">
+                                        Редактировать обращение
+                                    </Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setExportPreview(null)}>
+                                    <X size={20} color={isDarkMode ? '#F9FAFB' : '#111827'} />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Report title */}
+                            {exportPreview?.report && (
+                                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                    Обращение: {exportPreview.report.title}
+                                </Text>
+                            )}
+
+                            {/* Editable letter */}
+                            <ScrollView style={{ maxHeight: 400, flexShrink: 1 }}>
+                                <TextInput
+                                    value={editableLetterText}
+                                    onChangeText={setEditableLetterText}
+                                    multiline
+                                    textAlignVertical="top"
+                                    className="text-sm dark:text-white"
+                                    style={{
+                                        minHeight: 200,
+                                        padding: 12,
+                                        borderWidth: 1,
+                                        borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+                                        borderRadius: 12,
+                                        backgroundColor: isDarkMode ? '#1F2937' : '#F9FAFB',
+                                        color: isDarkMode ? '#F9FAFB' : '#111827',
+                                        fontSize: 14,
+                                        lineHeight: 20,
+                                    }}
+                                    placeholderTextColor={isDarkMode ? '#6B7280' : '#9CA3AF'}
+                                    placeholder="Текст обращения..."
+                                />
+                            </ScrollView>
+
+                            {/* Photo count info */}
+                            {exportPreview?.report && (() => {
+                                let count = 0;
+                                if (exportPreview.report.preview_photo) count++;
+                                if (exportPreview.report.photos) count += exportPreview.report.photos.length;
+                                return count > 0 ? (
+                                    <Text className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                                        📎 {count} {count === 1 ? 'фото' : 'фото'} будет добавлено в PDF
+                                    </Text>
+                                ) : null;
+                            })()}
+
+                            {/* Actions */}
+                            <View className="flex-row gap-3 mt-4">
+                                <TouchableOpacity
+                                    onPress={() => setExportPreview(null)}
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl items-center"
+                                >
+                                    <Text className="text-gray-700 dark:text-gray-300 font-bold text-sm">Отмена</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleConfirmExport}
+                                    className="flex-1 py-3 bg-blue-600 rounded-xl items-center flex-row justify-center gap-2"
+                                >
+                                    <Download size={16} color="#fff" />
+                                    <Text className="text-white font-bold text-sm">Экспорт PDF</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -709,7 +834,7 @@ function ReportDetailInner({
                 </Text>
 
                 {/* Рубрика */}
-                {report.rubric_name && (
+                {!!report.rubric_name && (
                     <View className="flex-row items-center mb-4">
                         <View
                             className="w-8 h-8 rounded-lg items-center justify-center mr-2"
@@ -726,7 +851,7 @@ function ReportDetailInner({
                 )}
 
                 {/* Описание */}
-                {report.description && (
+                {!!report.description && (
                     <View className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl mb-6">
                         <Text className="text-gray-700 dark:text-gray-300 leading-6">
                             {report.description}
