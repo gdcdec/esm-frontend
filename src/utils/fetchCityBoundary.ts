@@ -41,6 +41,27 @@ export function calculateCentroid(coords: GeoCoordinate[]): GeoCoordinate {
     return { latitude: cy, longitude: cx };
 }
 
+export function isPointInPolygon(point: GeoCoordinate, polygon: GeoCoordinate[]): boolean {
+    if (!polygon || polygon.length < 3) return false;
+    
+    let inside = false;
+    const x = point.longitude;
+    const y = point.latitude;
+    
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].longitude;
+        const yi = polygon[i].latitude;
+        const xj = polygon[j].longitude;
+        const yj = polygon[j].latitude;
+        
+        const intersect = ((yi > y) !== (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    
+    return inside;
+}
+
 export async function fetchCityBoundary(cityName: string, maxPoints: number = 200): Promise<CityBoundaryData | null> {
     try {
         let url: string;

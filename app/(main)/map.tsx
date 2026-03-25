@@ -37,6 +37,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CityBoundaryData, fetchCityBoundary, isPointInPolygon } from '../../src/utils/fetchCityBoundary';
 
 const isWeb = Platform.OS === 'web';
 
@@ -71,6 +72,9 @@ function useMapState() {
     const [filters, setFilters] = useState<ReportFilters>({});
     const [rubrics, setRubrics] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
+    const [showCityAlert, setShowCityAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
 
     const [suggestions, setSuggestions] = useState<AddressSearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -143,6 +147,23 @@ function useMapState() {
                     setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
                 }
             }
+            
+            // Fetch city boundary if visibility area is enabled
+            if (visibilityArea && city) {
+                console.log('Fetching city boundary for:', city);
+                try {
+                    const boundaryData = await fetchCityBoundary(city);
+                    console.log('City boundary fetched:', boundaryData ? 'success' : 'failed', boundaryData?.coords.length || 0, 'points');
+                    if (isMounted) {
+                        setCityBoundary(boundaryData);
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch city boundary:', err);
+                }
+            } else {
+                console.log('City boundary fetch skipped', { visibilityArea, city });
+            }
+            
             if (isMounted) {
                 fetchReports();
             }
@@ -153,7 +174,7 @@ function useMapState() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [visibilityArea, city]);
 
     // Re-fetch reports when filters or visibility settings change
     useEffect(() => {
@@ -174,7 +195,34 @@ function useMapState() {
 
     const handleMapPress = useCallback(
         async (coordinate: { latitude: number; longitude: number }) => {
+            console.log('handleMapPress called', { coordinate, visibilityArea, cityBoundary: !!cityBoundary, city });
+            
             setActiveReports(null);
+            
+            // Check if point is outside city boundary when visibility area is enabled
+            if (visibilityArea && cityBoundary && cityBoundary.coords.length > 0) {
+                console.log('Checking city boundary', { coordsLength: cityBoundary.coords.length });
+                const isInsideCity = isPointInPolygon(coordinate, cityBoundary.coords);
+                console.log('Point inside city:', isInsideCity);
+                
+                if (!isInsideCity) {
+                    console.log('Showing alert for point outside city');
+                    const message = `Вы выбираете точку за пределами города ${city}. Выбор точки ограничен территорией города.`;
+                    
+                    if (Platform.OS === 'web') {
+                        // Для web используем кастомное уведомление
+                        setAlertMessage(message);
+                        setShowCityAlert(true);
+                    } else {
+                        // Для мобильных платформ используем Alert.alert
+                        Alert.alert('Внимание', message);
+                    }
+                    return;
+                }
+            } else {
+                console.log('City boundary check skipped', { visibilityArea, hasCityBoundary: !!cityBoundary, coordsLength: cityBoundary?.coords.length });
+            }
+            
             setSelectedCoord(coordinate);
             setSelectedAddress(null);
             try {
@@ -187,7 +235,7 @@ function useMapState() {
                 setSelectedAddress(null);
             }
         },
-        []
+        [visibilityArea, cityBoundary, city]
     );
 
     const handleMarkerPress = useCallback((clusterReports: Report[]) => {
@@ -240,6 +288,7 @@ function useMapState() {
         filters, setFilters, rubrics,
         suggestions, setSuggestions, isSearching, fetchSuggestions,
         showFilters, setShowFilters,
+        cityBoundary, showCityAlert, alertMessage, setShowCityAlert,
     };
 }
 
@@ -950,6 +999,75 @@ function WebMapScreen() {
                     </View>
                 </div>
             )}
+            
+            {/* City boundary alert for web (only one instance) */}
+            {state.showCityAlert && (
+                <div
+                    style={{
+                        position: 'absolute' as const,
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                    }}
+                    onClick={() => state.setShowCityAlert(false)}
+                >
+                    <div
+                        style={{
+                            backgroundColor: isDarkMode ? '#1F2937' : 'white',
+                            borderRadius: 16,
+                            padding: 24,
+                            maxWidth: 400,
+                            width: '90%',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                            border: isDarkMode ? '1px solid #374151' : 'none',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ 
+                                fontSize: 18, 
+                                fontWeight: 600, 
+                                color: isDarkMode ? '#F9FAFB' : '#111827',
+                                marginBottom: 8,
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                            }}>
+                                Внимание
+                            </div>
+                            <div style={{ 
+                                fontSize: 14, 
+                                color: isDarkMode ? '#D1D5DB' : '#374151',
+                                lineHeight: 1.5,
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                            }}>
+                                {state.alertMessage}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => state.setShowCityAlert(false)}
+                            style={{
+                                backgroundColor: '#3B82F6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 8,
+                                padding: '12px 24px',
+                                fontSize: 14,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                width: '100%',
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                            }}
+                        >
+                            Понятно
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1599,6 +1717,75 @@ function MobileWebMapScreen() {
                     )}
                 </div>
             </div>
+
+            {/* City boundary alert for mobile web */}
+            {state.showCityAlert && (
+                <div
+                    style={{
+                        position: 'absolute' as const,
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                    }}
+                    onClick={() => state.setShowCityAlert(false)}
+                >
+                    <div
+                        style={{
+                            backgroundColor: isDarkMode ? '#1F2937' : 'white',
+                            borderRadius: 16,
+                            padding: 24,
+                            maxWidth: 400,
+                            width: '90%',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                            border: isDarkMode ? '1px solid #374151' : 'none',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ 
+                                fontSize: 18, 
+                                fontWeight: 600, 
+                                color: isDarkMode ? '#F9FAFB' : '#111827',
+                                marginBottom: 8,
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                            }}>
+                                Внимание
+                            </div>
+                            <div style={{ 
+                                fontSize: 14, 
+                                color: isDarkMode ? '#D1D5DB' : '#374151',
+                                lineHeight: 1.5,
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                            }}>
+                                {state.alertMessage}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => state.setShowCityAlert(false)}
+                            style={{
+                                backgroundColor: '#3B82F6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 8,
+                                padding: '12px 24px',
+                                fontSize: 14,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                width: '100%',
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                            }}
+                        >
+                            Понятно
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1995,6 +2182,79 @@ function NativeMapScreen() {
                         </BottomSheetScrollView>
                     )}
                 </BottomSheet>
+            )}
+
+            {/* City boundary alert for native */}
+            {state.showCityAlert && (
+                <View
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 9999,
+                    }}
+                >
+                    <View
+                        style={{
+                            backgroundColor: isDarkMode ? '#1F2937' : 'white',
+                            borderRadius: 16,
+                            padding: 24,
+                            maxWidth: 400,
+                            width: '90%',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 20 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 25,
+                            elevation: 20,
+                            borderWidth: isDarkMode ? 1 : 0,
+                            borderColor: isDarkMode ? '#374151' : 'transparent',
+                        }}
+                    >
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ 
+                                fontSize: 18, 
+                                fontWeight: '600', 
+                                color: isDarkMode ? '#F9FAFB' : '#111827',
+                                marginBottom: 8,
+                                // используем системный шрифт, не задавая явно
+                            }}>
+                                Внимание
+                            </Text>
+                            <Text style={{ 
+                                fontSize: 14, 
+                                color: isDarkMode ? '#D1D5DB' : '#374151',
+                                lineHeight: 20,
+                                // используем системный шрифт
+                            }}>
+                                {state.alertMessage}
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => state.setShowCityAlert(false)}
+                            style={{
+                                backgroundColor: '#3B82F6',
+                                borderRadius: 8,
+                                paddingVertical: 12,
+                                paddingHorizontal: 24,
+                                width: '100%',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Text style={{
+                                color: 'white',
+                                fontSize: 14,
+                                fontWeight: '500',
+                            }}>
+                                Понятно
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             )}
 
         </View>
