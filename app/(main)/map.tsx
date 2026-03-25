@@ -103,8 +103,8 @@ function useMapState() {
             try {
                 const results = await addressService.search(query);
                 setSuggestions(results);
-            } catch (err) {
-                console.warn('Address search fail', err);
+            } catch {
+                // ignore
             } finally {
                 setIsSearching(false);
             }
@@ -122,8 +122,8 @@ function useMapState() {
             }
             const data = await reportsService.getAll(finalFilters);
             setReports(data);
-        } catch (err) {
-            console.warn('Failed to fetch reports:', err);
+        } catch {
+            // ignore
         } finally {
             setIsLoadingReports(false);
         }
@@ -140,8 +140,7 @@ function useMapState() {
                 if (isMounted) {
                     setRubrics(rubricsData.map(r => r.name));
                 }
-            } catch (err) {
-                console.warn('Failed to fetch rubrics:', err);
+            } catch {
                 // Fallback to defaults if backend fails
                 if (isMounted) {
                     setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
@@ -150,18 +149,14 @@ function useMapState() {
             
             // Fetch city boundary if visibility area is enabled
             if (visibilityArea && city) {
-                console.log('Fetching city boundary for:', city);
                 try {
                     const boundaryData = await fetchCityBoundary(city);
-                    console.log('City boundary fetched:', boundaryData ? 'success' : 'failed', boundaryData?.coords.length || 0, 'points');
                     if (isMounted) {
                         setCityBoundary(boundaryData);
                     }
-                } catch (err) {
-                    console.warn('Failed to fetch city boundary:', err);
+                } catch {
+                    // ignore
                 }
-            } else {
-                console.log('City boundary fetch skipped', { visibilityArea, city });
             }
             
             if (isMounted) {
@@ -195,32 +190,22 @@ function useMapState() {
 
     const handleMapPress = useCallback(
         async (coordinate: { latitude: number; longitude: number }) => {
-            console.log('handleMapPress called', { coordinate, visibilityArea, cityBoundary: !!cityBoundary, city });
-            
             setActiveReports(null);
             
             // Check if point is outside city boundary when visibility area is enabled
             if (visibilityArea && cityBoundary && cityBoundary.coords.length > 0) {
-                console.log('Checking city boundary', { coordsLength: cityBoundary.coords.length });
                 const isInsideCity = isPointInPolygon(coordinate, cityBoundary.coords);
-                console.log('Point inside city:', isInsideCity);
-                
                 if (!isInsideCity) {
-                    console.log('Showing alert for point outside city');
                     const message = `Вы выбираете точку за пределами города ${city}. Выбор точки ограничен территорией города.`;
                     
                     if (Platform.OS === 'web') {
-                        // Для web используем кастомное уведомление
                         setAlertMessage(message);
                         setShowCityAlert(true);
                     } else {
-                        // Для мобильных платформ используем Alert.alert
                         Alert.alert('Внимание', message);
                     }
                     return;
                 }
-            } else {
-                console.log('City boundary check skipped', { visibilityArea, hasCityBoundary: !!cityBoundary, coordsLength: cityBoundary?.coords.length });
             }
             
             setSelectedCoord(coordinate);
@@ -339,7 +324,6 @@ function InlineFilters({
                 {Object.keys(state.filters).length > 0 && (
                     <TouchableOpacity
                         onPress={() => {
-                            // Keep city filter if visibilityArea is enabled
                             const newFilters = visibilityArea && city ? { city } : {};
                             state.setFilters(newFilters);
                         }}
@@ -473,8 +457,20 @@ function ReportDetail({
 
     const status = statusMap[report.status] || statusMap.check;
 
+    const handleAddReportHere = () => {
+        router.push({
+            pathname: '/(main)/create',
+            params: {
+                address: report.address || '',
+                lat: String(report.latitude),
+                lon: String(report.longitude),
+            },
+        });
+    };
+
     return (
         <View>
+                
             <View className="flex-row justify-between items-start">
                 <View className={`${status.bg} px-2.5 py-1 rounded-full`}>
                     <Text className={`text-[10px] font-bold ${status.color} uppercase`}>
@@ -528,6 +524,13 @@ function ReportDetail({
                     </Text>
                 </TouchableOpacity>
             </View>
+
+            <Button
+                title="Добавить жалобу здесь"
+                onPress={handleAddReportHere}
+                className="mt-2"
+            />
+
         </View>
     );
 }
@@ -614,7 +617,7 @@ function WebMapScreen() {
     );
 
     return (
-        <div style={{ width: '100%', height: '100dvh', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: '100dvh', position: 'relative' as const, overflow: 'hidden', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             {/* Full-screen map */}
             <div style={{ position: 'absolute' as const, inset: 0, zIndex: 0 }}>
                 <AppMapView
@@ -808,7 +811,7 @@ function WebMapScreen() {
                     <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 16px 16px', scrollbarWidth: isDarkMode ? 'thin' : 'auto', scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto' }}>
                         {state.singleReport ? (
                             <ReportDetail report={state.singleReport} onClose={state.handleCloseDetail} />
-                        ) : state.activeReports && state.activeReports.length > 1 ? (
+                        ) : state.activeReports && state.activeReports.length > 0 ? (
                             <View>
                                 <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
                                     <View>
@@ -823,7 +826,14 @@ function WebMapScreen() {
                                 </View>
                                 <Button
                                     title="Добавить жалобу здесь"
-                                    onPress={() => router.push('/(main)/create')}
+                                    onPress={() => router.push({
+                                        pathname: '/(main)/create',
+                                        params: {
+                                            address: state.activeReports?.[0]?.address || '',
+                                            lat: String(state.activeReports?.[0]?.latitude),
+                                            lon: String(state.activeReports?.[0]?.longitude),
+                                        },
+                                    })}
                                     className="mb-4"
                                 />
                                 {state.activeReports.map((item) => (
@@ -1000,7 +1010,7 @@ function WebMapScreen() {
                 </div>
             )}
             
-            {/* City boundary alert for web (only one instance) */}
+            {/* City boundary alert for web */}
             {state.showCityAlert && (
                 <div
                     style={{
@@ -1035,7 +1045,6 @@ function WebMapScreen() {
                                 fontWeight: 600, 
                                 color: isDarkMode ? '#F9FAFB' : '#111827',
                                 marginBottom: 8,
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                             }}>
                                 Внимание
                             </div>
@@ -1043,7 +1052,6 @@ function WebMapScreen() {
                                 fontSize: 14, 
                                 color: isDarkMode ? '#D1D5DB' : '#374151',
                                 lineHeight: 1.5,
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                             }}>
                                 {state.alertMessage}
                             </div>
@@ -1060,7 +1068,6 @@ function WebMapScreen() {
                                 fontWeight: 500,
                                 cursor: 'pointer',
                                 width: '100%',
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                             }}
                         >
                             Понятно
@@ -1279,7 +1286,7 @@ function MobileWebMapScreen() {
     }, [state.handleMarkerPress, sheetHeight, SNAP_PEEK, SNAP_HALF]);
 
     return (
-        <div style={{ width: '100%', height: '100dvh', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ width: '100%', height: '100dvh', position: 'relative' as const, overflow: 'hidden', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             {/* Map */}
             <div style={{ position: 'absolute' as const, inset: 0, zIndex: 0 }}>
                 <AppMapView
@@ -1657,15 +1664,15 @@ function MobileWebMapScreen() {
                         <ReportDetail report={state.singleReport} onClose={() => {
                             executeCloseDetail();
                         }} />
-                    ) : state.activeReports && state.activeReports.length > 1 ? (
+                    ) : state.activeReports && state.activeReports.length > 0 ? (
                         <View>
                             <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50">
                                 <View>
-                                    <Text className="font-bold text-lg">Жалобы по адресу</Text>
-                                    <Text className="text-xs text-gray-500">
-                                        {state.activeReports?.[0]?.address || 'Адрес не определен'}
-                                    </Text>
-                                </View>
+                                        <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
+                                        <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                            {state.activeReports[0].address || 'Адрес не определен'}
+                                        </Text>
+                                    </View>
                                 <TouchableOpacity onPress={() => {
                                     executeCloseDetail();
                                 }}>
@@ -1753,7 +1760,6 @@ function MobileWebMapScreen() {
                                 fontWeight: 600, 
                                 color: isDarkMode ? '#F9FAFB' : '#111827',
                                 marginBottom: 8,
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                             }}>
                                 Внимание
                             </div>
@@ -1761,7 +1767,6 @@ function MobileWebMapScreen() {
                                 fontSize: 14, 
                                 color: isDarkMode ? '#D1D5DB' : '#374151',
                                 lineHeight: 1.5,
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                             }}>
                                 {state.alertMessage}
                             </div>
@@ -1778,7 +1783,6 @@ function MobileWebMapScreen() {
                                 fontWeight: 500,
                                 cursor: 'pointer',
                                 width: '100%',
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                             }}
                         >
                             Понятно
@@ -2039,15 +2043,15 @@ function NativeMapScreen() {
                             <ReportDetail report={state.singleReport} onClose={handleCloseDetail} />
                         </BottomSheetScrollView>
 
-                    ) : state.activeReports && state.activeReports.length > 1 ? (
+                    ) : state.activeReports && state.activeReports.length > 0 ? (
                         <View className="flex-1 px-5 pb-5">
                             <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
                                 <View>
-                                    <Text className="font-bold text-lg dark:text-gray-100">Жалобы по адресу</Text>
-                                    <Text className="text-xs text-gray-500 dark:text-gray-400">
-                                        {state.activeReports[0].address || 'Адрес не определен'}
-                                    </Text>
-                                </View>
+                                        <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
+                                        <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                            {state.activeReports[0].address || 'Адрес не определен'}
+                                        </Text>
+                                    </View>
                                 <TouchableOpacity onPress={handleCloseDetail}>
                                     <X size={24} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                 </TouchableOpacity>
@@ -2221,7 +2225,6 @@ function NativeMapScreen() {
                                 fontWeight: '600', 
                                 color: isDarkMode ? '#F9FAFB' : '#111827',
                                 marginBottom: 8,
-                                // используем системный шрифт, не задавая явно
                             }}>
                                 Внимание
                             </Text>
@@ -2229,7 +2232,6 @@ function NativeMapScreen() {
                                 fontSize: 14, 
                                 color: isDarkMode ? '#D1D5DB' : '#374151',
                                 lineHeight: 20,
-                                // используем системный шрифт
                             }}>
                                 {state.alertMessage}
                             </Text>
