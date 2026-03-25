@@ -32,11 +32,22 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Utility to recursively fix absolute media URLs missing the port
+const isVercelLive = Platform.OS === 'web' && typeof window !== 'undefined' && 
+    window.location.hostname !== 'localhost' && 
+    !window.location.hostname.includes('192.168.') && 
+    !window.location.hostname.includes('10.');
+
+// Utility to recursively fix absolute media URLs missing the port or proxy them for Web
 const fixMediaUrls = (data: any): any => {
     if (typeof data === 'string') {
         if (data.startsWith('http://109.120.135.24/media/')) {
-            return data.replace('http://109.120.135.24/media/', 'http://109.120.135.24:8000/media/');
+            if (isVercelLive) {
+                // Return relative path so Vercel can proxy it avoiding Mixed Content HTTPS block
+                return data.replace('http://109.120.135.24/media/', '/media/');
+            } else {
+                // Append missing port for Native apps & local dev
+                return data.replace('http://109.120.135.24/media/', 'http://109.120.135.24:8000/media/');
+            }
         }
         return data;
     }

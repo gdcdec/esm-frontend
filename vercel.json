@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "http://109.120.135.24:8000/api/$1"
+    },
+    {
+      "source": "/media/(.*)",
+      "destination": "http://109.120.135.24:8000/media/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
