@@ -2,6 +2,7 @@ import { ReportFilters } from '@/src/components/FiltersModal';
 import { AppMapView } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
+import { CATEGORIES } from '@/src/constants/categories';
 import { addressService } from '@/src/services/address';
 import { reportsService } from '@/src/services/reports';
 import { rubricsService } from '@/src/services/rubrics';
@@ -28,6 +29,7 @@ import {
     Alert,
     BackHandler,
     FlatList,
+    Image,
     Keyboard,
     Platform,
     ScrollView,
@@ -132,7 +134,7 @@ function useMapState() {
     // Load dynamic rubrics and initial posts
     useEffect(() => {
         let isMounted = true;
-        
+
         const loadInitialData = async () => {
             try {
                 // Fetch rubrics dynamically from backend
@@ -146,7 +148,7 @@ function useMapState() {
                     setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
                 }
             }
-            
+
             // Fetch city boundary if visibility area is enabled
             if (visibilityArea && city) {
                 try {
@@ -158,14 +160,14 @@ function useMapState() {
                     // ignore
                 }
             }
-            
+
             if (isMounted) {
                 fetchReports();
             }
         };
-        
+
         loadInitialData();
-        
+
         return () => {
             isMounted = false;
         };
@@ -191,13 +193,13 @@ function useMapState() {
     const handleMapPress = useCallback(
         async (coordinate: { latitude: number; longitude: number }) => {
             setActiveReports(null);
-            
+
             // Check if point is outside city boundary when visibility area is enabled
             if (visibilityArea && cityBoundary && cityBoundary.coords.length > 0) {
                 const isInsideCity = isPointInPolygon(coordinate, cityBoundary.coords);
                 if (!isInsideCity) {
                     const message = `Вы выбираете точку за пределами города ${city}. Выбор точки ограничен территорией города.`;
-                    
+
                     if (Platform.OS === 'web') {
                         setAlertMessage(message);
                         setShowCityAlert(true);
@@ -207,7 +209,7 @@ function useMapState() {
                     return;
                 }
             }
-            
+
             setSelectedCoord(coordinate);
             setSelectedAddress(null);
             try {
@@ -293,17 +295,17 @@ function InlineFilters({
         { label: 'Сначала старые', value: 'created_at' },
     ], []);
 
-    const currentSorting = useMemo(() => 
+    const currentSorting = useMemo(() =>
         sortings.find(s => s.value === (state.filters.ordering || '-created_at')) || sortings[0],
         [state.filters.ordering, sortings]
     );
 
-    const selectedRubricsCount = useMemo(() => 
+    const selectedRubricsCount = useMemo(() =>
         state.filters.rubrics?.length || 0,
         [state.filters.rubrics]
     );
 
-    const rubricsLabel = useMemo(() => 
+    const rubricsLabel = useMemo(() =>
         selectedRubricsCount === 0
             ? 'Все рубрики'
             : `Рубрики: ${selectedRubricsCount}`,
@@ -314,10 +316,10 @@ function InlineFilters({
         <View className="bg-white dark:bg-[#1f2937] z-50">
             <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
                 <Text className="font-bold text-gray-900 dark:text-slate-50 text-xl tracking-tight">
-                    {state.searchQuery 
-                        ? 'Результаты поиска' 
-                        : visibilityArea && city 
-                            ? `Лента: ${city}` 
+                    {state.searchQuery
+                        ? 'Результаты поиска'
+                        : visibilityArea && city
+                            ? `Лента: ${city}`
                             : 'Лента происшествий'
                     }
                 </Text>
@@ -468,9 +470,11 @@ function ReportDetail({
         });
     };
 
+    const cat = CATEGORIES.find((c) => c.name === report.rubric_name);
+
     return (
         <View>
-                
+
             <View className="flex-row justify-between items-start">
                 <View className={`${status.bg} px-2.5 py-1 rounded-full`}>
                     <Text className={`text-[10px] font-bold ${status.color} uppercase`}>
@@ -482,21 +486,45 @@ function ReportDetail({
                 </TouchableOpacity>
             </View>
 
-            <Text className="text-2xl font-bold mt-3 text-gray-900 dark:text-white">
-                {report.title}
-            </Text>
+            <View className="flex-row justify-between items-start mt-3">
+                <Text className="text-2xl font-bold flex-1 text-gray-900 dark:text-white mr-4">
+                    {report.title}
+                </Text>
 
-            <View className="flex-row items-center gap-2 mt-3 mb-4">
-                <View className="w-6 h-6 bg-blue-100 dark:bg-blue-900/40 rounded-full items-center justify-center">
-                    <Text className="text-blue-600 dark:text-blue-400 font-bold text-xs">
-                        {report.author_username?.charAt(0) ?? '?'}
+                {/* Рубрика */}
+                {!!report.rubric_name && (
+                    <View className="flex-row items-center gap-1.5 mt-1 shrink-0">
+                        <View
+                            className="w-8 h-8 rounded-md items-center justify-center"
+                            style={{ backgroundColor: (cat?.color || '#999') + '20' }}
+                        >
+                            <Text style={{ fontSize: 14 }}>{cat?.icon || '❗'}</Text>
+                        </View>
+                        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {report.rubric_name}
+                        </Text>
+                    </View>
+                )}
+            </View>
+
+            <View className="flex-row items-center flex-wrap gap-x-2 gap-y-2 mt-3 mb-4">
+                {/* Автор и Дата */}
+                <View className="flex-row items-center gap-2">
+                    <View className="w-6 h-6 bg-blue-100 dark:bg-blue-900/40 rounded-full items-center justify-center">
+                        <Text className="text-blue-600 dark:text-blue-400 font-bold text-xs">
+                            {report.author_username?.charAt(0) ?? '?'}
+                        </Text>
+                    </View>
+                    <Text className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                        {report.author_username}
                     </Text>
                 </View>
-                <Text className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                    {report.author_username}
-                </Text>
+
                 <Text className="text-gray-400 dark:text-gray-500 text-sm">•</Text>
-                <Text className="text-gray-500 dark:text-gray-400 text-sm">{report.created_at ? new Date(report.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+
+                <Text className="text-gray-500 dark:text-gray-400 text-sm">
+                    {report.created_at ? new Date(report.created_at).toLocaleDateString('ru-RU') : ''}
+                </Text>
             </View>
 
             <View className="flex-row items-center gap-1 mb-2">
@@ -506,11 +534,38 @@ function ReportDetail({
                 </Text>
             </View>
 
-            <View className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl mb-4 border border-gray-100 dark:border-gray-700">
-                <Text className="text-gray-700 dark:text-gray-300 leading-6">
-                    {report.description || report.title}
-                </Text>
-            </View>
+            {/* Описание */}
+            {!!report.description && (
+                <View className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl mb-4 border border-gray-100 dark:border-gray-700">
+                    <Text className="text-gray-700 dark:text-gray-300 leading-6">
+                        {report.description}
+                    </Text>
+                </View>
+            )}
+
+            {/* Фото */}
+            {!!report.preview_photo && (
+                <View className="w-full h-48 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-3">
+                    <Image
+                        source={{ uri: report.preview_photo }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                    />
+                </View>
+            )}
+            {report.photos && report.photos.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                    {report.photos.map((p: any, idx: number) => (
+                        <View key={p.id || idx} className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mr-2">
+                            <Image
+                                source={{ uri: p.photo_url }}
+                                style={{ width: '100%', height: '100%' }}
+                                resizeMode="cover"
+                            />
+                        </View>
+                    ))}
+                </ScrollView>
+            )}
 
             <View className="flex-row gap-3 mb-6">
                 <TouchableOpacity className="flex-1 py-3 bg-blue-50 dark:bg-gray-800 rounded-xl flex-row items-center justify-center gap-2">
@@ -1009,7 +1064,7 @@ function WebMapScreen() {
                     </View>
                 </div>
             )}
-            
+
             {/* City boundary alert for web */}
             {state.showCityAlert && (
                 <div
@@ -1040,16 +1095,16 @@ function WebMapScreen() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div style={{ marginBottom: 16 }}>
-                            <div style={{ 
-                                fontSize: 18, 
-                                fontWeight: 600, 
+                            <div style={{
+                                fontSize: 18,
+                                fontWeight: 600,
                                 color: isDarkMode ? '#F9FAFB' : '#111827',
                                 marginBottom: 8,
                             }}>
                                 Внимание
                             </div>
-                            <div style={{ 
-                                fontSize: 14, 
+                            <div style={{
+                                fontSize: 14,
                                 color: isDarkMode ? '#D1D5DB' : '#374151',
                                 lineHeight: 1.5,
                             }}>
@@ -1668,11 +1723,11 @@ function MobileWebMapScreen() {
                         <View>
                             <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50">
                                 <View>
-                                        <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
-                                        <Text className="text-xs text-gray-500 dark:text-gray-400">
-                                            {state.activeReports[0].address || 'Адрес не определен'}
-                                        </Text>
-                                    </View>
+                                    <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                        {state.activeReports[0].address || 'Адрес не определен'}
+                                    </Text>
+                                </View>
                                 <TouchableOpacity onPress={() => {
                                     executeCloseDetail();
                                 }}>
@@ -1755,16 +1810,16 @@ function MobileWebMapScreen() {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div style={{ marginBottom: 16 }}>
-                            <div style={{ 
-                                fontSize: 18, 
-                                fontWeight: 600, 
+                            <div style={{
+                                fontSize: 18,
+                                fontWeight: 600,
                                 color: isDarkMode ? '#F9FAFB' : '#111827',
                                 marginBottom: 8,
                             }}>
                                 Внимание
                             </div>
-                            <div style={{ 
-                                fontSize: 14, 
+                            <div style={{
+                                fontSize: 14,
                                 color: isDarkMode ? '#D1D5DB' : '#374151',
                                 lineHeight: 1.5,
                             }}>
@@ -2047,11 +2102,11 @@ function NativeMapScreen() {
                         <View className="flex-1 px-5 pb-5">
                             <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
                                 <View>
-                                        <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
-                                        <Text className="text-xs text-gray-500 dark:text-gray-400">
-                                            {state.activeReports[0].address || 'Адрес не определен'}
-                                        </Text>
-                                    </View>
+                                    <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                        {state.activeReports[0].address || 'Адрес не определен'}
+                                    </Text>
+                                </View>
                                 <TouchableOpacity onPress={handleCloseDetail}>
                                     <X size={24} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
                                 </TouchableOpacity>
@@ -2220,16 +2275,16 @@ function NativeMapScreen() {
                         }}
                     >
                         <View style={{ marginBottom: 16 }}>
-                            <Text style={{ 
-                                fontSize: 18, 
-                                fontWeight: '600', 
+                            <Text style={{
+                                fontSize: 18,
+                                fontWeight: '600',
                                 color: isDarkMode ? '#F9FAFB' : '#111827',
                                 marginBottom: 8,
                             }}>
                                 Внимание
                             </Text>
-                            <Text style={{ 
-                                fontSize: 14, 
+                            <Text style={{
+                                fontSize: 14,
                                 color: isDarkMode ? '#D1D5DB' : '#374151',
                                 lineHeight: 20,
                             }}>

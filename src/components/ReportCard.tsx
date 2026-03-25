@@ -64,7 +64,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
                     </View>
 
                     <Text className="text-sm text-gray-600 dark:text-gray-300 mb-2" numberOfLines={2}>
-                        {report.description || 'Нет описания'}
+                        {report.description}
                     </Text>
 
                     {/* Image */}
