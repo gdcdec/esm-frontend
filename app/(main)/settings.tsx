@@ -157,7 +157,10 @@ export default function SettingsScreen() {
                         </Text>
                     </View>
                     <View className="bg-white dark:bg-gray-800 px-6 py-1 border-y border-gray-100 dark:border-gray-800 rounded-2xl mb-6">
-                        <TouchableOpacity className="flex-row items-center justify-between py-3 border-b border-gray-50 dark:border-gray-700">
+                        <TouchableOpacity
+                            className="flex-row items-center justify-between py-3 border-b border-gray-50 dark:border-gray-700"
+                            onPress={() => router.push('/(main)/faq')}
+                        >
                             <View className="flex-row items-center">
                                 <View className="w-7 h-7 rounded-full bg-yellow-50 dark:bg-yellow-900/30 items-center justify-center mr-3">
                                     <HelpCircle size={16} color="#F59E0B" />
