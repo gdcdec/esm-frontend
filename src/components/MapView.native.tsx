@@ -1,22 +1,12 @@
-import { CATEGORIES } from '@/src/constants/categories';
-
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
-
 import { Report } from '@/src/types';
-
 import { CityBoundaryData, fetchCityBoundary } from '@/src/utils/fetchCityBoundary';
-
 import { generateCloudyHole } from '@/src/utils/generateCloudyHole';
-
 import { generateCloudyPolygon } from '@/src/utils/generateCloudyPolygon';
-
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-
 import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
 import RNMapView, { Marker, Polygon, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
-
-
 
 export interface MapViewRef {
 
@@ -422,17 +412,17 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                 }}>
 
-                    <ActivityIndicator 
+                    <ActivityIndicator
 
-                        size="large" 
+                        size="large"
 
-                        color={isDarkMode ? '#FFFFFF' : '#111827'} 
+                        color={isDarkMode ? '#FFFFFF' : '#111827'}
 
                         style={{ marginBottom: 16 }}
 
                     />
 
-                    <Text style={{ 
+                    <Text style={{
 
                         color: isDarkMode ? '#FFFFFF' : '#111827',
 
@@ -478,7 +468,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                 }}>
 
-                    <Text style={{ 
+                    <Text style={{
 
                         color: '#EF4444',
 
@@ -566,79 +556,79 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
             >
 
-            {/* OpenStreetMap tiles via CartoDB CDN (avoids OSM 403 block) почему-то меня блокирует osm заменил https://tile.openstreetmap.org/{z}/{x}/{y}.png на это, надо думать*/}
+                {/* OpenStreetMap tiles via CartoDB CDN (avoids OSM 403 block) почему-то меня блокирует osm заменил https://tile.openstreetmap.org/{z}/{x}/{y}.png на это, надо думать*/}
 
-            <UrlTile
+                <UrlTile
 
-                urlTemplate={"https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"}
+                    urlTemplate={"https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"}
 
-                maximumZ={19}
+                    maximumZ={19}
 
-                flipY={false}
-
-            />
-
-
-
-            {visibilityArea && <AnimatedFogOverlay isDark={isDarkMode} cityBoundary={cityBoundary} />}
-
-
-
-            {clusters.map((cluster, i) => {
-
-                const main = cluster[0];
-
-                const cat = CATEGORIES.find((c) => c.name === main.rubric_name);
-
-
-
-                return (
-
-                    <Marker
-
-                        key={`marker-${main.latitude}-${main.longitude}`}
-
-                        coordinate={{ latitude: main.latitude, longitude: main.longitude }}
-
-                        title={cluster.length > 1 ? `${cluster.length} жалоб` : main.title}
-
-                        description={main.address}
-
-                        pinColor={cat?.color || '#FF3B30'}
-
-                        onPress={() => onMarkerPress?.(cluster)}
-
-                        tracksViewChanges={false} // Improves performance by not tracking view redraws for static markers
-
-                    />
-
-                );
-
-            })}
-
-
-
-            {/* Selected point marker */}
-
-            {selectedCoordinate && (
-
-                <Marker
-
-                    key={`selected-${selectedCoordinate.latitude}-${selectedCoordinate.longitude}`}
-
-                    coordinate={selectedCoordinate}
-
-                    pinColor="#2563EB"
-
-                    title="Новая метка"
-
-                    tracksViewChanges={false}
+                    flipY={false}
 
                 />
 
-            )}
 
-        </RNMapView>
+
+                {visibilityArea && <AnimatedFogOverlay isDark={isDarkMode} cityBoundary={cityBoundary} />}
+
+
+
+                {clusters.map((cluster, i) => {
+
+                    const main = cluster[0];
+
+                    const cat = useRubricsStore.getState().getRubric(main.rubric_name);
+
+
+
+                    return (
+
+                        <Marker
+
+                            key={`marker-${main.latitude}-${main.longitude}`}
+
+                            coordinate={{ latitude: main.latitude, longitude: main.longitude }}
+
+                            title={cluster.length > 1 ? `${cluster.length} жалоб` : main.title}
+
+                            description={main.address}
+
+                            pinColor={cat?.color || '#FF3B30'}
+
+                            onPress={() => onMarkerPress?.(cluster)}
+
+                            tracksViewChanges={false} // Improves performance by not tracking view redraws for static markers
+
+                        />
+
+                    );
+
+                })}
+
+
+
+                {/* Selected point marker */}
+
+                {selectedCoordinate && (
+
+                    <Marker
+
+                        key={`selected-${selectedCoordinate.latitude}-${selectedCoordinate.longitude}`}
+
+                        coordinate={selectedCoordinate}
+
+                        pinColor="#2563EB"
+
+                        title="Новая метка"
+
+                        tracksViewChanges={false}
+
+                    />
+
+                )}
+
+            </RNMapView>
 
         </View>
 

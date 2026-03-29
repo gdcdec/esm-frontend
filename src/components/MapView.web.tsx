@@ -1,4 +1,4 @@
-import { CATEGORIES } from '@/src/constants/categories';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 
 import { useThemeStore } from '@/src/store/themeStore';
 
@@ -594,7 +594,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                     const main = cluster[0];
 
-                    const cat = CATEGORIES.find((c) => c.name === main.rubric_name);
+                    const cat = useRubricsStore.getState().getRubric(main.rubric_name);
 
                     const isCluster = cluster.length > 1;
 

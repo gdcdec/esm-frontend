@@ -1,5 +1,5 @@
 import { Badge } from '@/src/components/ui';
-import { CATEGORIES } from '@/src/constants/categories';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import { MapPin, MessageCircle, ThumbsUp } from 'lucide-react-native';
@@ -21,7 +21,7 @@ function formatDate(iso: string): string {
 }
 
 export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
-    const category = CATEGORIES.find((c) => c.name === report.rubric_name);
+    const category = useRubricsStore((s) => s.getRubric)(report.rubric_name);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
     return (
@@ -45,10 +45,17 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report, onPress }) => {
             {/* Content row */}
             <View className="flex-row gap-3">
                 <View
-                    className="w-10 h-10 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: ((category?.darkColor && isDarkMode) ? category.darkColor : (category?.color || '#999')) + '20' }}
+                    className="w-10 h-10 rounded-xl items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-700"
                 >
-                    <Text className="text-xl">{category?.icon || '❓'}</Text>
+                    {category?.photoUrl ? (
+                        <Image
+                            source={{ uri: category.photoUrl }}
+                            style={{ width: 24, height: 24 }}
+                            resizeMode="contain"
+                        />
+                    ) : (
+                        <Text className="text-xl">❓</Text>
+                    )}
                 </View>
 
                 <View className="flex-1">

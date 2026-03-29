@@ -3,7 +3,8 @@ import { Button, Input } from '@/src/components/ui';
 import { addressService } from '@/src/services/address';
 import { photosService } from '@/src/services/photos';
 import { reportsService } from '@/src/services/reports';
-import { Rubric, rubricsService } from '@/src/services/rubrics';
+import { useReportsStore } from '@/src/store/reportsStore';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult, Report, ReportPhoto } from '@/src/types';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Cross-platform alert helper (Alert.alert doesn't work on web)
+// Cross-platform alert helper
 const showAlert = (title: string, message: string, onOk?: () => void) => {
     if (Platform.OS === 'web') {
         window.alert(`${title}\n${message}`);
@@ -37,21 +38,44 @@ const showAlert = (title: string, message: string, onOk?: () => void) => {
     }
 };
 
+// Cross-platform confirm helper
+const showConfirm = (
+    title: string,
+    message: string,
+    onYes: () => void,
+    onNo: () => void
+) => {
+    if (Platform.OS === 'web') {
+        if (window.confirm(`${title}\n${message}`)) {
+            onYes();
+        } else {
+            onNo();
+        }
+    } else {
+        Alert.alert(title, message, [
+            { text: 'Нет', style: 'destructive', onPress: onNo },
+            { text: 'Сохранить', onPress: onYes },
+        ]);
+    }
+};
+
 const MAX_PHOTOS = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
 export default function CreateReportScreen() {
-    const params = useLocalSearchParams<{ 
-        address?: string; 
-        lat?: string; 
+    const params = useLocalSearchParams<{
+        address?: string;
+        lat?: string;
         lon?: string;
         editId?: string;
     }>();
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
-    const [rubrics, setRubrics] = useState<Rubric[]>([]);
-    const [isLoadingRubrics, setIsLoadingRubrics] = useState(true);
+    // Rubrics from cached store
+    const rubrics = useRubricsStore((s) => s.rubrics);
+    const isRubricsLoaded = useRubricsStore((s) => s.isLoaded);
+
     const [category, setCategory] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [address, setAddress] = useState(params.address ?? '');
@@ -62,17 +86,17 @@ export default function CreateReportScreen() {
     const [isFetchingInitial, setIsFetchingInitial] = useState(!!params.editId);
     const [existingPhotos, setExistingPhotos] = useState<ReportPhoto[]>([]);
 
-    // Fetch rubrics and existing report if editing
+    // Load existing report if editing
     useEffect(() => {
         (async () => {
-            try {
-                const [rubricsData] = await Promise.all([
-                    rubricsService.getAll(),
-                ]);
-                setRubrics(rubricsData);
+            // Make sure rubrics are loaded
+            if (!isRubricsLoaded) {
+                await useRubricsStore.getState().fetchRubrics();
+            }
 
-                if (params.editId) {
-                    const report = await reportsService.getById(parseInt(params.editId));
+            if (params.editId) {
+                try {
+                    const report = await useReportsStore.getState().getById(parseInt(params.editId));
                     setTitle(report.title);
                     setAddress(report.address);
                     setDesc(report.description);
@@ -81,13 +105,11 @@ export default function CreateReportScreen() {
                     if (report.photos) {
                         setExistingPhotos(report.photos);
                     }
+                } catch (err) {
+                    console.warn('Failed to fetch report:', err);
                 }
-            } catch (err) {
-                console.warn('Failed to fetch initial data:', err);
-            } finally {
-                setIsLoadingRubrics(false);
-                setIsFetchingInitial(false);
             }
+            setIsFetchingInitial(false);
         })();
     }, [params.editId]);
 
@@ -97,7 +119,6 @@ export default function CreateReportScreen() {
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lon: number } | null>(null);
     const preventSearchRef = useRef(false);
 
-    // Ref and selection state to control cursor position
     const addressInputRef = useRef<TextInput>(null);
     const [addressSelection, setAddressSelection] = useState<{ start: number; end: number } | undefined>(undefined);
 
@@ -142,10 +163,7 @@ export default function CreateReportScreen() {
         setAddress(shortAddress);
         setSelectedLocation({ lat: item.latitude, lon: item.longitude });
         setSuggestions([]);
-
-        // Move cursor to the start of the string
         setAddressSelection({ start: 0, end: 0 });
-
         Keyboard.dismiss();
     };
 
@@ -162,7 +180,7 @@ export default function CreateReportScreen() {
         }
     }
 
-    // ─── Web: file picker ────────────────────────────────────────
+    // Web: file picker
     async function pickFromGalleryWeb() {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
@@ -187,6 +205,43 @@ export default function CreateReportScreen() {
             setPhotos((prev) => [...prev, ...newPhotos].slice(0, MAX_PHOTOS));
         }
     }
+
+    // Check if user has entered any data (for draft prompt)
+    const hasData = !!(title || desc || category || address !== (params.address ?? '') || photos.length > 0);
+
+    // Handle close button — prompt to save draft if there's data
+    const handleClose = () => {
+        if (params.editId || !hasData) {
+            router.back();
+            return;
+        }
+
+        showConfirm(
+            'Сохранить черновик?',
+            'У вас есть несохранённые данные. Сохранить как черновик?',
+            () => {
+                // Save draft
+                const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
+                const lon = selectedLocation?.lon ?? (params.lon ? parseFloat(params.lon) : 0);
+
+                useReportsStore.getState().saveDraft({
+                    title: title || 'Без названия',
+                    description: desc,
+                    address,
+                    latitude: lat,
+                    longitude: lon,
+                    rubric: category,
+                    photoUris: photos.map((p) => p.uri),
+                });
+
+                showAlert('Черновик сохранён', 'Заявка сохранена как черновик.', () => router.back());
+            },
+            () => {
+                // Discard
+                router.back();
+            }
+        );
+    };
 
     const handleSubmit = async () => {
         if (!category || !title || !address) {
@@ -219,15 +274,11 @@ export default function CreateReportScreen() {
                 });
             }
 
-            // Handle photos: this is a bit simplified. 
-            // We should ideally sync existing photos (delete those removed) and upload new ones.
-            // For now, let's just upload new ones and maybe delete removed ones if we track them.
-            // But the prompt asks for "возможность изменить", so let's at least upload new ones.
+            // Upload photos
             if (photos.length > 0) {
                 try {
                     await photosService.upload(report.id, photos);
                 } catch (photoErr: any) {
-                    // (error handling remains same)
                     const photoMsg = photoErr?.response?.data?.detail || photoErr?.message;
                     showAlert(
                         params.editId ? 'Заявка обновлена' : 'Заявка создана',
@@ -240,8 +291,26 @@ export default function CreateReportScreen() {
 
             showAlert('Успех', params.editId ? 'Заявка обновлена!' : 'Заявка отправлена на рассмотрение!', () => router.back());
         } catch (e: any) {
-            const serverMsg = e?.response?.data?.detail || e?.message;
-            showAlert('Ошибка', serverMsg ?? 'Не удалось сохранить заявку');
+            // Offline — save as draft
+            if (!params.editId) {
+                useReportsStore.getState().saveDraft({
+                    title,
+                    description: desc,
+                    address,
+                    latitude: lat,
+                    longitude: lon,
+                    rubric: category,
+                    photoUris: photos.map((p) => p.uri),
+                });
+                showAlert(
+                    'Нет подключения',
+                    'Заявка сохранена как черновик. Она будет автоматически отправлена при подключении к интернету.',
+                    () => router.back()
+                );
+            } else {
+                const serverMsg = e?.response?.data?.detail || e?.message;
+                showAlert('Ошибка', serverMsg ?? 'Не удалось сохранить заявку');
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -253,7 +322,7 @@ export default function CreateReportScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={handleClose}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <X size={24} color={isDarkMode ? '#F3F4F6' : '#111827'} />
@@ -279,218 +348,216 @@ export default function CreateReportScreen() {
                             <ActivityIndicator size="large" color="#2563EB" />
                         </View>
                     )}
-                    
+
                     {!isFetchingInitial && (
                         <>
-                    {/* Step 1: Category */}
-                    <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
-                        1. Что случилось?
-                    </Text>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        className="mb-6 -mx-5 px-5"
-                    >
-                        {isLoadingRubrics ? (
-                            <View className="py-4 px-8">
-                                <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                            </View>
-                        ) : rubrics.map((rub) => (
-                            <TouchableOpacity
-                                key={rub.name}
-                                onPress={() => setCategory(rub.name)}
-                                className={`w-20 items-center p-3 rounded-xl border mr-3 ${category === rub.name
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500'
-                                    : 'bg-gray-50 dark:bg-gray-800 border-transparent'
-                                    }`}
+                            {/* Step 1: Category */}
+                            <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
+                                1. Что случилось?
+                            </Text>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                className="mb-6 -mx-5 px-5"
                             >
-                                <View className="w-10 h-10 rounded-full items-center justify-center mb-2 overflow-hidden bg-gray-200 dark:bg-gray-700">
-                                    {rub.photo_url ? (
-                                        <Image
-                                            source={{ uri: rub.photo_url }}
-                                            className="w-10 h-10"
-                                            resizeMode="cover"
-                                        />
-                                    ) : (
-                                        <Text className="text-xl">📋</Text>
-                                    )}
-                                </View>
-                                <Text
-                                    className={`text-xs font-medium text-center ${category === rub.name ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-300'}`}
-                                    numberOfLines={1}
-                                >
-                                    {rub.name}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-
-                    {/* Step 2: Details */}
-                    <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
-                        2. Детали
-                    </Text>
-                    <Input
-                        placeholder="Краткое название"
-                        value={title}
-                        onChangeText={setTitle}
-                    />
-
-                    <View className="z-10 relative">
-                        <Input
-                            ref={addressInputRef}
-                            placeholder="Адрес (например: ул. Ленина, 10)"
-                            value={address}
-                            selection={addressSelection}
-                            onSelectionChange={(e) => setAddressSelection(e.nativeEvent.selection)}
-                            onChangeText={(text) => {
-                                setAddress(text);
-                                setSelectedLocation(null);
-                            }}
-                        />
-                        {/* Address Autocomplete Dropdown */}
-                        {(suggestions.length > 0 || isSearching) && (
-                            <View className="absolute top-[52px] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50 p-2"
-                                style={{
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.1,
-                                    shadowRadius: 12,
-                                    elevation: 5,
-                                }}>
-                                {isSearching ? (
-                                    <View className="p-4 items-center">
-                                        <Loader2 size={24} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                {rubrics.length === 0 ? (
+                                    <View className="py-4 px-8">
+                                        <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
                                     </View>
-                                ) : (
-                                    suggestions.map((item, index) => (
-                                        <TouchableOpacity
-                                            key={index}
-                                            onPress={() => handleSelectAddress(item)}
-                                            className={`flex-row items-center p-3 ${index < suggestions.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''
-                                                }`}
+                                ) : rubrics.map((rub) => (
+                                    <TouchableOpacity
+                                        key={rub.name}
+                                        onPress={() => setCategory(rub.name)}
+                                        className={`w-20 items-center p-3 rounded-xl border mr-3 ${category === rub.name
+                                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500'
+                                            : 'bg-gray-50 dark:bg-gray-800 border-transparent'
+                                            }`}
+                                    >
+                                        <View className="w-10 h-10 rounded-full items-center justify-center mb-2 overflow-hidden bg-gray-200 dark:bg-gray-700">
+                                            {rub.photoUrl ? (
+                                                <Image
+                                                    source={{ uri: rub.photoUrl }}
+                                                    style={{ width: 28, height: 28 }}
+                                                    resizeMode="contain"
+                                                />
+                                            ) : (
+                                                <Text className="text-xl">📋</Text>
+                                            )}
+                                        </View>
+                                        <Text
+                                            className={`text-xs font-medium text-center ${category === rub.name ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-300'}`}
+                                            numberOfLines={1}
                                         >
-                                            <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} style={{ marginRight: 12 }} />
-                                            <Text className="flex-1 text-sm text-gray-700 dark:text-gray-300" numberOfLines={2}>
-                                                {item.display_name}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))
+                                            {rub.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            {/* Step 2: Details */}
+                            <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
+                                2. Детали
+                            </Text>
+                            <Input
+                                placeholder="Краткое название"
+                                value={title}
+                                onChangeText={setTitle}
+                            />
+
+                            <View className="z-10 relative">
+                                <Input
+                                    ref={addressInputRef}
+                                    placeholder="Адрес (например: ул. Ленина, 10)"
+                                    value={address}
+                                    selection={addressSelection}
+                                    onSelectionChange={(e) => setAddressSelection(e.nativeEvent.selection)}
+                                    onChangeText={(text) => {
+                                        setAddress(text);
+                                        setSelectedLocation(null);
+                                    }}
+                                />
+                                {/* Address Autocomplete Dropdown */}
+                                {(suggestions.length > 0 || isSearching) && (
+                                    <View className="absolute top-[52px] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50 p-2"
+                                        style={{
+                                            shadowOffset: { width: 0, height: 4 },
+                                            shadowOpacity: 0.1,
+                                            shadowRadius: 12,
+                                            elevation: 5,
+                                        }}>
+                                        {isSearching ? (
+                                            <View className="p-4 items-center">
+                                                <Loader2 size={24} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                            </View>
+                                        ) : (
+                                            suggestions.map((item, index) => (
+                                                <TouchableOpacity
+                                                    key={index}
+                                                    onPress={() => handleSelectAddress(item)}
+                                                    className={`flex-row items-center p-3 ${index < suggestions.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''
+                                                        }`}
+                                                >
+                                                    <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} style={{ marginRight: 12 }} />
+                                                    <Text className="flex-1 text-sm text-gray-700 dark:text-gray-300" numberOfLines={2}>
+                                                        {item.display_name}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))
+                                        )}
+                                    </View>
                                 )}
                             </View>
-                        )}
-                    </View>
 
-                    <Input
-                        placeholder="Подробное описание..."
-                        multiline
-                        value={desc}
-                        onChangeText={setDesc}
-                    />
+                            <Input
+                                placeholder="Подробное описание..."
+                                multiline
+                                value={desc}
+                                onChangeText={setDesc}
+                            />
 
-                    {/* Step 3: Photos */}
-                    <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
-                        3. Фотографии{' '}
-                        {photos.length > 0 && (
-                            <Text className="text-gray-400 dark:text-gray-500 font-normal">
-                                ({photos.length}/{MAX_PHOTOS})
+                            {/* Step 3: Photos */}
+                            <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">
+                                3. Фотографии{' '}
+                                {photos.length > 0 && (
+                                    <Text className="text-gray-400 dark:text-gray-500 font-normal">
+                                        ({photos.length}/{MAX_PHOTOS})
+                                    </Text>
+                                )}
                             </Text>
-                        )}
-                    </Text>
 
-                    {/* Selected photos preview */}
-                    {(photos.length > 0 || existingPhotos.length > 0) && (
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            className="mb-3"
-                            style={{ overflow: 'visible' }}
-                            contentContainerStyle={{ paddingTop: 8, paddingRight: 8 }}
-                        >
-                            {/* Existing photos */}
-                            {existingPhotos.map((photo, i) => (
-                                <View
-                                    key={`existing-${photo.id}`}
-                                    className="relative mr-3"
-                                    style={{ width: 100, height: 100, overflow: 'visible' }}
+                            {/* Selected photos preview */}
+                            {(photos.length > 0 || existingPhotos.length > 0) && (
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    className="mb-3"
+                                    style={{ overflow: 'visible' }}
+                                    contentContainerStyle={{ paddingTop: 8, paddingRight: 8 }}
                                 >
-                                    <Image
-                                        source={{ uri: photo.photo_url }}
-                                        className="w-full h-full rounded-xl opacity-80"
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => removePhoto(i, true)}
-                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                                        style={{
-                                            shadowColor: '#000',
-                                            shadowOffset: { width: 0, height: 1 },
-                                            shadowOpacity: 0.2,
-                                            shadowRadius: 2,
-                                            elevation: 3,
-                                        }}
-                                    >
-                                        <Trash2 size={12} color="#fff" />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                            {/* New photos */}
-                            {photos.map((photo, i) => (
-                                <View
-                                    key={photo.uri}
-                                    className="relative mr-3"
-                                    style={{ width: 100, height: 100, overflow: 'visible' }}
-                                >
-                                    <Image
-                                        source={{ uri: photo.uri }}
-                                        className="w-full h-full rounded-xl"
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => removePhoto(i, false)}
-                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                                        style={{
-                                            shadowColor: '#000',
-                                            shadowOffset: { width: 0, height: 1 },
-                                            shadowOpacity: 0.2,
-                                            shadowRadius: 2,
-                                            elevation: 3,
-                                        }}
-                                    >
-                                        <Trash2 size={12} color="#fff" />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </ScrollView>
-                    )}
+                                    {/* Existing photos */}
+                                    {existingPhotos.map((photo, i) => (
+                                        <View
+                                            key={`existing-${photo.id}`}
+                                            className="relative mr-3"
+                                            style={{ width: 100, height: 100, overflow: 'visible' }}
+                                        >
+                                            <Image
+                                                source={{ uri: photo.photo_url }}
+                                                className="w-full h-full rounded-xl opacity-80"
+                                                resizeMode="cover"
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => removePhoto(i, true)}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                                                style={{
+                                                    shadowColor: '#000',
+                                                    shadowOffset: { width: 0, height: 1 },
+                                                    shadowOpacity: 0.2,
+                                                    shadowRadius: 2,
+                                                    elevation: 3,
+                                                }}
+                                            >
+                                                <Trash2 size={12} color="#fff" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                    {/* New photos */}
+                                    {photos.map((photo, i) => (
+                                        <View
+                                            key={photo.uri}
+                                            className="relative mr-3"
+                                            style={{ width: 100, height: 100, overflow: 'visible' }}
+                                        >
+                                            <Image
+                                                source={{ uri: photo.uri }}
+                                                className="w-full h-full rounded-xl"
+                                                resizeMode="cover"
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => removePhoto(i, false)}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                                                style={{
+                                                    shadowColor: '#000',
+                                                    shadowOffset: { width: 0, height: 1 },
+                                                    shadowOpacity: 0.2,
+                                                    shadowRadius: 2,
+                                                    elevation: 3,
+                                                }}
+                                            >
+                                                <Trash2 size={12} color="#fff" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            )}
 
-                    {/* Add photo button — different per platform */}
-                    {photos.length < MAX_PHOTOS && (
-                        Platform.OS === 'web' ? (
-                            // Web: file picker immediately
-                            <TouchableOpacity
-                                onPress={pickFromGalleryWeb}
-                                className="w-full h-28 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 items-center justify-center"
-                            >
-                                <ImagePlus size={28} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
-                                <Text className="text-sm text-gray-400 dark:text-gray-500 mt-2">Выбрать файл</Text>
-                                <Text className="text-xs text-gray-300 dark:text-gray-600 mt-1">
-                                    JPG, PNG, WebP · до 10 МБ
-                                </Text>
-                            </TouchableOpacity>
-                        ) : (
-                            // Native: open gallery sheet
-                            <TouchableOpacity
-                                onPress={openGallery}
-                                className="flex-row items-center justify-center gap-2 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl"
-                            >
-                                <Camera size={18} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                <Text className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                                    Добавить фото
-                                </Text>
-                            </TouchableOpacity>
-                        )
-                    )}
+                            {/* Add photo button — different per platform */}
+                            {photos.length < MAX_PHOTOS && (
+                                Platform.OS === 'web' ? (
+                                    <TouchableOpacity
+                                        onPress={pickFromGalleryWeb}
+                                        className="w-full h-28 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 items-center justify-center"
+                                    >
+                                        <ImagePlus size={28} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                        <Text className="text-sm text-gray-400 dark:text-gray-500 mt-2">Выбрать файл</Text>
+                                        <Text className="text-xs text-gray-300 dark:text-gray-600 mt-1">
+                                            JPG, PNG, WebP · до 10 МБ
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={openGallery}
+                                        className="flex-row items-center justify-center gap-2 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl"
+                                    >
+                                        <Camera size={18} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                        <Text className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                            Добавить фото
+                                        </Text>
+                                    </TouchableOpacity>
+                                )
+                            )}
 
-                    <View className="h-20" />
+                            <View className="h-20" />
                         </>
                     )}
                 </ScrollView>

@@ -2,10 +2,10 @@ import { ReportFilters } from '@/src/components/FiltersModal';
 import { AppMapView } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
-import { CATEGORIES } from '@/src/constants/categories';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { addressService } from '@/src/services/address';
 import { reportsService } from '@/src/services/reports';
-import { rubricsService } from '@/src/services/rubrics';
+import { useReportsStore } from '@/src/store/reportsStore';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult, MapViewRef, Report, ReportStatus } from '@/src/types';
@@ -59,8 +59,9 @@ function useIsMobile(breakpoint = 768) {
 // ─── Shared state hook ────────────────────────────────────────
 function useMapState() {
     const { visibilityArea, city } = useThemeStore();
-    const [reports, setReports] = useState<Report[]>([]);
-    const [isLoadingReports, setIsLoadingReports] = useState(true);
+    const feedReports = useReportsStore((s) => s.feedReports);
+    const isFeedLoading = useReportsStore((s) => s.isFeedLoading);
+    const fetchFeed = useReportsStore((s) => s.fetchFeed);
     const [selectedCoord, setSelectedCoord] = useState<{
         latitude: number;
         longitude: number;
@@ -113,40 +114,27 @@ function useMapState() {
         }, 500);
     }, []);
 
-    // Fetch real posts from API
+    // Fetch real posts from API (through cached store)
     const fetchReports = useCallback(async (currentFilters?: ReportFilters) => {
-        setIsLoadingReports(true);
-        try {
-            // Add city filter if visibility area is enabled
-            let finalFilters = currentFilters || filters;
-            if (visibilityArea && city) {
-                finalFilters = { ...finalFilters, city };
-            }
-            const data = await reportsService.getAll(finalFilters);
-            setReports(data);
-        } catch {
-            // ignore
-        } finally {
-            setIsLoadingReports(false);
+        let finalFilters = currentFilters || filters;
+        if (visibilityArea && city) {
+            finalFilters = { ...finalFilters, city };
         }
-    }, [filters, visibilityArea, city]);
+        await fetchFeed(finalFilters);
+    }, [filters, visibilityArea, city, fetchFeed]);
 
-    // Load dynamic rubrics and initial posts
+    // Get rubric names from cached rubricsStore
+    const rubricNames = useRubricsStore((s) => s.rubrics).map((r) => r.name);
+
+    // Load initial data
     useEffect(() => {
         let isMounted = true;
 
         const loadInitialData = async () => {
-            try {
-                // Fetch rubrics dynamically from backend
-                const rubricsData = await rubricsService.getAll();
-                if (isMounted) {
-                    setRubrics(rubricsData.map(r => r.name));
-                }
-            } catch {
-                // Fallback to defaults if backend fails
-                if (isMounted) {
-                    setRubrics(['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
-                }
+            // Fetch rubrics into store (already cached)
+            await useRubricsStore.getState().fetchRubrics();
+            if (isMounted) {
+                setRubrics(rubricNames.length > 0 ? rubricNames : ['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
             }
 
             // Fetch city boundary if visibility area is enabled
@@ -182,12 +170,12 @@ function useMapState() {
 
     const filteredReports = useMemo(
         () =>
-            reports.filter(
+            feedReports.filter(
                 (r) =>
                     r.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     r.address?.toLowerCase().includes(searchQuery.toLowerCase())
             ),
-        [reports, searchQuery]
+        [feedReports, searchQuery]
     );
 
     const handleMapPress = useCallback(
@@ -263,14 +251,14 @@ function useMapState() {
     }, []);
 
     return {
-        reports, selectedCoord, setSelectedCoord,
+        reports: feedReports, selectedCoord, setSelectedCoord,
         selectedAddress, setSelectedAddress,
         activeReports, setActiveReports,
         searchQuery, setSearchQuery,
         searchHistory, setSearchHistory,
         mapRef, singleReport, filteredReports,
         userLocation, userAddress,
-        isLoadingReports, fetchReports,
+        isLoadingReports: isFeedLoading, fetchReports,
         handleMapPress, handleMarkerPress, handleCloseDetail, handleLocate,
         filters, setFilters, rubrics,
         suggestions, setSuggestions, isSearching, fetchSuggestions,
@@ -470,7 +458,7 @@ function ReportDetail({
         });
     };
 
-    const cat = CATEGORIES.find((c) => c.name === report.rubric_name);
+    const cat = useRubricsStore((s) => s.getRubric)(report.rubric_name);
 
     return (
         <View>
@@ -495,10 +483,17 @@ function ReportDetail({
                 {!!report.rubric_name && (
                     <View className="flex-row items-center gap-1.5 mt-1 shrink-0">
                         <View
-                            className="w-8 h-8 rounded-md items-center justify-center"
-                            style={{ backgroundColor: (cat?.color || '#999') + '20' }}
+                            className="w-8 h-8 rounded-md items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-700"
                         >
-                            <Text style={{ fontSize: 14 }}>{cat?.icon || '❗'}</Text>
+                            {cat?.photoUrl ? (
+                                <Image
+                                    source={{ uri: cat.photoUrl }}
+                                    style={{ width: 20, height: 20 }}
+                                    resizeMode="contain"
+                                />
+                            ) : (
+                                <Text style={{ fontSize: 14 }}>❗</Text>
+                            )}
                         </View>
                         <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {report.rubric_name}

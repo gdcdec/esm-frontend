@@ -1,7 +1,8 @@
 import { Badge } from '@/src/components/ui';
-import { CATEGORIES } from '@/src/constants/categories';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { reportsService } from '@/src/services/reports';
 import { useAuthStore } from '@/src/store/authStore';
+import { useReportsStore } from '@/src/store/reportsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import * as Print from 'expo-print';
@@ -199,7 +200,7 @@ export default function ProfileScreen() {
     const fetchMyReports = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await reportsService.getMine();
+            const data = await useReportsStore.getState().fetchMine();
             setMyReports(data);
         } catch (err) {
             console.warn('Failed to fetch my reports:', err);
@@ -211,7 +212,7 @@ export default function ProfileScreen() {
     const fetchReportDetails = useCallback(async (reportId: number) => {
         setReportDetailLoading(true);
         try {
-            const detailedReport = await reportsService.getById(reportId);
+            const detailedReport = await useReportsStore.getState().getById(reportId);
 
             setSelectedReport(detailedReport);
         } catch (err) {
@@ -542,7 +543,7 @@ export default function ProfileScreen() {
                                     </View>
                                 ) : (
                                     currentReports.map((r) => {
-                                        const cat = CATEGORIES.find((c) => c.name === r.rubric_name);
+                                        const cat = useRubricsStore.getState().getRubric(r.rubric_name);
                                         return (
                                             <TouchableOpacity
                                                 key={r.id}
@@ -554,12 +555,17 @@ export default function ProfileScreen() {
                                                     }`}
                                             >
                                                 <View
-                                                    className="w-10 h-10 rounded-xl items-center justify-center"
-                                                    style={{
-                                                        backgroundColor: (cat?.color || '#999') + '20',
-                                                    }}
+                                                    className="w-10 h-10 rounded-xl items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-700"
                                                 >
-                                                    <Text className="text-lg">{cat?.icon || '❗'}</Text>
+                                                    {cat?.photoUrl ? (
+                                                        <Image
+                                                            source={{ uri: cat.photoUrl }}
+                                                            style={{ width: 24, height: 24 }}
+                                                            resizeMode="contain"
+                                                        />
+                                                    ) : (
+                                                        <Text className="text-lg">❗</Text>
+                                                    )}
                                                 </View>
                                                 <View className="flex-1">
                                                     <Text
@@ -792,7 +798,7 @@ function ReportDetailInner({
     isExporting: boolean
 }) {
     // Находим категорию
-    const cat = CATEGORIES.find((c) => c.name === report.rubric_name);
+    const cat = useRubricsStore.getState().getRubric(report.rubric_name);
 
     // Создаем массив фотографий для карусели
     const carouselPhotos = [];
@@ -837,12 +843,17 @@ function ReportDetailInner({
                 {!!report.rubric_name && (
                     <View className="flex-row items-center mb-4">
                         <View
-                            className="w-8 h-8 rounded-lg items-center justify-center mr-2"
-                            style={{
-                                backgroundColor: (cat?.color || '#999') + '20',
-                            }}
+                            className="w-8 h-8 rounded-lg items-center justify-center mr-2 overflow-hidden bg-gray-100 dark:bg-gray-700"
                         >
-                            <Text className="text-sm">{cat?.icon || '❗'}</Text>
+                            {cat?.photoUrl ? (
+                                <Image
+                                    source={{ uri: cat.photoUrl }}
+                                    style={{ width: 20, height: 20 }}
+                                    resizeMode="contain"
+                                />
+                            ) : (
+                                <Text className="text-sm">❗</Text>
+                            )}
                         </View>
                         <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {report.rubric_name}

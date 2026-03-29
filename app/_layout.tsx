@@ -1,3 +1,5 @@
+import { useReportsStore } from '@/src/store/reportsStore';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -26,6 +28,12 @@ export default function RootLayout() {
   useEffect(() => {
     setColorScheme(isDarkMode ? 'dark' : 'light');
   }, [isDarkMode, setColorScheme]);
+
+  // Load rubrics and sync pending drafts on startup
+  useEffect(() => {
+    useRubricsStore.getState().fetchRubrics();
+    useReportsStore.getState().syncDrafts();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

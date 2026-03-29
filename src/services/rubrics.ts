@@ -3,6 +3,7 @@ import api from './api';
 export interface Rubric {
     name: string;
     counter: number;
+    photo: string | null;
     photo_url: string | null;
 }
 
