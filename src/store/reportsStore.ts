@@ -1,5 +1,5 @@
-import { reportsService } from '@/src/services/reports';
 import { photosService } from '@/src/services/photos';
+import { reportsService } from '@/src/services/reports';
 import { Report } from '@/src/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -76,12 +76,23 @@ export const useReportsStore = create<ReportsState>()(
                 set({ isFeedLoading: true });
                 try {
                     const data = await reportsService.getAll(filters);
+                    // Backend doesn't return 'status' in list - fetch details for each report
+                    const reportsWithStatus = await Promise.all(
+                        data.map(async (report) => {
+                            try {
+                                const details = await reportsService.getById(report.id);
+                                return { ...report, status: details.status } as any;
+                            } catch {
+                                return { ...report, status: 'check' } as any;
+                            }
+                        })
+                    );
                     set({
-                        feedReports: data,
+                        feedReports: reportsWithStatus as Report[],
                         isFeedLoading: false,
                         feedUpdatedAt: Date.now(),
                     });
-                    return data;
+                    return reportsWithStatus as Report[];
                 } catch {
                     set({ isFeedLoading: false });
                     return get().feedReports;
@@ -92,12 +103,23 @@ export const useReportsStore = create<ReportsState>()(
                 set({ isMyLoading: true });
                 try {
                     const data = await reportsService.getMine();
+                    // Backend doesn't return 'status' in list - fetch details for each report
+                    const reportsWithStatus = await Promise.all(
+                        data.map(async (report) => {
+                            try {
+                                const details = await reportsService.getById(report.id);
+                                return { ...report, status: details.status } as any;
+                            } catch {
+                                return { ...report, status: 'check' } as any;
+                            }
+                        })
+                    );
                     set({
-                        myReports: data,
+                        myReports: reportsWithStatus as Report[],
                         isMyLoading: false,
                         myUpdatedAt: Date.now(),
                     });
-                    return data;
+                    return reportsWithStatus as Report[];
                 } catch {
                     set({ isMyLoading: false });
                     return get().myReports;

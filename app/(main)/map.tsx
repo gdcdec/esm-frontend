@@ -2,13 +2,13 @@ import { ReportFilters } from '@/src/components/FiltersModal';
 import { AppMapView } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
-import { useRubricsStore } from '@/src/store/rubricsStore';
+import { getStatusConfig } from '@/src/constants/status';
 import { addressService } from '@/src/services/address';
-import { reportsService } from '@/src/services/reports';
-import { useReportsStore } from '@/src/store/reportsStore';
 import { useAuthStore } from '@/src/store/authStore';
+import { useReportsStore } from '@/src/store/reportsStore';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
-import { AddressSearchResult, MapViewRef, Report, ReportStatus } from '@/src/types';
+import { AddressSearchResult, MapViewRef, Report } from '@/src/types';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -437,15 +437,7 @@ function ReportDetail({
     report: Report;
     onClose: () => void;
 }) {
-    const statusMap: Record<ReportStatus, { label: string, color: string, bg: string }> = {
-        published: { label: 'Опубликовано', color: 'text-green-700', bg: 'bg-green-100' },
-        check: { label: 'На рассмотрении', color: 'text-yellow-700', bg: 'bg-yellow-100' },
-        draft: { label: 'Черновик', color: 'text-gray-600', bg: 'bg-gray-100' },
-        archived: { label: 'В архиве', color: 'text-purple-700', bg: 'bg-purple-100' },
-        banned: { label: 'Заблокировано', color: 'text-red-700', bg: 'bg-red-100' },
-    };
-
-    const status = statusMap[report.status] || statusMap.check;
+    const status = getStatusConfig(report.status);
 
     const handleAddReportHere = () => {
         router.push({
@@ -465,7 +457,7 @@ function ReportDetail({
 
             <View className="flex-row justify-between items-start">
                 <View className={`${status.bg} px-2.5 py-1 rounded-full`}>
-                    <Text className={`text-[10px] font-bold ${status.color} uppercase`}>
+                    <Text className={`text-[10px] font-bold ${status.text} uppercase`}>
                         {status.label}
                     </Text>
                 </View>
