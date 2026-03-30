@@ -136,7 +136,6 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
                 }
                 
                 rawCoords = largestPolygon;
-                console.log(`[Nominatim] Selected largest polygon from MultiPolygon for ${cityName}, area: ${maxArea.toFixed(2)}`);
             }
 
             // Convert [longitude, latitude] to {latitude, longitude}
