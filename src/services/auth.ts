@@ -150,16 +150,4 @@ export const authService = {
         return data;
     },
 
-    /**
-     * Change password — POST /auth/password/change/
-     * Requires current password
-     */
-    changePassword: async (old_password: string, new_password: string): Promise<{ message: string }> => {
-        const { data } = await api.post('/auth/password/change/', {
-            old_password,
-            new_password,
-            confirm_password: new_password,
-        });
-        return data;
-    },
 };

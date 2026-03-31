@@ -25,3 +25,11 @@
 .dark ::-webkit-scrollbar-corner {
     background: #1F2937;
 }
+
+/* Hide native password reveal actions in web browsers to avoid 'double states' */
+input::-ms-reveal,
+input::-ms-clear,
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+    display: none !important;
+}

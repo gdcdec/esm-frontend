@@ -59,7 +59,8 @@ function useIsMobile(breakpoint = 768) {
 
 // ─── Shared state hook ────────────────────────────────────────
 function useMapState() {
-    const { visibilityArea, city } = useThemeStore();
+    const visibilityArea = useThemeStore((s) => s.visibilityArea);
+    const city = useThemeStore((s) => s.city);
     const feedReports = useReportsStore((s) => s.feedReports);
     const isFeedLoading = useReportsStore((s) => s.isFeedLoading);
     const fetchFeed = useReportsStore((s) => s.fetchFeed);
@@ -276,7 +277,8 @@ function InlineFilters({
     state: ReturnType<typeof useMapState>,
     isDarkMode: boolean
 }) {
-    const { visibilityArea, city } = useThemeStore();
+    const visibilityArea = useThemeStore((s) => s.visibilityArea);
+    const city = useThemeStore((s) => s.city);
     const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'ordering' | null>(null);
 
     const sortings = useMemo(() => [

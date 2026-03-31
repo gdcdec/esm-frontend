@@ -2,15 +2,16 @@ import { authService } from '@/src/services/auth';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { ChevronLeft, ChevronRight as ChevronRightIcon, Lock as LockIcon, Mail, Phone } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft, ChevronRight as ChevronRightIcon, Info, Lock as LockIcon, Mail, Phone, X } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AccountScreen() {
     const user = useAuthStore((s) => s.user);
     const setUser = useAuthStore((s) => s.setUser);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const insets = useSafeAreaInsets();
 
     const [firstName, setFirstName] = useState(user?.first_name || '');
     const [lastName, setLastName] = useState(user?.last_name || '');
@@ -19,7 +20,40 @@ export default function AccountScreen() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load current user profile from API
+    // Toast notification state (same pattern as create.tsx)
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [toastType, setToastType] = useState<'error' | 'success'>('error');
+    const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Phone validation
+    const digitsOnly = phone.replace(/\D/g, '');
+    const isPhoneValid = digitsOnly.length === 0 || (digitsOnly.length === 11 && digitsOnly.startsWith('7'));
+    const phoneError = phone.length > 0 && !isPhoneValid;
+
+    const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToastMessage(message);
+        setToastType(type);
+        toastTimer.current = setTimeout(() => {
+            setToastMessage(null);
+        }, 3000);
+    };
+
+    const handlePhoneChange = (text: string) => {
+        let digits = text.replace(/\D/g, '');
+        if (digits.startsWith('8')) digits = '7' + digits.slice(1);
+        if (!digits) { setPhone(''); return; }
+        if (!digits.startsWith('7')) digits = '7' + digits;
+
+        let res = '+7';
+        if (digits.length > 1) res += ' (' + digits.slice(1, 4);
+        if (digits.length >= 5) res += ') ' + digits.slice(4, 7);
+        if (digits.length >= 8) res += '-' + digits.slice(7, 9);
+        if (digits.length >= 10) res += '-' + digits.slice(9, 11);
+
+        setPhone(res);
+    };
+
     useEffect(() => {
         const loadUserProfile = async () => {
             setIsLoading(true);
@@ -30,8 +64,7 @@ export default function AccountScreen() {
                 setLastName(userData.last_name || '');
                 setPatronymic(userData.patronymic || '');
                 setPhone(userData.phone_number || '');
-            } catch (error) {
-                console.error('Failed to load user profile:', error);
+            } catch {
                 // Keep using cached user data from store
             } finally {
                 setIsLoading(false);
@@ -41,21 +74,41 @@ export default function AccountScreen() {
     }, []);
 
     const handleSave = async () => {
+        // Phone validation
+        if (phone.length > 0 && !isPhoneValid) {
+            showToast('Телефон должен содержать 11 цифр и начинаться с 7', 'error');
+            return;
+        }
+
         setIsSaving(true);
         try {
-            const updatedUser = await authService.updateCurrentUser({
-                first_name: firstName,
-                last_name: lastName,
-                patronymic: patronymic,
-                phone_number: phone,
-            });
+            // Only send non-empty fields — backend validators reject empty strings
+            // for first_name, last_name, phone_number etc. (allow_blank=True doesn't bypass validators)
+            const payload: Record<string, string> = {};
+            if (firstName.trim())  payload.first_name  = firstName.trim();
+            if (lastName.trim())   payload.last_name   = lastName.trim();
+            if (patronymic.trim()) payload.patronymic  = patronymic.trim();
+            if (digitsOnly.length === 11) {
+                payload.phone_number = `+${digitsOnly}`;
+            }
+
+            const updatedUser = await authService.updateCurrentUser(payload);
             setUser(updatedUser);
-            Alert.alert('Успех', 'Данные профиля обновлены');
+            showToast('Данные профиля обновлены', 'success');
         } catch (error: any) {
-            const message = error?.response?.data?.detail || 'Не удалось сохранить изменения';
-            Alert.alert('Ошибка', message);
+            const data = error?.response?.data;
+            const message =
+                data?.detail ||
+                data?.first_name?.[0] ||
+                data?.last_name?.[0] ||
+                data?.phone_number?.[0] ||
+                data?.patronymic?.[0] ||
+                data?.non_field_errors?.[0] ||
+                'Не удалось сохранить изменения';
+            showToast(typeof message === 'string' ? message : JSON.stringify(message), 'error');
         } finally {
             setIsSaving(false);
+
         }
     };
 
@@ -69,6 +122,20 @@ export default function AccountScreen() {
 
     return (
         <View className="flex-1 bg-gray-50 dark:bg-gray-900">
+            {/* Toast Notification */}
+            {toastMessage && (
+                <View
+                    className={`absolute left-4 right-4 ${toastType === 'success' ? 'bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-800' : 'bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-800'} rounded-2xl p-4 shadow-xl flex-row items-center`}
+                    style={{ top: Math.max(insets.top + 8, 16), elevation: 12, zIndex: 9999 }}
+                >
+                    <Info size={22} color={toastType === 'success' ? (isDarkMode ? '#86EFAC' : '#16A34A') : (isDarkMode ? '#FCA5A5' : '#DC2626')} />
+                    <Text className={`${toastType === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'} font-medium ml-3 flex-1`}>{toastMessage}</Text>
+                    <TouchableOpacity onPress={() => setToastMessage(null)} className="p-1">
+                        <X size={20} color={toastType === 'success' ? (isDarkMode ? '#86EFAC' : '#16A34A') : (isDarkMode ? '#FCA5A5' : '#DC2626')} />
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {/* Header */}
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
@@ -149,20 +216,25 @@ export default function AccountScreen() {
                             />
                         </View>
 
-                        {/* Phone */}
+                        {/* Phone with validation */}
                         <View className="px-4 py-3">
                             <Text className="text-xs text-gray-400 dark:text-gray-500 mb-1">Телефон</Text>
                             <View className="flex-row items-center">
-                                <Phone size={16} color={isDarkMode ? "#6B7280" : "#9CA3AF"} className="mr-2" />
+                                <Phone size={16} color={phoneError ? '#EF4444' : (isDarkMode ? "#6B7280" : "#9CA3AF")} className="mr-2" />
                                 <TextInput
                                     value={phone}
-                                    onChangeText={setPhone}
+                                    onChangeText={handlePhoneChange}
                                     placeholder="+7 (___) ___-__-__"
                                     placeholderTextColor={isDarkMode ? "#6B7280" : "#9CA3AF"}
                                     keyboardType="phone-pad"
                                     className="flex-1 text-base text-gray-900 dark:text-gray-100"
                                 />
                             </View>
+                            {phoneError && (
+                                <Text className="text-xs text-red-500 dark:text-red-400 mt-1">
+                                    Телефон должен содержать 11 цифр и начинаться с 7
+                                </Text>
+                            )}
                         </View>
                     </View>
 
@@ -208,8 +280,10 @@ export default function AccountScreen() {
                     {/* Save Button */}
                     <TouchableOpacity
                         onPress={handleSave}
-                        disabled={isSaving}
-                        className="bg-blue-600 rounded-xl py-4 items-center mb-6"
+                        disabled={isSaving || phoneError}
+                        className={`rounded-xl py-4 items-center mb-6 ${
+                            isSaving || phoneError ? 'bg-blue-400' : 'bg-blue-600'
+                        }`}
                     >
                         <Text className="text-white font-bold text-base">
                             {isSaving ? 'Сохранение...' : 'Сохранить изменения'}

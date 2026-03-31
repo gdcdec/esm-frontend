@@ -236,50 +236,54 @@ export default function LoginScreen() {
                         />
                     )}
 
-                    <View className="relative justify-center mb-3">
+                    <View className="relative">
                         <Input
                             placeholder="Пароль"
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry={!showPassword}
                             hideClearButton
-                            className="mb-0"
                         />
-                        {!isLogin && (
-                            <TouchableOpacity
-                                onPress={() => setShowPassword(!showPassword)}
-                                className="absolute right-0 top-0 bottom-0 justify-center px-4"
-                            >
-                                {showPassword ? (
-                                    <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                ) : (
-                                    <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                )}
-                            </TouchableOpacity>
+                        {password.length > 0 && (
+                            <View className="absolute right-0 top-0 bottom-3 justify-center">
+                                <TouchableOpacity
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    className="px-4 py-2"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                    ) : (
+                                        <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
 
                     {!isLogin && (
                         <>
-                            <View className="relative justify-center mb-3">
+                            <View className="relative">
                                 <Input
                                     placeholder="Повторите пароль"
                                     value={confirmPassword}
                                     onChangeText={setConfirmPassword}
                                     secureTextEntry={!showConfirmPassword}
                                     hideClearButton
-                                    className="mb-0"
                                 />
-                                <TouchableOpacity
-                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-0 top-0 bottom-0 justify-center px-4"
-                                >
-                                    {showConfirmPassword ? (
-                                        <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                    ) : (
-                                        <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                    )}
-                                </TouchableOpacity>
+                                {confirmPassword.length > 0 && (
+                                    <View className="absolute right-0 top-0 bottom-3 justify-center">
+                                        <TouchableOpacity
+                                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="px-4 py-2"
+                                        >
+                                            {showConfirmPassword ? (
+                                                <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                            ) : (
+                                                <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
 
                             {/* Password requirements */}

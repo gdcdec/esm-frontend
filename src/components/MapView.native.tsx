@@ -168,7 +168,9 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
     const mapRef = useRef<RNMapView>(null);
 
-    const { isDarkMode, visibilityArea, city } = useThemeStore();
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const visibilityArea = useThemeStore((s) => s.visibilityArea);
+    const city = useThemeStore((s) => s.city);
 
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
 

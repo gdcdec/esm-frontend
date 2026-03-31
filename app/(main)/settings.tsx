@@ -10,7 +10,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function SettingsScreen() {
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
-    const { isDarkMode, setDarkMode, visibilityArea, setVisibilityArea, city, setCity } = useThemeStore();
+    const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const setDarkMode = useThemeStore((s) => s.setDarkMode);
+    const visibilityArea = useThemeStore((s) => s.visibilityArea);
+    const setVisibilityArea = useThemeStore((s) => s.setVisibilityArea);
+    const city = useThemeStore((s) => s.city);
+    const setCity = useThemeStore((s) => s.setCity);
     const { setColorScheme } = useColorScheme();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [showCityModal, setShowCityModal] = useState(false);

@@ -199,9 +199,8 @@ export const FiltersModal: React.FC<FiltersModalProps> = ({
   availableAuthors = []
 }) => {
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
-  const themeStore = useThemeStore();
-  const visibilityArea = themeStore.visibilityArea;
-  const city = themeStore.city;
+  const visibilityArea = useThemeStore((s) => s.visibilityArea);
+  const city = useThemeStore((s) => s.city);
   const [expandedSections, setExpandedSections] = useState({
     rubric: true,
     location: false,
