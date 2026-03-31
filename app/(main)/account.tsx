@@ -113,7 +113,7 @@ export default function AccountScreen() {
     };
 
     const handleGoBack = () => {
-        router.replace('/(main)/settings');
+        router.back();
     };
 
     const handleChangePassword = () => {

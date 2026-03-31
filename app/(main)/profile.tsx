@@ -456,7 +456,7 @@ export default function ProfileScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.replace('/(main)/map')}
+                        onPress={() => router.back()}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <X size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
