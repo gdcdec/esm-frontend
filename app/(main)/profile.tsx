@@ -91,12 +91,6 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
                                 source={{ uri: photos[currentIndex].photo_url }}
                                 className="w-full h-full"
                                 resizeMode="cover"
-                                onError={(e) => {
-                                    console.log(`Carousel image ${currentIndex + 1} error:`, e.nativeEvent.error);
-                                }}
-                                onLoad={() => {
-                                    console.log(`Carousel image ${currentIndex + 1} loaded: ${photos[currentIndex].photo_url}`);
-                                }}
                             />
 
                             {/* Подпись к фото */}
@@ -186,9 +180,10 @@ export default function ProfileScreen() {
     const logout = useAuthStore((s) => s.logout);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
-    const [myReports, setMyReports] = useState<Report[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [myReports, setMyReports] = useState<Report[]>(() => useReportsStore.getState().myReports);
+    const [isLoading, setIsLoading] = useState(false);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+    const [reportToDelete, setReportToDelete] = useState<number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -198,7 +193,9 @@ export default function ProfileScreen() {
     const reportsPerPage = 5;
 
     const fetchMyReports = useCallback(async () => {
-        setIsLoading(true);
+        if (useReportsStore.getState().myReports.length === 0) {
+            setIsLoading(true);
+        }
         try {
             const data = await useReportsStore.getState().fetchMine();
             setMyReports(data);
@@ -210,18 +207,23 @@ export default function ProfileScreen() {
     }, []);
 
     const fetchReportDetails = useCallback(async (reportId: number) => {
-        setReportDetailLoading(true);
-        try {
-            const detailedReport = await useReportsStore.getState().getById(reportId);
+        // Мгновенно показываем то, что есть в списке
+        const cachedReport = myReports.find(r => r.id === reportId);
+        if (cachedReport) {
+            setSelectedReport(cachedReport);
+        } else {
+            setReportDetailLoading(true);
+        }
 
-            setSelectedReport(detailedReport);
+        try {
+            // Тихо получаем полные данные напрямую без лишних оберток
+            // reportsService.getById гарантированно отдает свежие данные с фото
+            const freshReport = await reportsService.getById(reportId);
+
+            // Плавно обновляем окно, только если оно всё ещё открыто на этой заявке
+            setSelectedReport(prev => (prev && prev.id === reportId) ? freshReport : prev);
         } catch (err) {
-            console.warn('Failed to fetch report details:', err);
-            // Если не удалось загрузить детали, показываем базовую информацию
-            const basicReport = myReports.find(r => r.id === reportId);
-            if (basicReport) {
-                setSelectedReport(basicReport);
-            }
+            console.warn('Failed to fetch full report details:', err);
         } finally {
             setReportDetailLoading(false);
         }
@@ -419,38 +421,22 @@ export default function ProfileScreen() {
         router.replace('/(auth)/login');
     };
 
-    const handleDelete = async (id: number) => {
-        const confirmDelete = () => {
-            if (Platform.OS === 'web') {
-                return window.confirm('Вы уверены, что хотите удалить эту заявку?');
-            }
-            return new Promise((resolve) => {
-                Alert.alert(
-                    'Удаление',
-                    'Вы уверены, что хотите удалить эту заявку?',
-                    [
-                        { text: 'Отмена', style: 'cancel', onPress: () => resolve(false) },
-                        { text: 'Удалить', style: 'destructive', onPress: () => resolve(true) },
-                    ]
-                );
-            });
-        };
+    const promptDelete = (id: number) => {
+        setReportToDelete(id);
+    };
 
-        const confirmed = await confirmDelete();
-        if (!confirmed) return;
+    const confirmDelete = async () => {
+        if (reportToDelete === null) return;
 
         setIsDeleting(true);
         try {
-            await reportsService.delete(id);
-            setMyReports((prev) => prev.filter((r) => r.id !== id));
+            await reportsService.delete(reportToDelete);
+            setMyReports((prev) => prev.filter((r) => r.id !== reportToDelete));
             setSelectedReport(null);
+            setReportToDelete(null);
         } catch (err) {
             console.warn('Failed to delete report:', err);
-            if (Platform.OS === 'web') {
-                window.alert('Не удалось удалить заявку');
-            } else {
-                Alert.alert('Ошибка', 'Не удалось удалить заявку');
-            }
+            Alert.alert('Ошибка', 'Не удалось удалить заявку');
         } finally {
             setIsDeleting(false);
         }
@@ -697,12 +683,58 @@ export default function ProfileScreen() {
                                     isDarkMode={isDarkMode}
                                     onClose={() => setSelectedReport(null)}
                                     onEdit={handleEdit}
-                                    onDelete={handleDelete}
+                                    onDelete={promptDelete}
                                     onExport={handleExport}
                                     isDeleting={isDeleting}
                                     isExporting={isExporting}
                                 />
                             ) : null}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                visible={!!reportToDelete}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => !isDeleting && setReportToDelete(null)}
+            >
+                <View
+                    style={{ flex: 1, paddingHorizontal: 16 }}
+                    className="justify-center items-center bg-black/50"
+                >
+                    <View
+                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-xl p-6"
+                        style={{ elevation: 20 }}
+                    >
+                        <Text className="text-xl font-bold dark:text-white mb-2 text-center">
+                            Удаление заявки
+                        </Text>
+                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center leading-5">
+                            Вы уверены, что хотите удалить эту заявку? Это действие нельзя будет отменить.
+                        </Text>
+
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity
+                                onPress={() => setReportToDelete(null)}
+                                disabled={isDeleting}
+                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl items-center"
+                            >
+                                <Text className="text-gray-700 dark:text-gray-300 font-bold text-sm">Отмена</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmDelete}
+                                disabled={isDeleting}
+                                className="flex-1 py-3 bg-red-50 dark:bg-red-900/40 border border-red-100 dark:border-red-800 rounded-xl items-center flex-row justify-center"
+                            >
+                                {isDeleting ? (
+                                    <ActivityIndicator size="small" color="#DC2626" />
+                                ) : (
+                                    <Text className="text-red-600 font-bold text-sm">Удалить</Text>
+                                )}
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
