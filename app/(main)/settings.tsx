@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, LogOut, MapPin, Moon, Shield, X } from 'lucide-react-native';
+import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, LogOut, MapPin, Moon, User as UserIcon, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import { Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -31,6 +31,10 @@ export default function SettingsScreen() {
 
     const handleChangeCity = () => {
         setShowCityModal(true);
+    };
+
+    const handleAccountManage = () => {
+        router.push('/(main)/account');
     };
 
     const handleLogout = () => {
@@ -76,12 +80,12 @@ export default function SettingsScreen() {
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity className="flex-row items-center justify-between py-3">
+                        <TouchableOpacity onPress={handleAccountManage} className="flex-row items-center justify-between py-3">
                             <View className="flex-row items-center">
                                 <View className="w-7 h-7 rounded-full bg-green-50 dark:bg-green-900/30 items-center justify-center mr-3">
-                                    <Shield size={16} color="#10B981" />
+                                    <UserIcon size={16} color="#10B981" />
                                 </View>
-                                <Text className="text-sm text-gray-900 dark:text-gray-100">Безопасность</Text>
+                                <Text className="text-sm text-gray-900 dark:text-gray-100">Управление аккаунтом</Text>
                             </View>
                             <ChevronRight size={18} color="#9CA3AF" />
                         </TouchableOpacity>

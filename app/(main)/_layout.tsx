@@ -21,6 +21,18 @@ export default function MainLayout() {
                     animation: 'slide_from_bottom',
                 }}
             />
+            <Stack.Screen
+                name="account"
+                options={{
+                    animation: 'slide_from_right',
+                }}
+            />
+            <Stack.Screen
+                name="password"
+                options={{
+                    animation: 'slide_from_right',
+                }}
+            />
         </Stack>
     );
 }

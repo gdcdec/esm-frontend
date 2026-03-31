@@ -1,5 +1,16 @@
 import api from './api';
 
+interface User {
+    id: number;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    patronymic?: string;
+    phone_number?: string;
+    city?: string;
+}
+
 interface LoginResponse {
     token: string;
     user_id: number;
@@ -7,6 +18,9 @@ interface LoginResponse {
     email: string;
     first_name: string;
     last_name: string;
+    patronymic?: string;
+    phone_number?: string;
+    city?: string;
 }
 
 interface RegisterResponse {
@@ -117,6 +131,35 @@ export const authService = {
             '/auth/password-reset/confirm/',
             { email, code, new_password, confirm_password: new_password }
         );
+        return data;
+    },
+
+    /**
+     * Get current user profile — GET /users/me/
+     */
+    getCurrentUser: async (): Promise<User> => {
+        const { data } = await api.get<User>('/users/me/');
+        return data;
+    },
+
+    /**
+     * Update current user profile — PATCH /users/me/
+     */
+    updateCurrentUser: async (updates: Partial<User>): Promise<User> => {
+        const { data } = await api.patch<User>('/users/me/', updates);
+        return data;
+    },
+
+    /**
+     * Change password — POST /auth/password/change/
+     * Requires current password
+     */
+    changePassword: async (old_password: string, new_password: string): Promise<{ message: string }> => {
+        const { data } = await api.post('/auth/password/change/', {
+            old_password,
+            new_password,
+            confirm_password: new_password,
+        });
         return data;
     },
 };
