@@ -78,28 +78,18 @@ export const useReportsStore = create<ReportsState>()(
                 try {
                     // Отделяем фильтр рубрик для клиентской фильтрации
                     const { rubrics, ...apiFilters } = filters || {};
-                    
+
                     const data = await reportsService.getAll(apiFilters);
-                    // Backend doesn't return full details in list - fetch details for each report
-                    const reportsWithDetails = await Promise.all(
-                        data.map(async (report) => {
-                            try {
-                                const details = await reportsService.getById(report.id);
-                                return { ...report, ...details } as Report;
-                            } catch {
-                                return { ...report, status: 'check' } as Report;
-                            }
-                        })
-                    );
-                    
-                    // Клиентская фильтрация по рубрикам с логикой OR (любая из выбранных)
-                    let filteredReports = reportsWithDetails;
+
+                    // Клиентская фильтрация: в ленте только опубликованные и архивные (если статус указан)
+                    let filteredReports = data;
+
                     if (rubrics && rubrics.length > 0) {
-                        filteredReports = reportsWithDetails.filter(report => 
+                        filteredReports = data.filter(report =>
                             report.rubric_name && rubrics.includes(report.rubric_name)
                         );
                     }
-                    
+
                     // Применяем клиентскую сортировку по дате создания
                     const sortedReports = filteredReports.sort((a, b) => {
                         const dateA = new Date(a.created_at || 0).getTime();
@@ -111,7 +101,7 @@ export const useReportsStore = create<ReportsState>()(
                         }
                         return dateB - dateA; // Сначала новые
                     });
-                    
+
                     set({
                         feedReports: sortedReports,
                         isFeedLoading: false,
@@ -128,23 +118,12 @@ export const useReportsStore = create<ReportsState>()(
                 set({ isMyLoading: true });
                 try {
                     const data = await reportsService.getMine();
-                    // Backend doesn't return full details in list - fetch details for each report
-                    const reportsWithDetails = await Promise.all(
-                        data.map(async (report) => {
-                            try {
-                                const details = await reportsService.getById(report.id);
-                                return { ...report, ...details } as Report;
-                            } catch {
-                                return { ...report, status: 'check' } as Report;
-                            }
-                        })
-                    );
                     set({
-                        myReports: reportsWithDetails,
+                        myReports: data,
                         isMyLoading: false,
                         myUpdatedAt: Date.now(),
                     });
-                    return reportsWithDetails;
+                    return data;
                 } catch {
                     set({ isMyLoading: false });
                     return get().myReports;

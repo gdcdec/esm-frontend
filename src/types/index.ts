@@ -123,5 +123,7 @@ export interface CreateReportPayload {
 
     rubric?: string;
 
+    status?: ReportStatus;
+
 }
 
