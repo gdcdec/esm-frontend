@@ -25,6 +25,7 @@ import {
     X
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Alert,
     BackHandler,
@@ -431,10 +432,9 @@ function InlineFilters({
 
 // ─── Report detail view (shared) ──────────────────────────────
 interface Photo {
-    photo_url: string;
     id?: number | string;
+    photo_url: string;
     caption?: string | null;
-    [key: string]: any;
 }
 
 function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: boolean }) {
@@ -444,10 +444,6 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
     if (!photos || photos.length === 0) {
         return null;
     }
-
-    const goToPrevious = () => {
-        setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1);
-    };
 
     const goToNext = () => {
         setCurrentIndex((prev) => prev === photos.length - 1 ? 0 : prev + 1);
@@ -461,6 +457,86 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
         setSelectedPhoto(null);
     };
 
+    // Обработка ESC для закрытия модального окна
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && selectedPhoto) {
+                closeModal();
+            }
+        };
+
+        if (selectedPhoto) {
+            window.addEventListener('keydown', handleKeyDown);
+            return () => window.removeEventListener('keydown', handleKeyDown);
+        }
+    }, [selectedPhoto]);
+
+    // Модальное окно для полного просмотра фото (с порталом)
+    const photoModal = selectedPhoto && isWeb ? createPortal(
+        <div
+            onClick={closeModal}
+            style={{
+                position: 'fixed',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                zIndex: 2147483647,
+                cursor: 'pointer',
+            }}
+        >
+            <button
+                onClick={(e) => { e.stopPropagation(); closeModal(); }}
+                style={{
+                    position: 'absolute',
+                    top: 20,
+                    right: 20,
+                    zIndex: 2147483647,
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 8,
+                }}
+            >
+                <X size={32} color="white" />
+            </button>
+            <div
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <img
+                    src={selectedPhoto.photo_url}
+                    style={{
+                        maxWidth: '90%',
+                        maxHeight: '85%',
+                        objectFit: 'contain',
+                    }}
+                    alt="Full size"
+                />
+            </div>
+            {selectedPhoto.caption && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: 32,
+                    left: 16, right: 16,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    borderRadius: 12,
+                    padding: 16,
+                    zIndex: 2147483647,
+                }}>
+                    <Text style={{ color: 'white', fontSize: 14 }}>
+                        {selectedPhoto.caption}
+                    </Text>
+                </div>
+            )}
+        </div>,
+        document.body
+    ) : null;
+
     return (
         <>
             <View className="mb-4">
@@ -472,7 +548,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
                     {/* Кнопка навигации слева */}
                     {photos.length > 1 && (
                         <TouchableOpacity
-                            onPress={goToPrevious}
+                            onPress={() => setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1)}
                             className="absolute left-0 top-0 bottom-0 w-12 items-center justify-center z-10"
                             style={{ left: -16 }}
                         >
@@ -506,12 +582,6 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
                                 source={{ uri: photos[currentIndex].photo_url }}
                                 className="w-full h-full"
                                 resizeMode="cover"
-                                onError={(e) => {
-                                    console.log(`Carousel image ${currentIndex + 1} error:`, e.nativeEvent.error);
-                                }}
-                                onLoad={() => {
-                                    console.log(`Carousel image ${currentIndex + 1} loaded: ${photos[currentIndex].photo_url}`);
-                                }}
                             />
 
                             {/* Подпись к фото */}
@@ -541,47 +611,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
                     )}
                 </View>
             </View>
-
-            {/* Модальное окно для полного просмотра фото */}
-            {selectedPhoto && (
-                <View
-                    style={{
-                        position: 'fixed' as const,
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        zIndex: 9999,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    <TouchableOpacity
-                        onPress={closeModal}
-                        style={{ position: 'absolute', top: 16, right: 16, zIndex: 10000 }}
-                    >
-                        <X size={24} color="white" />
-                    </TouchableOpacity>
-                    <Image
-                        source={{ uri: selectedPhoto.photo_url }}
-                        style={{ width: '90%', height: '80%' }}
-                        resizeMode="contain"
-                    />
-                    {selectedPhoto.caption && (
-                        <View style={{
-                            position: 'absolute',
-                            bottom: 32,
-                            left: 16, right: 16,
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            borderRadius: 12,
-                            padding: 16,
-                        }}>
-                            <Text style={{ color: 'white', fontSize: 14 }}>
-                                {selectedPhoto.caption}
-                            </Text>
-                        </View>
-                    )}
-                </View>
-            )}
+            {photoModal}
         </>
     );
 }
@@ -692,25 +722,22 @@ function ReportDetail({
             {(() => {
                 const carouselPhotos: Photo[] = [];
                 const photoUrls = new Set<string>();
-                
+
                 // Сначала добавляем photos, так как они основные
                 if (report.photos && report.photos.length > 0) {
                     report.photos.forEach((p, idx) => {
                         if (p.photo_url && !photoUrls.has(p.photo_url)) {
                             carouselPhotos.push({ id: p.id || idx, photo_url: p.photo_url, caption: p.caption });
                             photoUrls.add(p.photo_url);
-                            console.log(`Photo ${idx} added:`, p.photo_url);
                         }
                     });
                 }
-                
+
                 // Добавляем preview_photo только если его нет в списке
                 if (report.preview_photo && !photoUrls.has(report.preview_photo)) {
                     carouselPhotos.unshift({ id: 'preview', photo_url: report.preview_photo, caption: null });
-                    console.log('Preview photo added:', report.preview_photo);
                 }
-                
-                console.log('Total carousel photos:', carouselPhotos.length);
+
                 return carouselPhotos.length > 0 ? (
                     <PhotoCarousel photos={carouselPhotos} isDarkMode={isDarkMode} />
                 ) : null;
