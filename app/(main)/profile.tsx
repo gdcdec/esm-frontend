@@ -1,8 +1,8 @@
 import { Badge } from '@/src/components/ui';
-import { useRubricsStore } from '@/src/store/rubricsStore';
 import { reportsService } from '@/src/services/reports';
 import { useAuthStore } from '@/src/store/authStore';
 import { useReportsStore } from '@/src/store/reportsStore';
+import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import * as Print from 'expo-print';
@@ -324,25 +324,85 @@ export default function ProfileScreen() {
         }, [fetchMyReports])
     );
 
-    const xp = user?.xp ?? 350;
-    const nextLevelXp = user?.nextLevelXp ?? 500;
-    const progress = (xp / nextLevelXp) * 100;
+    // Расширенная система статистики профиля
+    // XP начисляется за разные действия: публикация (50), рассмотрение (30), решенная (100)
+    const calculateStats = () => {
+        const total = myReports.length;
+        const published = myReports.filter(r => (r.status || '').toString().toLowerCase() === 'published').length;
+        const check = myReports.filter(r => (r.status || '').toString().toLowerCase() === 'check').length;
+        const archived = myReports.filter(r => (r.status || '').toString().toLowerCase() === 'archived').length;
+        const active = published + archived;
+        const xp = (published * 50) + (check * 30) + (archived * 100);
+        return { total, published, check, archived, active, xp };
+    };
+    const stats = calculateStats();
 
-    // Считаем статистику по заявкам
-    const totalReports = myReports.length;
-    const publishedReports = myReports.filter(r => {
-        const s = (r.status || '').toString().toLowerCase();
-        return s === 'published';
-    }).length;
-    const checkReports = myReports.filter(r => {
-        const s = (r.status || '').toString().toLowerCase();
-        return s === 'check';
-    }).length;
-    const activeReports = publishedReports + checkReports;
-    const influence = totalReports > 0 ? Math.floor((activeReports / totalReports) * 100) : 0;
+    // Система уровней на основе XP (не только количества)
+    // Чем выше уровень, тем больше XP нужно для следующего
+    const calculateLevel = (xp: number) => {
+        // Требования XP для каждого уровня: 0, 100, 250, 500, 900, 1500, 2300, 3400, 4800, 6500
+        const levelThresholds = [0, 100, 250, 500, 900, 1500, 2300, 3400, 4800, 6500, 9000];
 
-    // Пагинация
-    const totalPages = Math.ceil(totalReports / reportsPerPage);
+        for (let i = levelThresholds.length - 1; i >= 0; i--) {
+            if (xp >= levelThresholds[i]) {
+                return {
+                    level: Math.min(i + 1, 10),
+                    currentLevelXp: levelThresholds[i],
+                    nextLevelXp: levelThresholds[i + 1] || levelThresholds[i] + 2500,
+                };
+            }
+        }
+        return { level: 1, currentLevelXp: 0, nextLevelXp: 100 };
+    };
+
+    const { level, currentLevelXp, nextLevelXp } = calculateLevel(stats.xp);
+    const xpProgress = nextLevelXp > currentLevelXp
+        ? ((stats.xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100
+        : 100;
+
+    // Система влияния (Influence) - комплексная метрика
+    // Учитывает: эффективность (решённые/все), активность, разнообразие
+    const calculateInfluence = () => {
+        if (stats.total === 0) return 0;
+
+        // Базовое влияние от количества заявок (до 40%)
+        // Логарифмическая шкала: 1 заявка = 5%, 5 = 15%, 10 = 25%, 20+ = 40%
+        const volumeScore = Math.min(40, 5 + Math.log2(stats.total + 1) * 10);
+
+        // Эффективность - процент решённых/опубликованных (до 35%)
+        // archived считаем успешно решёнными
+        const resolvedRate = stats.total > 0 ? stats.archived / stats.total : 0;
+        const efficiencyScore = Math.min(35, resolvedRate * 70);
+
+        // Активность - процент опубликованных (до 25%)
+        const publicationRate = stats.total > 0 ? stats.published / stats.total : 0;
+        const activityScore = Math.min(25, publicationRate * 50 + (stats.published > 0 ? 5 : 0));
+
+        return Math.floor(volumeScore + efficiencyScore + activityScore);
+    };
+
+    const influence = calculateInfluence();
+
+    // Названия уровней для отображения
+    const levelNames: Record<number, string> = {
+        1: 'Новичок',
+        2: 'Активист',
+        3: 'Участник',
+        4: 'Опытный',
+        5: 'Эксперт',
+        6: 'Специалист',
+        7: 'Мастер',
+        8: 'Лидер',
+        9: 'Ветеран',
+        10: 'Легенда',
+    };
+
+    // Переменные для обратной совместимости с UI
+    const userLevel = level;
+    const totalReports = stats.total;
+    const publishedReports = stats.published;
+    const checkReports = stats.check;
+    const totalPages = Math.ceil(stats.total / reportsPerPage);
     const indexOfLastReport = currentPage * reportsPerPage;
     const indexOfFirstReport = indexOfLastReport - reportsPerPage;
     const currentReports = myReports.slice(indexOfFirstReport, indexOfLastReport);
@@ -353,36 +413,6 @@ export default function ProfileScreen() {
             setCurrentPage(1);
         }
     }, [currentPage, totalPages]);
-
-    // Расчет уровня на основе активных заявок (решенных + в работе)
-    const calculateLevel = (activeCount: number) => {
-        if (activeCount >= 50) return 10;
-        if (activeCount >= 35) return 9;
-        if (activeCount >= 25) return 8;
-        if (activeCount >= 18) return 7;
-        if (activeCount >= 12) return 6;
-        if (activeCount >= 8) return 5;
-        if (activeCount >= 5) return 4;
-        if (activeCount >= 3) return 3;
-        if (activeCount >= 1) return 2;
-        return 1;
-    };
-
-    const userLevel = calculateLevel(activeReports);
-
-    // Расчет XP для следующего уровня
-    const getLevelRequirements = (level: number) => {
-        const requirements = [0, 1, 3, 5, 8, 12, 18, 25, 35, 50];
-        return {
-            currentLevelMin: requirements[level - 1] || 0,
-            nextLevelMin: requirements[level] || 50,
-        };
-    };
-
-    const { currentLevelMin, nextLevelMin } = getLevelRequirements(userLevel);
-    const currentXp = activeReports - currentLevelMin;
-    const neededXp = nextLevelMin - currentLevelMin;
-    const xpProgress = neededXp > 0 ? (currentXp / neededXp) * 100 : 100;
 
     const handleLogout = () => {
         logout();
@@ -467,19 +497,19 @@ export default function ProfileScreen() {
                         <Text className="text-lg font-bold mb-1 dark:text-gray-100 text-center">
                             {user ? `${user.first_name} ${user.last_name}`.trim() || user.username : 'Пользователь'}
                         </Text>
-                        <Text className="text-blue-600 font-semibold text-sm mb-3 text-center">
-                            Уровень {userLevel}
+                        <Text className="text-blue-600 font-semibold text-sm mb-1 text-center">
+                            Уровень {userLevel} · {levelNames[userLevel]}
                         </Text>
 
                         {/* XP bar */}
                         <View className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-1.5">
                             <View
-                                className="h-full bg-green-500 rounded-full"
+                                className="h-full bg-blue-500 rounded-full"
                                 style={{ width: `${xpProgress}%` }}
                             />
                         </View>
                         <Text className="text-xs text-gray-400 dark:text-gray-500 mb-4 text-center">
-                            {xp} / {nextLevelXp} XP
+                            {stats.xp} / {nextLevelXp} XP
                         </Text>
 
                         {/* Stats */}
