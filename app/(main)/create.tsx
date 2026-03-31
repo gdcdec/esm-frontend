@@ -9,7 +9,7 @@ import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult, Report, ReportPhoto } from '@/src/types';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Camera, ImagePlus, Loader2, MapPin, Trash2, X } from 'lucide-react-native';
+import { Camera, ImagePlus, Info, Loader2, MapPin, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -26,7 +26,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Cross-platform alert helper
 const showAlert = (title: string, message: string, onOk?: () => void) => {
@@ -71,6 +71,7 @@ export default function CreateReportScreen() {
         editId?: string;
     }>();
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const insets = useSafeAreaInsets();
 
     // Rubrics from cached store
     const rubrics = useRubricsStore((s) => s.rubrics);
@@ -85,6 +86,19 @@ export default function CreateReportScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFetchingInitial, setIsFetchingInitial] = useState(!!params.editId);
     const [existingPhotos, setExistingPhotos] = useState<ReportPhoto[]>([]);
+
+    const [formError, setFormErrorState] = useState<string | null>(null);
+    const formErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const setFormError = (msg: string | null) => {
+        setFormErrorState(msg);
+        if (formErrorTimeout.current) clearTimeout(formErrorTimeout.current);
+        if (msg) {
+            formErrorTimeout.current = setTimeout(() => {
+                setFormErrorState(null);
+            }, 3000);
+        }
+    };
 
     // Load existing report if editing
     useEffect(() => {
@@ -244,8 +258,9 @@ export default function CreateReportScreen() {
     };
 
     const handleSubmit = async () => {
+        setFormError(null);
         if (!category || !title || !address) {
-            showAlert('Ошибка', 'Заполните обязательные поля');
+            setFormError('Заполните обязательные поля');
             return;
         }
         const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
@@ -291,8 +306,11 @@ export default function CreateReportScreen() {
 
             showAlert('Успех', params.editId ? 'Заявка обновлена!' : 'Заявка отправлена на рассмотрение!', () => router.back());
         } catch (e: any) {
-            // Offline — save as draft
-            if (!params.editId) {
+            // Offline if there is no response from the server
+            const isOffline = !e.response && !e.status;
+
+            if (!params.editId && isOffline) {
+                // Offline — save as draft
                 useReportsStore.getState().saveDraft({
                     title,
                     description: desc,
@@ -308,8 +326,22 @@ export default function CreateReportScreen() {
                     () => router.back()
                 );
             } else {
-                const serverMsg = e?.response?.data?.detail || e?.message;
-                showAlert('Ошибка', serverMsg ?? 'Не удалось сохранить заявку');
+                let serverMsg = 'Не удалось сохранить заявку';
+                if (e?.response?.data) {
+                    const data = e.response.data;
+                    if (data.description) {
+                        serverMsg = Array.isArray(data.description) ? data.description.join(', ') : data.description;
+                    } else if (data.detail) {
+                        serverMsg = data.detail;
+                    } else if (typeof data === 'string') {
+                        serverMsg = data;
+                    } else {
+                        serverMsg = JSON.stringify(data);
+                    }
+                } else if (e?.message) {
+                    serverMsg = e.message;
+                }
+                setFormError(serverMsg);
             }
         } finally {
             setIsSubmitting(false);
@@ -589,6 +621,20 @@ export default function CreateReportScreen() {
                     onSelectionChange={setPhotos}
                     onClose={() => setGalleryOpen(false)}
                 />
+            )}
+
+            {/* Error Toast */}
+            {formError && (
+                <View
+                    className="absolute left-4 right-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-800 rounded-2xl p-4 shadow-xl flex-row items-center"
+                    style={{ top: Math.max(insets.top + 8, 16), elevation: 12, zIndex: 9999 }}
+                >
+                    <Info size={22} color={isDarkMode ? '#FCA5A5' : '#DC2626'} />
+                    <Text className="text-red-800 dark:text-red-200 font-medium ml-3 flex-1">{formError}</Text>
+                    <TouchableOpacity onPress={() => setFormError(null)} className="p-1">
+                        <X size={20} color={isDarkMode ? '#FCA5A5' : '#DC2626'} />
+                    </TouchableOpacity>
+                </View>
             )}
         </View>
     );

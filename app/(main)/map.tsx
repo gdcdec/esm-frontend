@@ -301,6 +301,16 @@ function InlineFilters({
         [selectedRubricsCount]
     );
 
+    const hasActiveFilters = useMemo(() => {
+        return Object.keys(state.filters).some(key => {
+            const val = state.filters[key as keyof typeof state.filters];
+            if (val === undefined) return false;
+            if (key === 'ordering' && val === '-created_at') return false;
+            if (key === 'city' && visibilityArea && val === city) return false;
+            return true;
+        });
+    }, [state.filters, visibilityArea, city]);
+
     return (
         <View className="bg-white dark:bg-[#1f2937] z-50">
             <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
@@ -312,7 +322,7 @@ function InlineFilters({
                             : 'Лента происшествий'
                     }
                 </Text>
-                {Object.keys(state.filters).length > 0 && (
+                {hasActiveFilters && (
                     <TouchableOpacity
                         onPress={() => {
                             const newFilters = visibilityArea && city ? { city } : {};
