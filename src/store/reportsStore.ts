@@ -75,7 +75,10 @@ export const useReportsStore = create<ReportsState>()(
             fetchFeed: async (filters) => {
                 set({ isFeedLoading: true });
                 try {
-                    const data = await reportsService.getAll(filters);
+                    // Отделяем фильтр рубрик для клиентской фильтрации
+                    const { rubrics, ...apiFilters } = filters || {};
+                    
+                    const data = await reportsService.getAll(apiFilters);
                     // Backend doesn't return full details in list - fetch details for each report
                     const reportsWithDetails = await Promise.all(
                         data.map(async (report) => {
@@ -87,12 +90,33 @@ export const useReportsStore = create<ReportsState>()(
                             }
                         })
                     );
+                    
+                    // Клиентская фильтрация по рубрикам с логикой OR (любая из выбранных)
+                    let filteredReports = reportsWithDetails;
+                    if (rubrics && rubrics.length > 0) {
+                        filteredReports = reportsWithDetails.filter(report => 
+                            report.rubric_name && rubrics.includes(report.rubric_name)
+                        );
+                    }
+                    
+                    // Применяем клиентскую сортировку по дате создания
+                    const sortedReports = filteredReports.sort((a, b) => {
+                        const dateA = new Date(a.created_at || 0).getTime();
+                        const dateB = new Date(b.created_at || 0).getTime();
+                        // По умолчанию сначала новые (-created_at)
+                        const ordering = filters?.ordering || '-created_at';
+                        if (ordering === 'created_at') {
+                            return dateA - dateB; // Сначала старые
+                        }
+                        return dateB - dateA; // Сначала новые
+                    });
+                    
                     set({
-                        feedReports: reportsWithDetails,
+                        feedReports: sortedReports,
                         isFeedLoading: false,
                         feedUpdatedAt: Date.now(),
                     });
-                    return reportsWithDetails;
+                    return sortedReports;
                 } catch {
                     set({ isFeedLoading: false });
                     return get().feedReports;
