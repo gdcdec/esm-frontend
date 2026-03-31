@@ -5,7 +5,7 @@ import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
 import { CheckSquare, Eye, EyeOff, Square } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Modal } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Modal } from 'react-native';
 
 export default function LoginScreen() {
     const [isLogin, setIsLogin] = useState(true);
@@ -330,19 +330,24 @@ export default function LoginScreen() {
                                 </View>
                             )}
 
-                            <TouchableOpacity
-                                className="flex-row items-center gap-3 py-2"
-                                onPress={() => setAgreed(!agreed)}
-                            >
-                                {agreed ? (
-                                    <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                                ) : (
-                                    <Square size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
-                                )}
-                                <Text className="text-sm text-gray-600 dark:text-gray-300">
-                                    Я согласен с правилами приложения
+                            <View className="flex-row items-center gap-3 py-2">
+                                <TouchableOpacity onPress={() => setAgreed(!agreed)}>
+                                    {agreed ? (
+                                        <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                                    ) : (
+                                        <Square size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
+                                    )}
+                                </TouchableOpacity>
+                                <Text className="text-sm text-gray-600 dark:text-gray-300 flex-1 flex-wrap">
+                                    Я согласен с{' '}
+                                    <Text
+                                        className="text-blue-600 dark:text-blue-400 underline"
+                                        onPress={() => router.push('/(auth)/rules')}
+                                    >
+                                        пользовательским соглашением
+                                    </Text>
                                 </Text>
-                            </TouchableOpacity>
+                            </View>
                         </>
                     )}
 

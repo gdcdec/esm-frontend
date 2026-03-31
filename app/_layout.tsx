@@ -40,26 +40,27 @@ export default function RootLayout() {
     useReportsStore.getState().syncDrafts();
   }, []);
 
-  // Auth guard - redirect based on authentication state
-  useEffect(() => {
-    // Wait for auth state and navigation to be ready
-    if (!_hasHydrated || !segments[0]) return;
+    // Auth guard - redirect based on authentication state
+    useEffect(() => {
+        // Wait for auth state and navigation to be ready
+        if (!_hasHydrated || !segments[0]) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+        const inAuthGroup = segments[0] === '(auth)';
+        const isRulesPage = (segments as any[]).includes('rules');
 
-    // Defer navigation to after render cycle to ensure Root Layout is mounted
-    const rafId = requestAnimationFrame(() => {
-      if (!isAuthenticated && !inAuthGroup) {
-        // Not authenticated, redirect to login
-        router.replace('/login');
-      } else if (isAuthenticated && inAuthGroup) {
-        // Authenticated but on auth page, redirect to map
-        router.replace('/(main)/map');
-      }
-    });
+        // Defer navigation to after render cycle to ensure Root Layout is mounted
+        const rafId = requestAnimationFrame(() => {
+            if (!isAuthenticated && !inAuthGroup && !isRulesPage) {
+                // Not authenticated, redirect to login
+                router.replace('/login');
+            } else if (isAuthenticated && inAuthGroup && !isRulesPage) {
+                // Authenticated but on auth page (and not rules), redirect to map
+                router.replace('/(main)/map');
+            }
+        });
 
-    return () => cancelAnimationFrame(rafId);
-  }, [isAuthenticated, _hasHydrated, segments, router]);
+        return () => cancelAnimationFrame(rafId);
+    }, [isAuthenticated, _hasHydrated, segments, router]);
 
   // Show nothing while checking auth state to prevent flash
   if (!_hasHydrated) {

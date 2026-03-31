@@ -99,10 +99,16 @@ export default function AboutScreen() {
                         <Text className="text-sm text-gray-600 dark:text-gray-400 leading-6 mb-3">
                             Версия 1.0.0
                         </Text>
-                        <Text className="text-sm text-gray-700 dark:text-gray-300 leading-6">
+                        <Text className="text-sm text-gray-700 dark:text-gray-300 leading-6 mb-4">
                             Платформа для гражданского участия в улучшении городской среды. 
                             Сообщайте о проблемах и помогайте сделать наш город лучше.
                         </Text>
+                        
+                        <LinkButton
+                            title="Пользовательское соглашение"
+                            onPress={() => router.push('/(auth)/rules')}
+                            icon={Shield}
+                        />
                     </InfoSection>
 
                     {/* Maps */}
