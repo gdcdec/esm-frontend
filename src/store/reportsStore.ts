@@ -76,23 +76,23 @@ export const useReportsStore = create<ReportsState>()(
                 set({ isFeedLoading: true });
                 try {
                     const data = await reportsService.getAll(filters);
-                    // Backend doesn't return 'status' in list - fetch details for each report
-                    const reportsWithStatus = await Promise.all(
+                    // Backend doesn't return full details in list - fetch details for each report
+                    const reportsWithDetails = await Promise.all(
                         data.map(async (report) => {
                             try {
                                 const details = await reportsService.getById(report.id);
-                                return { ...report, status: details.status } as any;
+                                return { ...report, ...details } as Report;
                             } catch {
-                                return { ...report, status: 'check' } as any;
+                                return { ...report, status: 'check' } as Report;
                             }
                         })
                     );
                     set({
-                        feedReports: reportsWithStatus as Report[],
+                        feedReports: reportsWithDetails,
                         isFeedLoading: false,
                         feedUpdatedAt: Date.now(),
                     });
-                    return reportsWithStatus as Report[];
+                    return reportsWithDetails;
                 } catch {
                     set({ isFeedLoading: false });
                     return get().feedReports;
@@ -103,23 +103,23 @@ export const useReportsStore = create<ReportsState>()(
                 set({ isMyLoading: true });
                 try {
                     const data = await reportsService.getMine();
-                    // Backend doesn't return 'status' in list - fetch details for each report
-                    const reportsWithStatus = await Promise.all(
+                    // Backend doesn't return full details in list - fetch details for each report
+                    const reportsWithDetails = await Promise.all(
                         data.map(async (report) => {
                             try {
                                 const details = await reportsService.getById(report.id);
-                                return { ...report, status: details.status } as any;
+                                return { ...report, ...details } as Report;
                             } catch {
-                                return { ...report, status: 'check' } as any;
+                                return { ...report, status: 'check' } as Report;
                             }
                         })
                     );
                     set({
-                        myReports: reportsWithStatus as Report[],
+                        myReports: reportsWithDetails,
                         isMyLoading: false,
                         myUpdatedAt: Date.now(),
                     });
-                    return reportsWithStatus as Report[];
+                    return reportsWithDetails;
                 } catch {
                     set({ isMyLoading: false });
                     return get().myReports;

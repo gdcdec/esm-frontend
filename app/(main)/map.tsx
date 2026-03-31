@@ -430,12 +430,170 @@ function InlineFilters({
 }
 
 // ─── Report detail view (shared) ──────────────────────────────
+interface Photo {
+    photo_url: string;
+    id?: number | string;
+    caption?: string | null;
+    [key: string]: any;
+}
+
+function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: boolean }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+
+    if (!photos || photos.length === 0) {
+        return null;
+    }
+
+    const goToPrevious = () => {
+        setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1);
+    };
+
+    const goToNext = () => {
+        setCurrentIndex((prev) => prev === photos.length - 1 ? 0 : prev + 1);
+    };
+
+    const handlePhotoPress = (photo: Photo) => {
+        setSelectedPhoto(photo);
+    };
+
+    const closeModal = () => {
+        setSelectedPhoto(null);
+    };
+
+    return (
+        <>
+            <View className="mb-4">
+                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Фотографии ({currentIndex + 1}/{photos.length})
+                </Text>
+
+                <View className="relative">
+                    {/* Кнопка навигации слева */}
+                    {photos.length > 1 && (
+                        <TouchableOpacity
+                            onPress={goToPrevious}
+                            className="absolute left-0 top-0 bottom-0 w-12 items-center justify-center z-10"
+                            style={{ left: -16 }}
+                        >
+                            <View className="w-10 h-10 bg-white dark:bg-gray-800 rounded-full items-center justify-center shadow-lg border border-gray-200 dark:border-gray-700">
+                                <ChevronLeft size={20} color={isDarkMode ? '#F9FAFB' : '#374151'} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Кнопка навигации справа */}
+                    {photos.length > 1 && (
+                        <TouchableOpacity
+                            onPress={goToNext}
+                            className="absolute right-0 top-0 bottom-0 w-12 items-center justify-center z-10"
+                            style={{ right: -16 }}
+                        >
+                            <View className="w-10 h-10 bg-white dark:bg-gray-800 rounded-full items-center justify-center shadow-lg border border-gray-200 dark:border-gray-700">
+                                <ChevronRight size={20} color={isDarkMode ? '#F9FAFB' : '#374151'} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Основное изображение */}
+                    <View className="w-full h-64 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 relative border border-gray-200 dark:border-gray-700">
+                        <TouchableOpacity
+                            onPress={() => handlePhotoPress(photos[currentIndex])}
+                            className="flex-1 relative"
+                            activeOpacity={0.9}
+                        >
+                            <Image
+                                source={{ uri: photos[currentIndex].photo_url }}
+                                className="w-full h-full"
+                                resizeMode="cover"
+                                onError={(e) => {
+                                    console.log(`Carousel image ${currentIndex + 1} error:`, e.nativeEvent.error);
+                                }}
+                                onLoad={() => {
+                                    console.log(`Carousel image ${currentIndex + 1} loaded: ${photos[currentIndex].photo_url}`);
+                                }}
+                            />
+
+                            {/* Подпись к фото */}
+                            {photos[currentIndex].caption && (
+                                <View className="absolute bottom-3 left-3 right-3 bg-black/60 dark:bg-black/80 rounded-lg p-3">
+                                    <Text className="text-white text-sm leading-relaxed">
+                                        {photos[currentIndex].caption}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Индикаторы */}
+                    {photos.length > 1 && (
+                        <View className="flex-row justify-center items-center mt-3 gap-2">
+                            {photos.map((_, index) => (
+                                <View
+                                    key={index}
+                                    className={`w-2 h-2 rounded-full ${index === currentIndex
+                                        ? 'bg-blue-600 dark:bg-blue-400 w-6'
+                                        : 'bg-gray-300 dark:bg-gray-600'
+                                        }`}
+                                />
+                            ))}
+                        </View>
+                    )}
+                </View>
+            </View>
+
+            {/* Модальное окно для полного просмотра фото */}
+            {selectedPhoto && (
+                <View
+                    style={{
+                        position: 'fixed' as const,
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <TouchableOpacity
+                        onPress={closeModal}
+                        style={{ position: 'absolute', top: 16, right: 16, zIndex: 10000 }}
+                    >
+                        <X size={24} color="white" />
+                    </TouchableOpacity>
+                    <Image
+                        source={{ uri: selectedPhoto.photo_url }}
+                        style={{ width: '90%', height: '80%' }}
+                        resizeMode="contain"
+                    />
+                    {selectedPhoto.caption && (
+                        <View style={{
+                            position: 'absolute',
+                            bottom: 32,
+                            left: 16, right: 16,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            borderRadius: 12,
+                            padding: 16,
+                        }}>
+                            <Text style={{ color: 'white', fontSize: 14 }}>
+                                {selectedPhoto.caption}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            )}
+        </>
+    );
+}
+
 function ReportDetail({
     report,
     onClose,
+    isDarkMode,
 }: {
     report: Report;
     onClose: () => void;
+    isDarkMode: boolean;
 }) {
     const status = getStatusConfig(report.status);
 
@@ -530,29 +688,33 @@ function ReportDetail({
                 </View>
             )}
 
-            {/* Фото */}
-            {!!report.preview_photo && (
-                <View className="w-full h-48 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mb-3">
-                    <Image
-                        source={{ uri: report.preview_photo }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                    />
-                </View>
-            )}
-            {report.photos && report.photos.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                    {report.photos.map((p: any, idx: number) => (
-                        <View key={p.id || idx} className="w-28 h-28 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 mr-2">
-                            <Image
-                                source={{ uri: p.photo_url }}
-                                style={{ width: '100%', height: '100%' }}
-                                resizeMode="cover"
-                            />
-                        </View>
-                    ))}
-                </ScrollView>
-            )}
+            {/* Карусель фотографий */}
+            {(() => {
+                const carouselPhotos: Photo[] = [];
+                const photoUrls = new Set<string>();
+                
+                // Сначала добавляем photos, так как они основные
+                if (report.photos && report.photos.length > 0) {
+                    report.photos.forEach((p, idx) => {
+                        if (p.photo_url && !photoUrls.has(p.photo_url)) {
+                            carouselPhotos.push({ id: p.id || idx, photo_url: p.photo_url, caption: p.caption });
+                            photoUrls.add(p.photo_url);
+                            console.log(`Photo ${idx} added:`, p.photo_url);
+                        }
+                    });
+                }
+                
+                // Добавляем preview_photo только если его нет в списке
+                if (report.preview_photo && !photoUrls.has(report.preview_photo)) {
+                    carouselPhotos.unshift({ id: 'preview', photo_url: report.preview_photo, caption: null });
+                    console.log('Preview photo added:', report.preview_photo);
+                }
+                
+                console.log('Total carousel photos:', carouselPhotos.length);
+                return carouselPhotos.length > 0 ? (
+                    <PhotoCarousel photos={carouselPhotos} isDarkMode={isDarkMode} />
+                ) : null;
+            })()}
 
             <View className="flex-row gap-3 mb-6">
                 <TouchableOpacity className="flex-1 py-3 bg-blue-50 dark:bg-gray-800 rounded-xl flex-row items-center justify-center gap-2">
@@ -852,7 +1014,7 @@ function WebMapScreen() {
                     {/* Sidebar content */}
                     <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 16px 16px', scrollbarWidth: isDarkMode ? 'thin' : 'auto', scrollbarColor: isDarkMode ? '#4B5563 #1F2937' : 'auto' }}>
                         {state.singleReport ? (
-                            <ReportDetail report={state.singleReport} onClose={state.handleCloseDetail} />
+                            <ReportDetail report={state.singleReport} onClose={state.handleCloseDetail} isDarkMode={isDarkMode} />
                         ) : state.activeReports && state.activeReports.length > 0 ? (
                             <View>
                                 <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
@@ -1705,7 +1867,7 @@ function MobileWebMapScreen() {
                     {state.singleReport ? (
                         <ReportDetail report={state.singleReport} onClose={() => {
                             executeCloseDetail();
-                        }} />
+                        }} isDarkMode={isDarkMode} />
                     ) : state.activeReports && state.activeReports.length > 0 ? (
                         <View>
                             <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50">
@@ -2082,7 +2244,7 @@ function NativeMapScreen() {
                     {/* Single report detail */}
                     {state.singleReport ? (
                         <BottomSheetScrollView contentContainerStyle={{ padding: 20 }}>
-                            <ReportDetail report={state.singleReport} onClose={handleCloseDetail} />
+                            <ReportDetail report={state.singleReport} onClose={handleCloseDetail} isDarkMode={isDarkMode} />
                         </BottomSheetScrollView>
 
                     ) : state.activeReports && state.activeReports.length > 0 ? (
