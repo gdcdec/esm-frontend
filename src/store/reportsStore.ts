@@ -25,7 +25,8 @@ export interface DraftReport {
     latitude: number;
     longitude: number;
     rubric: string | null;
-    /** Base64 or file URI strings for photos */
+    status: 'draft';
+    /** File URI strings for photos */
     photoUris: string[];
     createdAt: number;
 }
@@ -54,7 +55,7 @@ interface ReportsState {
     clearCache: () => void;
 
     /** Save a draft locally */
-    saveDraft: (draft: Omit<DraftReport, 'localId' | 'createdAt'>) => void;
+    saveDraft: (draft: Omit<DraftReport, 'localId' | 'createdAt' | 'status'>) => void;
     /** Remove a draft by localId */
     removeDraft: (localId: string) => void;
     /** Try to send all pending drafts to server */
@@ -175,6 +176,7 @@ export const useReportsStore = create<ReportsState>()(
             saveDraft: (draft) => {
                 const newDraft: DraftReport = {
                     ...draft,
+                    status: 'draft',
                     localId: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
                     createdAt: Date.now(),
                 };
@@ -200,6 +202,7 @@ export const useReportsStore = create<ReportsState>()(
                             latitude: draft.latitude,
                             longitude: draft.longitude,
                             rubric: draft.rubric ?? undefined,
+                            status: 'draft',
                         });
 
                         // Upload photos if any
