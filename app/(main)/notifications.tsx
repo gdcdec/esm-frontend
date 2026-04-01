@@ -1,6 +1,7 @@
 import { useNotificationsStore } from '@/src/store/notificationsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Notification } from '@/src/types';
+import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import {
     Bell,
@@ -200,7 +201,7 @@ export default function NotificationsScreen() {
             >
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => navigateBack('/(main)/profile')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <X size={24} color={isDarkMode ? '#F9FAFB' : '#111827'} />

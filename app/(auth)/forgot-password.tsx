@@ -1,6 +1,7 @@
 import { Button, Input } from '@/src/components/ui';
 import { authService } from '@/src/services/auth';
 import { useThemeStore } from '@/src/store/themeStore';
+import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import { Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -245,7 +246,7 @@ export default function ForgotPasswordScreen() {
 
                 <TouchableOpacity
                     className="py-4 items-center"
-                    onPress={() => router.back()}
+                    onPress={() => navigateBack('/(auth)/login')}
                 >
                     <Text className="text-blue-600 dark:text-blue-400 font-medium">
                         Вспомнили пароль? Войти

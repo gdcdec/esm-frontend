@@ -1,5 +1,5 @@
 import { useThemeStore } from '@/src/store/themeStore';
-import { router } from 'expo-router';
+import { navigateBack } from '@/src/utils/navigation';
 import { ChevronDown, ChevronLeft, ChevronUp, HelpCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -76,7 +76,7 @@ export default function FaqScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => navigateBack('/(main)/settings')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <ChevronLeft size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

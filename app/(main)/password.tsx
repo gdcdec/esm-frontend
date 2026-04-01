@@ -1,10 +1,11 @@
 import { authService } from '@/src/services/auth';
-import { useThemeStore } from '@/src/store/themeStore';
 import { useAuthStore } from '@/src/store/authStore';
+import { useThemeStore } from '@/src/store/themeStore';
+import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import { ChevronLeft, Eye, EyeOff, Info, Lock, X } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
-import { Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PasswordScreen() {
@@ -46,7 +47,7 @@ export default function PasswordScreen() {
     };
 
     const handleGoBack = () => {
-        router.back();
+        navigateBack('/(main)/account');
     };
 
     // Step 1: Request password reset code
@@ -155,7 +156,7 @@ export default function PasswordScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={handleGoBack}
+                        onPress={() => navigateBack('/(main)/account')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <ChevronLeft size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

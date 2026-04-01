@@ -1,10 +1,11 @@
 import { authService } from '@/src/services/auth';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
+import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import { ChevronLeft, ChevronRight as ChevronRightIcon, Info, Lock as LockIcon, Mail, Phone, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AccountScreen() {
@@ -113,7 +114,7 @@ export default function AccountScreen() {
     };
 
     const handleGoBack = () => {
-        router.back();
+        navigateBack('/(main)/profile');
     };
 
     const handleChangePassword = () => {
@@ -140,7 +141,7 @@ export default function AccountScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={handleGoBack}
+                        onPress={() => navigateBack('/(main)/profile')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <ChevronLeft size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

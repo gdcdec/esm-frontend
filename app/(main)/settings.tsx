@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/src/store/authStore';
 import { useNotificationsStore } from '@/src/store/notificationsStore';
 import { useThemeStore } from '@/src/store/themeStore';
+import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, LogOut, MapPin, Moon, User as UserIcon, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
@@ -55,7 +56,7 @@ export default function SettingsScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => navigateBack('/(main)/profile')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <X size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

@@ -6,6 +6,7 @@ import { useReportsStore } from '@/src/store/reportsStore';
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
+import { navigateBack } from '@/src/utils/navigation';
 import * as Print from 'expo-print';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -482,7 +483,7 @@ export default function ProfileScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => navigateBack('/(main)/map')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <X size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

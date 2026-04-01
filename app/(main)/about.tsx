@@ -1,4 +1,5 @@
 import { useThemeStore } from '@/src/store/themeStore';
+import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import { ChevronLeft, Github, Globe, Mail, Map, Shield } from 'lucide-react-native';
 import React from 'react';
@@ -81,7 +82,7 @@ export default function AboutScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => navigateBack('/(main)/settings')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <ChevronLeft size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

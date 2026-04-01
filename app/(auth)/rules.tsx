@@ -1,10 +1,9 @@
 import { useThemeStore } from '@/src/store/themeStore';
-import { router } from 'expo-router';
+import { navigateBack } from '@/src/utils/navigation';
 import { ChevronLeft } from 'lucide-react-native';
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TouchableOpacity } from 'react-native';
 
 export default function RulesScreen() {
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
@@ -30,7 +29,7 @@ export default function RulesScreen() {
             <SafeAreaView edges={['top']} className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center justify-between px-4 py-3">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => navigateBack('/(auth)/login')}
                         className="p-2 -ml-2 rounded-full"
                     >
                         <ChevronLeft size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />

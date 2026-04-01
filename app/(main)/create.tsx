@@ -7,6 +7,7 @@ import { useReportsStore } from '@/src/store/reportsStore';
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult, Report, ReportPhoto } from '@/src/types';
+import { navigateBack } from '@/src/utils/navigation';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, ImagePlus, Info, Loader2, MapPin, Trash2, X } from 'lucide-react-native';
@@ -226,7 +227,7 @@ export default function CreateReportScreen() {
     // Handle close button — prompt to save draft if there's data
     const handleClose = () => {
         if (params.editId || !hasData) {
-            router.back();
+            navigateBack('/(main)/map');
             return;
         }
 
@@ -248,11 +249,11 @@ export default function CreateReportScreen() {
                     photoUris: photos.map((p) => p.uri),
                 });
 
-                showAlert('Черновик сохранён', 'Заявка сохранена как черновик.', () => router.back());
+                showAlert('Черновик сохранён', 'Заявка сохранена как черновик.', () => navigateBack('/(main)/map'));
             },
             () => {
                 // Discard
-                router.back();
+                navigateBack('/(main)/map');
             }
         );
     };
