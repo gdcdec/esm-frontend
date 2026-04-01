@@ -43,7 +43,9 @@ export const photosService = {
         return data;
     },
 
-    delete: async (photoId: number): Promise<void> => {
-        await api.delete(`/posts/photos/${photoId}/`);
+    delete: async (postId: number, photoId: number): Promise<void> => {
+        await api.delete(`/posts/photos/${photoId}/`, {
+            data: { post_id: postId },
+        });
     },
 };

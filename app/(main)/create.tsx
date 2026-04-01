@@ -88,6 +88,7 @@ export default function CreateReportScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFetchingInitial, setIsFetchingInitial] = useState(!!params.editId || !!params.draftId);
     const [existingPhotos, setExistingPhotos] = useState<ReportPhoto[]>([]);
+    const [deletedPhotoIds, setDeletedPhotoIds] = useState<number[]>([]);
     const [originalReportStatus, setOriginalReportStatus] = useState<string | null>(null);
 
     const [formError, setFormErrorState] = useState<string | null>(null);
@@ -209,6 +210,10 @@ export default function CreateReportScreen() {
 
     function removePhoto(index: number, isExisting: boolean) {
         if (isExisting) {
+            const removed = existingPhotos[index];
+            if (removed) {
+                setDeletedPhotoIds((prev) => [...prev, removed.id]);
+            }
             setExistingPhotos((prev) => prev.filter((_, i) => i !== index));
         } else {
             setPhotos((prev) => prev.filter((_, i) => i !== index));
@@ -355,7 +360,18 @@ export default function CreateReportScreen() {
                 });
             }
 
-            // Upload photos
+            // Delete removed photos from server
+            if (params.editId && deletedPhotoIds.length > 0) {
+                for (const photoId of deletedPhotoIds) {
+                    try {
+                        await photosService.delete(report.id, photoId);
+                    } catch (delErr: any) {
+                        console.warn('Failed to delete photo:', photoId, delErr);
+                    }
+                }
+            }
+
+            // Upload new photos
             if (photos.length > 0) {
                 try {
                     await photosService.upload(report.id, photos);

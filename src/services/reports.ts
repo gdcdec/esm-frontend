@@ -20,7 +20,7 @@ export const reportsService = {
     }): Promise<Report[]> => {
         // Clean up parameters: remove undefined/null, handle rubrics
         const cleanParams: Record<string, any> = {};
-        
+
         if (filters) {
             Object.entries(filters).forEach(([key, value]) => {
                 if (value !== undefined && value !== null && value !== '') {
@@ -32,7 +32,7 @@ export const reportsService = {
                 }
             });
         }
-        
+
         const { data } = await api.get<Report[]>('/posts/', {
             params: cleanParams,
         });
@@ -71,7 +71,7 @@ export const reportsService = {
         id: number,
         payload: Partial<CreateReportPayload>
     ): Promise<Report> => {
-        const { data } = await api.put<Report>(`/posts/${id}/`, payload);
+        const { data } = await api.patch<Report>(`/posts/${id}/`, payload);
         return data;
     },
 
