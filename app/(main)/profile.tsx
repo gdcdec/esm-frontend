@@ -618,19 +618,19 @@ export default function ProfileScreen() {
                         <View className="flex-row w-full pt-3 border-t border-gray-50 dark:border-gray-700">
                             <View className="flex-1 items-center">
                                 <Text className="text-base font-bold dark:text-gray-100">{totalReports}</Text>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500">Заявок</Text>
+                                <Text className="text-[10px] text-gray-400 dark:text-gray-500">Заявок</Text>
                             </View>
                             <View className="flex-1 items-center border-l border-r border-gray-50 dark:border-gray-700">
                                 <Text className="text-base font-bold dark:text-gray-100">{publishedReports}</Text>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500">Опубликовано</Text>
+                                <Text className="text-[10px] text-gray-400 dark:text-gray-500">Опубликовано</Text>
                             </View>
                             <View className="flex-1 items-center">
                                 <Text className="text-base font-bold dark:text-gray-100">{checkReports}</Text>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500">На рассмотрении</Text>
+                                <Text className="text-[10px] text-gray-400 dark:text-gray-500">На рассмотрении</Text>
                             </View>
                             <View className="flex-1 items-center">
                                 <Text className="text-base font-bold dark:text-gray-100">{influence}%</Text>
-                                <Text className="text-xs text-gray-400 dark:text-gray-500">Влияние</Text>
+                                <Text className="text-[10px] text-gray-400 dark:text-gray-500">Влияние</Text>
                             </View>
                         </View>
                     </View>
