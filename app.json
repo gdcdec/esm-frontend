@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.arsenyshangin.moydonos"
+      "package": "com.arsenyshangin.moydonos",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "single",
