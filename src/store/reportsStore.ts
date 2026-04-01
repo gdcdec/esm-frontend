@@ -1,5 +1,6 @@
 import { photosService } from '@/src/services/photos';
 import { reportsService } from '@/src/services/reports';
+import { useNotificationsStore } from '@/src/store/notificationsStore';
 import { Report } from '@/src/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -29,6 +30,8 @@ export interface DraftReport {
     /** File URI strings for photos */
     photoUris: string[];
     createdAt: number;
+    /** Server ID if draft has been synced to server */
+    serverId?: number;
 }
 
 interface ReportsState {
@@ -58,6 +61,10 @@ interface ReportsState {
     saveDraft: (draft: Omit<DraftReport, 'localId' | 'createdAt' | 'status'>) => void;
     /** Remove a draft by localId */
     removeDraft: (localId: string) => void;
+    /** Get a draft by localId */
+    getDraft: (localId: string) => DraftReport | undefined;
+    /** Update an existing draft */
+    updateDraft: (localId: string, draft: Partial<Omit<DraftReport, 'localId' | 'createdAt' | 'status'>>) => void;
     /** Try to send all pending drafts to server */
     syncDrafts: () => Promise<void>;
 }
@@ -162,27 +169,57 @@ export const useReportsStore = create<ReportsState>()(
                 set((state) => ({ drafts: [...state.drafts, newDraft] }));
             },
 
-            removeDraft: (localId) => {
+            removeDraft: async (localId) => {
+                const draft = get().drafts.find((d) => d.localId === localId);
+                // If draft has been synced to server, delete it from server too
+                if (draft?.serverId) {
+                    try {
+                        await reportsService.delete(draft.serverId);
+                    } catch (err) {
+                        console.warn('Failed to delete draft from server:', err);
+                    }
+                }
                 set((state) => ({
                     drafts: state.drafts.filter((d) => d.localId !== localId),
                 }));
             },
 
+            getDraft: (localId) => {
+                return get().drafts.find((d) => d.localId === localId);
+            },
+
+            updateDraft: (localId, draft) => {
+                set((state) => ({
+                    drafts: state.drafts.map((d) =>
+                        d.localId === localId ? { ...d, ...draft } : d
+                    ),
+                }));
+            },
+
             syncDrafts: async () => {
-                const { drafts, removeDraft } = get();
+                const { drafts } = get();
                 if (drafts.length === 0) return;
 
                 for (const draft of drafts) {
                     try {
+                        // Create report without status first (backend might not accept draft on create)
                         const report = await reportsService.create({
                             title: draft.title,
                             description: draft.description,
                             address: draft.address,
                             latitude: draft.latitude,
                             longitude: draft.longitude,
-                            rubric: draft.rubric ?? undefined,
-                            status: 'draft',
+                            rubric: draft.rubric || undefined,
                         });
+
+                        // If created successfully and we want it as draft, update status
+                        if (report.id && draft.status === 'draft') {
+                            try {
+                                await reportsService.update(report.id, { status: 'draft' });
+                            } catch (statusErr) {
+                                console.warn('Failed to set draft status:', statusErr);
+                            }
+                        }
 
                         // Upload photos if any
                         if (draft.photoUris.length > 0) {
@@ -198,8 +235,21 @@ export const useReportsStore = create<ReportsState>()(
                             }
                         }
 
-                        removeDraft(draft.localId);
-                    } catch {
+                        // Remove draft after successful sync
+                        get().removeDraft(draft.localId);
+
+                        // Add notification that draft was sent
+                        useNotificationsStore.getState().addNotification({
+                            type: 'system',
+                            title: 'Черновик отправлен',
+                            message: `Черновик «${draft.title || 'Без названия'}» успешно сохранён на сервере`,
+                            reportId: report.id,
+                            reportTitle: draft.title,
+                            status: 'draft',
+                            isRead: false,
+                        });
+                    } catch (err: any) {
+                        console.error('Failed to sync draft:', err?.response?.data || err);
                         // Still offline or server error — keep draft for next sync
                         break;
                     }

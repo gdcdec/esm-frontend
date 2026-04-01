@@ -2,6 +2,7 @@ import { Badge } from '@/src/components/ui';
 import { reportsService } from '@/src/services/reports';
 import { useAuthStore } from '@/src/store/authStore';
 import { useNotificationsStore } from '@/src/store/notificationsStore';
+import type { DraftReport } from '@/src/store/reportsStore';
 import { useReportsStore } from '@/src/store/reportsStore';
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
@@ -10,10 +11,13 @@ import { navigateBack } from '@/src/utils/navigation';
 import * as Print from 'expo-print';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Bell, ChevronLeft, ChevronRight, Download, FileText, Settings, X } from 'lucide-react-native';
+import { Bell, ChevronLeft, ChevronRight, CloudUpload, Download, FileClock, FileText, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Inline тип для DraftReport если импорт не работает
+type DraftReportType = DraftReport;
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -198,6 +202,25 @@ export default function ProfileScreen() {
     const [editableLetterText, setEditableLetterText] = useState('');
     const reportsPerPage = 5;
 
+    // Drafts state
+    const drafts = useReportsStore((s) => s.drafts);
+    const removeDraft = useReportsStore((s) => s.removeDraft);
+    const [activeTab, setActiveTab] = useState<'reports' | 'drafts'>('reports');
+    const [selectedDraft, setSelectedDraft] = useState<DraftReportType | null>(null);
+    const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [currentDraftsPage, setCurrentDraftsPage] = useState(1);
+
+    // Combine local drafts with server drafts (from myReports)
+    const serverDrafts = myReports.filter(r => r.status === 'draft');
+    const allDrafts = [...drafts, ...serverDrafts];
+
+    // Drafts pagination
+    const totalDraftsPages = Math.ceil(allDrafts.length / reportsPerPage);
+    const indexOfLastDraft = currentDraftsPage * reportsPerPage;
+    const indexOfFirstDraft = indexOfLastDraft - reportsPerPage;
+    const currentDrafts = allDrafts.slice(indexOfFirstDraft, indexOfLastDraft);
+
     const fetchMyReports = useCallback(async () => {
         // Сохраняем текущие заявки как предыдущие перед загрузкой
         setPreviousReports(myReports);
@@ -346,10 +369,12 @@ export default function ProfileScreen() {
     // Расширенная система статистики профиля
     // XP начисляется за разные действия: публикация (50), рассмотрение (30), решенная (100)
     const calculateStats = () => {
-        const total = myReports.length;
-        const published = myReports.filter(r => (r.status || '').toString().toLowerCase() === 'published').length;
-        const check = myReports.filter(r => (r.status || '').toString().toLowerCase() === 'check').length;
-        const archived = myReports.filter(r => (r.status || '').toString().toLowerCase() === 'archived').length;
+        // Exclude draft reports from stats
+        const nonDraftReports = myReports.filter(r => r.status !== 'draft');
+        const total = nonDraftReports.length;
+        const published = nonDraftReports.filter(r => (r.status || '').toString().toLowerCase() === 'published').length;
+        const check = nonDraftReports.filter(r => (r.status || '').toString().toLowerCase() === 'check').length;
+        const archived = nonDraftReports.filter(r => (r.status || '').toString().toLowerCase() === 'archived').length;
         const active = published + archived;
         const xp = (published * 50) + (check * 30) + (archived * 100);
         return { total, published, check, archived, active, xp };
@@ -424,7 +449,9 @@ export default function ProfileScreen() {
     const totalPages = Math.ceil(stats.total / reportsPerPage);
     const indexOfLastReport = currentPage * reportsPerPage;
     const indexOfFirstReport = indexOfLastReport - reportsPerPage;
-    const currentReports = myReports.slice(indexOfFirstReport, indexOfLastReport);
+    const currentReports = myReports
+        .filter((r) => r.status !== 'draft')
+        .slice(indexOfFirstReport, indexOfLastReport);
 
     // Сброс страницы при изменении количества заявок
     React.useEffect(() => {
@@ -432,6 +459,13 @@ export default function ProfileScreen() {
             setCurrentPage(1);
         }
     }, [currentPage, totalPages]);
+
+    // Сброс страницы черновиков при изменении количества черновиков
+    React.useEffect(() => {
+        if (currentDraftsPage > totalDraftsPages && totalDraftsPages > 0) {
+            setCurrentDraftsPage(1);
+        }
+    }, [currentDraftsPage, totalDraftsPages]);
 
     const handleLogout = () => {
         logout();
@@ -475,6 +509,46 @@ export default function ProfileScreen() {
             pathname: '/(main)/create',
             params: { editId: String(report.id) },
         });
+    };
+
+    // Draft handlers
+    const handleEditDraft = (draft: DraftReportType) => {
+        setSelectedDraft(null);
+        router.push({
+            pathname: '/(main)/create',
+            params: { 
+                draftId: draft.localId,
+                address: draft.address,
+                lat: String(draft.latitude),
+                lon: String(draft.longitude),
+            },
+        });
+    };
+
+    const handleDeleteDraft = (localId: string) => {
+        setDraftToDelete(localId);
+    };
+
+    const confirmDeleteDraft = () => {
+        if (draftToDelete) {
+            removeDraft(draftToDelete);
+            setDraftToDelete(null);
+            setSelectedDraft(null);
+        }
+    };
+
+    // Sync drafts handler
+    const handleSyncDrafts = async () => {
+        if (drafts.length === 0) return;
+        setIsSyncing(true);
+        try {
+            await useReportsStore.getState().syncDrafts();
+            Alert.alert('Успех', 'Черновики синхронизированы');
+        } catch (err) {
+            Alert.alert('Ошибка', 'Не удалось синхронизировать черновики. Проверьте подключение к интернету.');
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     return (
@@ -579,108 +653,274 @@ export default function ProfileScreen() {
                     <View className="w-full max-w-md self-center">
                         {/* Header (Native only) */}
                         {Platform.OS !== 'web' && (
-                            <View className="mb-6">
+                            <View className="mb-4">
                                 <Text className="font-bold text-gray-900 dark:text-gray-100 text-xl text-center">
-                                    Мои заявки
+                                    {activeTab === 'reports' ? 'Мои заявки' : 'Черновики'}
                                 </Text>
                                 <Text className="text-xs text-center text-gray-400 dark:text-gray-500 mt-1">
-                                    {totalReports} всего
+                                    {activeTab === 'reports' ? `${totalReports} всего` : `${allDrafts.length} всего`}
                                 </Text>
                             </View>
                         )}
 
+                        {/* Tabs */}
+                        <View className="px-6 mb-4">
+                            <View className="w-full max-w-sm self-center flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+                                <TouchableOpacity
+                                    onPress={() => setActiveTab('reports')}
+                                    className={`flex-1 py-2 rounded-lg ${activeTab === 'reports' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+                                >
+                                    <Text className={`text-sm font-medium text-center ${activeTab === 'reports' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Заявки ({totalReports})
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setActiveTab('drafts')}
+                                    className={`flex-1 py-2 rounded-lg ${activeTab === 'drafts' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+                                >
+                                    <Text className={`text-sm font-medium text-center ${activeTab === 'drafts' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Черновики ({allDrafts.length})
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
                         <View className="px-6 pb-8">
                             <View className="w-full max-w-sm self-center">
-                                {isLoading ? (
-                                    <View className="py-8 items-center">
-                                        <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                                    </View>
-                                ) : currentReports.length === 0 ? (
-                                    <View className="py-8 items-center">
-                                        <Text className="text-gray-400 dark:text-gray-500 text-sm">У вас пока нет заявок</Text>
-                                    </View>
-                                ) : (
-                                    currentReports.map((r) => {
-                                        const cat = useRubricsStore.getState().getRubric(r.rubric_name);
-                                        return (
-                                            <TouchableOpacity
-                                                key={r.id}
-                                                onPress={() => fetchReportDetails(r.id)}
-                                                activeOpacity={0.7}
-                                                className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex-row items-center gap-3 mb-3 ${selectedReport?.id === r.id
-                                                    ? 'border-blue-500 dark:border-blue-400'
-                                                    : 'border-gray-100 dark:border-gray-800'
-                                                    }`}
-                                            >
-                                                <View
-                                                    className="w-10 h-10 rounded-xl items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-700"
+                                {activeTab === 'reports' ? (
+                                    // Reports list
+                                    isLoading ? (
+                                        <View className="py-8 items-center">
+                                            <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                                        </View>
+                                    ) : currentReports.length === 0 ? (
+                                        <View className="py-8 items-center">
+                                            <Text className="text-gray-400 dark:text-gray-500 text-sm">У вас пока нет заявок</Text>
+                                        </View>
+                                    ) : (
+                                        currentReports.map((r) => {
+                                            const cat = useRubricsStore.getState().getRubric(r.rubric_name);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={r.id}
+                                                    onPress={() => fetchReportDetails(r.id)}
+                                                    activeOpacity={0.7}
+                                                    className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex-row items-center gap-3 mb-3 ${selectedReport?.id === r.id
+                                                        ? 'border-blue-500 dark:border-blue-400'
+                                                        : 'border-gray-100 dark:border-gray-800'
+                                                        }`}
                                                 >
-                                                    {cat?.photoUrl ? (
-                                                        <Image
-                                                            source={{ uri: cat.photoUrl }}
-                                                            style={{ width: 24, height: 24 }}
-                                                            resizeMode="contain"
-                                                        />
-                                                    ) : (
-                                                        <Text className="text-lg">❗</Text>
-                                                    )}
-                                                </View>
-                                                <View className="flex-1">
-                                                    <Text
-                                                        className="font-semibold text-gray-900 dark:text-gray-100"
-                                                        numberOfLines={1}
+                                                    <View
+                                                        className="w-10 h-10 rounded-xl items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-700"
                                                     >
-                                                        {r.title}
-                                                    </Text>
-                                                    <Text className="text-xs text-gray-400 dark:text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
-                                                </View>
-                                                <Badge status={r.status} />
+                                                        {cat?.photoUrl ? (
+                                                            <Image
+                                                                source={{ uri: cat.photoUrl }}
+                                                                style={{ width: 24, height: 24 }}
+                                                                resizeMode="contain"
+                                                            />
+                                                        ) : (
+                                                            <Text className="text-lg">❗</Text>
+                                                        )}
+                                                    </View>
+                                                    <View className="flex-1">
+                                                        <Text
+                                                            className="font-semibold text-gray-900 dark:text-gray-100"
+                                                            numberOfLines={1}
+                                                        >
+                                                            {r.title}
+                                                        </Text>
+                                                        <Text className="text-xs text-gray-400 dark:text-gray-500">{r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : ''}</Text>
+                                                    </View>
+                                                    <Badge status={r.status} />
+                                                </TouchableOpacity>
+                                            );
+                                        })
+                                    )
+                                ) : (
+                                    // Drafts list
+                                    <>
+                                        {/* Sync button - only for local drafts */}
+                                        {drafts.length > 0 && (
+                                            <TouchableOpacity
+                                                onPress={handleSyncDrafts}
+                                                disabled={isSyncing}
+                                                className="mb-4 py-3 px-4 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2 shadow-sm"
+                                            >
+                                                {isSyncing ? (
+                                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                                ) : (
+                                                    <>
+                                                        <CloudUpload size={18} color="#FFFFFF" />
+                                                        <Text className="text-white font-semibold text-sm">
+                                                            Синхронизировать ({drafts.length})
+                                                        </Text>
+                                                    </>
+                                                )}
                                             </TouchableOpacity>
-                                        );
-                                    })
+                                        )}
+
+                                        {allDrafts.length === 0 ? (
+                                            <View className="py-8 items-center">
+                                                <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-3">
+                                                    <FileClock size={28} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                                </View>
+                                                <Text className="text-gray-400 dark:text-gray-500 text-sm text-center">Нет сохранённых черновиков</Text>
+                                                <Text className="text-gray-300 dark:text-gray-600 text-xs text-center mt-1">Черновики создаются автоматически при отсутствии интернета</Text>
+                                            </View>
+                                        ) : (
+                                            currentDrafts.map((d) => {
+                                                // Check if it's a server draft (Report) or local draft (DraftReport)
+                                                const isServerDraft = 'id' in d && !('localId' in d);
+                                                const cat = useRubricsStore.getState().getRubric(
+                                                    isServerDraft ? (d as Report).rubric_name : (d as DraftReportType).rubric
+                                                );
+                                                const itemKey = isServerDraft ? String((d as Report).id) : (d as DraftReportType).localId;
+                                                const itemTitle = isServerDraft ? (d as Report).title : ((d as DraftReportType).title || 'Без названия');
+                                                const itemDate = isServerDraft
+                                                    ? new Date((d as Report).created_at || '').toLocaleDateString('ru-RU')
+                                                    : new Date((d as DraftReportType).createdAt).toLocaleDateString('ru-RU');
+                                                const photoCount = isServerDraft
+                                                    ? ((d as Report).photos?.length || 0) + ((d as Report).preview_photo ? 1 : 0)
+                                                    : (d as DraftReportType).photoUris.length;
+                                                const isSelected = isServerDraft
+                                                    ? selectedReport?.id === (d as Report).id
+                                                    : selectedDraft?.localId === (d as DraftReportType).localId;
+
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={itemKey}
+                                                        onPress={() => {
+                                                            if (isServerDraft) {
+                                                                fetchReportDetails((d as Report).id);
+                                                            } else {
+                                                                setSelectedDraft(d as DraftReportType);
+                                                            }
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                        className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border flex-row items-center gap-3 mb-3 ${isSelected
+                                                            ? 'border-blue-500 dark:border-blue-400'
+                                                            : 'border-gray-100 dark:border-gray-800'
+                                                            }`}
+                                                    >
+                                                        <View
+                                                            className="w-10 h-10 rounded-xl items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-700"
+                                                        >
+                                                            {cat?.photoUrl ? (
+                                                                <Image
+                                                                    source={{ uri: cat.photoUrl }}
+                                                                    style={{ width: 24, height: 24 }}
+                                                                    resizeMode="contain"
+                                                                />
+                                                            ) : (
+                                                                <Text className="text-lg">📝</Text>
+                                                            )}
+                                                        </View>
+                                                        <View className="flex-1">
+                                                            <Text
+                                                                className="font-semibold text-gray-900 dark:text-gray-100"
+                                                                numberOfLines={1}
+                                                            >
+                                                                {itemTitle}
+                                                            </Text>
+                                                            <Text className="text-xs text-gray-400 dark:text-gray-500">
+                                                                {itemDate}
+                                                                {photoCount > 0 && ` • ${photoCount} фото`}
+                                                            </Text>
+                                                        </View>
+                                                        <Badge status="draft" />
+                                                    </TouchableOpacity>
+                                                );
+                                            })
+                                        )}
+                                    </>
                                 )}
                             </View>
                         </View>
 
                         {/* Pagination */}
-                        {!isLoading && totalReports > 0 && totalPages > 1 && (
-                            <View className="px-6 pb-4">
-                                <View className="w-full max-w-sm self-center">
-                                    <View className="flex-row items-center justify-center gap-4 py-2">
-                                        <TouchableOpacity
-                                            onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                            disabled={currentPage === 1}
-                                            className={`p-1 rounded ${currentPage === 1
-                                                ? 'opacity-30'
-                                                : 'opacity-70'
-                                                }`}
-                                        >
-                                            <ChevronLeft
-                                                size={16}
-                                                color={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                                            />
-                                        </TouchableOpacity>
+                        {activeTab === 'reports' ? (
+                            // Reports pagination
+                            !isLoading && totalReports > 0 && totalPages > 1 && (
+                                <View className="px-6 pb-4">
+                                    <View className="w-full max-w-sm self-center">
+                                        <View className="flex-row items-center justify-center gap-4 py-2">
+                                            <TouchableOpacity
+                                                onPress={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                disabled={currentPage === 1}
+                                                className={`p-1 rounded ${currentPage === 1
+                                                    ? 'opacity-30'
+                                                    : 'opacity-70'
+                                                    }`}
+                                            >
+                                                <ChevronLeft
+                                                    size={16}
+                                                    color={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                                                />
+                                            </TouchableOpacity>
 
-                                        <Text className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px] text-center">
-                                            {currentPage} / {totalPages}
-                                        </Text>
+                                            <Text className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px] text-center">
+                                                {currentPage} / {totalPages}
+                                            </Text>
 
-                                        <TouchableOpacity
-                                            onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                            disabled={currentPage === totalPages}
-                                            className={`p-1 rounded ${currentPage === totalPages
-                                                ? 'opacity-30'
-                                                : 'opacity-70'
-                                                }`}
-                                        >
-                                            <ChevronRight
-                                                size={16}
-                                                color={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                                            />
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                                disabled={currentPage === totalPages}
+                                                className={`p-1 rounded ${currentPage === totalPages
+                                                    ? 'opacity-30'
+                                                    : 'opacity-70'
+                                                    }`}
+                                            >
+                                                <ChevronRight
+                                                    size={16}
+                                                    color={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
+                            )
+                        ) : (
+                            // Drafts pagination
+                            allDrafts.length > 0 && totalDraftsPages > 1 && (
+                                <View className="px-6 pb-4">
+                                    <View className="w-full max-w-sm self-center">
+                                        <View className="flex-row items-center justify-center gap-4 py-2">
+                                            <TouchableOpacity
+                                                onPress={() => setCurrentDraftsPage(prev => Math.max(1, prev - 1))}
+                                                disabled={currentDraftsPage === 1}
+                                                className={`p-1 rounded ${currentDraftsPage === 1
+                                                    ? 'opacity-30'
+                                                    : 'opacity-70'
+                                                    }`}
+                                            >
+                                                <ChevronLeft
+                                                    size={16}
+                                                    color={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                                                />
+                                            </TouchableOpacity>
+
+                                            <Text className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px] text-center">
+                                                {currentDraftsPage} / {totalDraftsPages}
+                                            </Text>
+
+                                            <TouchableOpacity
+                                                onPress={() => setCurrentDraftsPage(prev => Math.min(totalDraftsPages, prev + 1))}
+                                                disabled={currentDraftsPage === totalDraftsPages}
+                                                className={`p-1 rounded ${currentDraftsPage === totalDraftsPages
+                                                    ? 'opacity-30'
+                                                    : 'opacity-70'
+                                                    }`}
+                                            >
+                                                <ChevronRight
+                                                    size={16}
+                                                    color={isDarkMode ? '#9CA3AF' : '#6B7280'}
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+                            )
                         )}
 
                     </View>
@@ -736,7 +976,84 @@ export default function ProfileScreen() {
                 </View>
             </Modal>
 
-            {/* Delete Confirmation Modal */}
+            {/* Draft Detail Modal */}
+            <Modal
+                visible={!!selectedDraft}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setSelectedDraft(null)}
+            >
+                <View
+                    style={{ flex: 1, paddingHorizontal: 16 }}
+                    className="justify-center items-center bg-black/50"
+                >
+                    <View
+                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-xl"
+                        style={{
+                            maxHeight: Platform.OS === 'web' ? '90%' : '85%',
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 10 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 20,
+                            elevation: 20,
+                            borderWidth: Platform.OS === 'web' ? 0 : 1,
+                            borderColor: isDarkMode ? '#374151' : '#F3F4F6'
+                        }}
+                    >
+                        <View className="p-6">
+                            {selectedDraft && (
+                                <DraftDetailInner
+                                    draft={selectedDraft}
+                                    isDarkMode={isDarkMode}
+                                    onClose={() => setSelectedDraft(null)}
+                                    onEdit={handleEditDraft}
+                                    onDelete={handleDeleteDraft}
+                                />
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Draft Delete Confirmation Modal */}
+            <Modal
+                visible={!!draftToDelete}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setDraftToDelete(null)}
+            >
+                <View
+                    style={{ flex: 1, paddingHorizontal: 16 }}
+                    className="justify-center items-center bg-black/50"
+                >
+                    <View
+                        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-xl p-6"
+                        style={{ elevation: 20 }}
+                    >
+                        <Text className="text-xl font-bold dark:text-white mb-2 text-center">
+                            Удаление черновика
+                        </Text>
+                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center leading-5">
+                            Вы уверены, что хотите удалить этот черновик? Это действие нельзя будет отменить.
+                        </Text>
+
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity
+                                onPress={() => setDraftToDelete(null)}
+                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl items-center"
+                            >
+                                <Text className="text-gray-700 dark:text-gray-300 font-bold text-sm">Отмена</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmDeleteDraft}
+                                className="flex-1 py-3 bg-red-50 dark:bg-red-900/40 border border-red-100 dark:border-red-800 rounded-xl items-center flex-row justify-center"
+                            >
+                                <Text className="text-red-600 font-bold text-sm">Удалить</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
             <Modal
                 visible={!!reportToDelete}
                 animationType="fade"
@@ -1014,6 +1331,124 @@ function ReportDetailInner({
                     <Text className="text-red-500 font-bold text-sm">
                         {isDeleting ? 'Удаление...' : 'Удалить'}
                     </Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+}
+
+// ─── Draft Detail Component ──────────────────────────────────
+function DraftDetailInner({
+    draft,
+    isDarkMode,
+    onClose,
+    onEdit,
+    onDelete,
+}: {
+    draft: DraftReportType,
+    isDarkMode: boolean,
+    onClose: () => void,
+    onEdit: (d: DraftReportType) => void,
+    onDelete: (localId: string) => void,
+}) {
+    // Находим категорию
+    const cat = useRubricsStore.getState().getRubric(draft.rubric);
+
+    return (
+        <View style={{ flexShrink: 1 }}>
+            <View className="flex-row justify-between items-start mb-4">
+                <Badge status="draft" />
+                <TouchableOpacity onPress={onClose}>
+                    <X size={20} color={isDarkMode ? "#F9FAFB" : "#111827"} />
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ flexShrink: 1 }}
+            >
+                <Text className="text-xl font-bold dark:text-white mb-2">
+                    {draft.title || 'Без названия'}
+                </Text>
+
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {draft.address}
+                </Text>
+
+                {/* Рубрика */}
+                {!!draft.rubric && (
+                    <View className="flex-row items-center mb-4">
+                        <View
+                            className="w-8 h-8 rounded-lg items-center justify-center mr-2 overflow-hidden bg-gray-100 dark:bg-gray-700"
+                        >
+                            {cat?.photoUrl ? (
+                                <Image
+                                    source={{ uri: cat.photoUrl }}
+                                    style={{ width: 20, height: 20 }}
+                                    resizeMode="contain"
+                                />
+                            ) : (
+                                <Text className="text-sm">📝</Text>
+                            )}
+                        </View>
+                        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {draft.rubric}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Описание */}
+                {!!draft.description && (
+                    <View className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl mb-6">
+                        <Text className="text-gray-700 dark:text-gray-300 leading-6">
+                            {draft.description}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Фото превью */}
+                {draft.photoUris.length > 0 && (
+                    <View className="mb-6">
+                        <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Фотографии ({draft.photoUris.length})
+                        </Text>
+                        <View className="flex-row flex-wrap gap-2">
+                            {draft.photoUris.map((uri: string, index: number) => (
+                                <View key={index} className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                    <Image
+                                        source={{ uri }}
+                                        className="w-full h-full"
+                                        resizeMode="cover"
+                                    />
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* Метаданные */}
+                <View className="flex-row items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 mb-4">
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
+                        Создано: {draft.createdAt ? new Date(draft.createdAt).toLocaleDateString('ru-RU') : ''}
+                    </Text>
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
+                        ID: {draft.localId}
+                    </Text>
+                </View>
+            </ScrollView>
+
+            <View className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <TouchableOpacity
+                    onPress={() => onDelete(draft.localId)}
+                    className="flex-1 py-3 bg-red-50 dark:bg-red-900/20 rounded-xl items-center"
+                >
+                    <Text className="text-red-500 font-bold text-sm">Удалить</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => onEdit(draft)}
+                    className="flex-1 py-3 bg-blue-600 rounded-xl items-center justify-center"
+                >
+                    <Text className="text-white font-bold text-sm">Продолжить</Text>
                 </TouchableOpacity>
             </View>
         </View>

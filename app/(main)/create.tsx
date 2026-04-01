@@ -70,6 +70,7 @@ export default function CreateReportScreen() {
         lat?: string;
         lon?: string;
         editId?: string;
+        draftId?: string;
     }>();
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const insets = useSafeAreaInsets();
@@ -85,8 +86,9 @@ export default function CreateReportScreen() {
     const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
     const [galleryOpen, setGalleryOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isFetchingInitial, setIsFetchingInitial] = useState(!!params.editId);
+    const [isFetchingInitial, setIsFetchingInitial] = useState(!!params.editId || !!params.draftId);
     const [existingPhotos, setExistingPhotos] = useState<ReportPhoto[]>([]);
+    const [originalReportStatus, setOriginalReportStatus] = useState<string | null>(null);
 
     const [formError, setFormErrorState] = useState<string | null>(null);
     const formErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +103,7 @@ export default function CreateReportScreen() {
         }
     };
 
-    // Load existing report if editing
+    // Load existing report if editing or draft
     useEffect(() => {
         (async () => {
             // Make sure rubrics are loaded
@@ -117,16 +119,34 @@ export default function CreateReportScreen() {
                     setDesc(report.description);
                     setCategory(report.rubric_name);
                     setSelectedLocation({ lat: report.latitude, lon: report.longitude });
+                    setOriginalReportStatus(report.status || null);
                     if (report.photos) {
                         setExistingPhotos(report.photos);
                     }
                 } catch (err) {
                     console.warn('Failed to fetch report:', err);
                 }
+            } else if (params.draftId) {
+                // Load draft
+                const draft = useReportsStore.getState().getDraft(params.draftId);
+                if (draft) {
+                    setTitle(draft.title);
+                    setAddress(draft.address);
+                    setDesc(draft.description);
+                    setCategory(draft.rubric);
+                    setSelectedLocation({ lat: draft.latitude, lon: draft.longitude });
+                    // Convert photoUris to SelectedPhoto format
+                    const draftPhotos: SelectedPhoto[] = draft.photoUris.map((uri, i) => ({
+                        uri,
+                        name: `draft_photo_${i}.jpg`,
+                        type: 'image/jpeg',
+                    }));
+                    setPhotos(draftPhotos);
+                }
             }
             setIsFetchingInitial(false);
         })();
-    }, [params.editId]);
+    }, [params.editId, params.draftId]);
 
     // Address Autocomplete state
     const [suggestions, setSuggestions] = useState<AddressSearchResult[]>([]);
@@ -231,6 +251,24 @@ export default function CreateReportScreen() {
             return;
         }
 
+        // If editing a draft, update it
+        if (params.draftId) {
+            const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
+            const lon = selectedLocation?.lon ?? (params.lon ? parseFloat(params.lon) : 0);
+
+            useReportsStore.getState().updateDraft(params.draftId, {
+                title: title || 'Без названия',
+                description: desc,
+                address,
+                latitude: lat,
+                longitude: lon,
+                rubric: category,
+                photoUris: photos.map((p) => p.uri),
+            });
+            showAlert('Черновик обновлён', 'Изменения сохранены.', () => navigateBack('/(main)/map'));
+            return;
+        }
+
         showConfirm(
             'Сохранить черновик?',
             'У вас есть несохранённые данные. Сохранить как черновик?',
@@ -264,6 +302,30 @@ export default function CreateReportScreen() {
             setFormError('Заполните обязательные поля');
             return;
         }
+
+        // Character count validation
+        const MIN_TITLE_LENGTH = 5;
+        const MAX_TITLE_LENGTH = 100;
+        const MIN_DESC_LENGTH = 10;
+        const MAX_DESC_LENGTH = 2000;
+
+        if (title.length < MIN_TITLE_LENGTH) {
+            setFormError(`Название должно содержать минимум ${MIN_TITLE_LENGTH} символов`);
+            return;
+        }
+        if (title.length > MAX_TITLE_LENGTH) {
+            setFormError(`Название не должно превышать ${MAX_TITLE_LENGTH} символов`);
+            return;
+        }
+        if (desc.length < MIN_DESC_LENGTH) {
+            setFormError(`Описание должно содержать минимум ${MIN_DESC_LENGTH} символов`);
+            return;
+        }
+        if (desc.length > MAX_DESC_LENGTH) {
+            setFormError(`Описание не должно превышать ${MAX_DESC_LENGTH} символов`);
+            return;
+        }
+
         const lat = selectedLocation?.lat ?? (params.lat ? parseFloat(params.lat) : 0);
         const lon = selectedLocation?.lon ?? (params.lon ? parseFloat(params.lon) : 0);
 
@@ -271,6 +333,8 @@ export default function CreateReportScreen() {
         try {
             let report: Report;
             if (params.editId) {
+                // If editing a draft, send it for review (change status from draft to check)
+                const isDraft = originalReportStatus === 'draft';
                 report = await reportsService.update(parseInt(params.editId), {
                     title,
                     description: desc,
@@ -278,6 +342,7 @@ export default function CreateReportScreen() {
                     latitude: lat,
                     longitude: lon,
                     rubric: category,
+                    ...(isDraft && { status: 'check' }),
                 });
             } else {
                 report = await reportsService.create({
@@ -305,7 +370,13 @@ export default function CreateReportScreen() {
                 }
             }
 
-            showAlert('Успех', params.editId ? 'Заявка обновлена!' : 'Заявка отправлена на рассмотрение!', () => router.back());
+            showAlert('Успех', params.editId ? 'Заявка обновлена!' : 'Заявка отправлена на рассмотрение!', () => {
+                // Remove draft if it was sent successfully
+                if (params.draftId) {
+                    useReportsStore.getState().removeDraft(params.draftId);
+                }
+                router.back();
+            });
         } catch (e: any) {
             // Offline if there is no response from the server
             const isOffline = !e.response && !e.status;
@@ -361,7 +432,7 @@ export default function CreateReportScreen() {
                         <X size={24} color={isDarkMode ? '#F3F4F6' : '#111827'} />
                     </TouchableOpacity>
                     <Text className="font-bold text-lg dark:text-gray-100">
-                        {params.editId ? 'Редактирование' : 'Новая заявка'}
+                        {params.editId ? 'Редактирование' : params.draftId ? 'Редактирование черновика' : 'Новая заявка'}
                     </Text>
                     <View className="w-8" />
                 </View>
@@ -599,7 +670,7 @@ export default function CreateReportScreen() {
             {/* Submit */}
             <SafeAreaView edges={['bottom']} className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3">
                 <Button
-                    title={isSubmitting ? (params.editId ? 'Сохранение...' : 'Отправка...') : (params.editId ? 'Сохранить изменения' : 'Отправить')}
+                    title={isSubmitting ? (params.editId ? 'Сохранение...' : params.draftId ? 'Отправка...' : 'Отправка...') : (params.editId ? 'Сохранить изменения' : params.draftId ? 'Отправить черновик' : 'Отправить')}
                     onPress={handleSubmit}
                     disabled={isSubmitting || isFetchingInitial}
                 />
