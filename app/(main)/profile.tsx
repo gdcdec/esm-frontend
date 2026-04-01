@@ -221,9 +221,17 @@ export default function ProfileScreen() {
     const indexOfFirstDraft = indexOfLastDraft - reportsPerPage;
     const currentDrafts = allDrafts.slice(indexOfFirstDraft, indexOfLastDraft);
 
+    // Use a ref to access latest myReports without adding it to useCallback dependencies
+    // This prevents the infinite fetching loop inside useFocusEffect
+    const myReportsRef = React.useRef(myReports);
+    React.useEffect(() => {
+        myReportsRef.current = myReports;
+    }, [myReports]);
+
     const fetchMyReports = useCallback(async () => {
+        const currentReports = myReportsRef.current;
         // Сохраняем текущие заявки как предыдущие перед загрузкой
-        setPreviousReports(myReports);
+        setPreviousReports(currentReports);
 
         if (useReportsStore.getState().myReports.length === 0) {
             setIsLoading(true);
@@ -231,14 +239,14 @@ export default function ProfileScreen() {
         try {
             const data = await useReportsStore.getState().fetchMine();
             // Генерируем уведомления на основе изменений
-            generateFromReports(data, myReports);
+            generateFromReports(data, currentReports);
             setMyReports(data);
         } catch (err) {
             console.warn('Failed to fetch my reports:', err);
         } finally {
             setIsLoading(false);
         }
-    }, [myReports, generateFromReports]);
+    }, [generateFromReports]);
 
     const fetchReportDetails = useCallback(async (reportId: number) => {
         // Мгновенно показываем то, что есть в списке

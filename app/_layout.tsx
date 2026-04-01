@@ -52,7 +52,7 @@ export default function RootLayout() {
         const rafId = requestAnimationFrame(() => {
             if (!isAuthenticated && !inAuthGroup && !isRulesPage) {
                 // Not authenticated, redirect to login
-                router.replace('/login');
+                router.replace('/(auth)/login');
             } else if (isAuthenticated && inAuthGroup && !isRulesPage) {
                 // Authenticated but on auth page (and not rules), redirect to map
                 router.replace('/(main)/map');
