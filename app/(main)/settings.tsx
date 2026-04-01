@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/src/store/authStore';
+import { useNotificationsStore } from '@/src/store/notificationsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
 import { Bell, CheckSquare, ChevronRight, CloudFog, HelpCircle, Info, LogOut, MapPin, Moon, User as UserIcon, X } from 'lucide-react-native';
@@ -17,7 +18,8 @@ export default function SettingsScreen() {
     const city = useThemeStore((s) => s.city);
     const setCity = useThemeStore((s) => s.setCity);
     const { setColorScheme } = useColorScheme();
-    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const isNotificationsEnabled = useNotificationsStore((s) => s.isEnabled);
+    const setNotificationsEnabled = useNotificationsStore((s) => s.setEnabled);
     const [showCityModal, setShowCityModal] = useState(false);
     const [citySearchQuery, setCitySearchQuery] = useState('');
     
@@ -121,10 +123,10 @@ export default function SettingsScreen() {
                                 <Text className="text-sm text-gray-900 dark:text-gray-100">Уведомления</Text>
                             </View>
                             <Switch
-                                value={notificationsEnabled}
+                                value={isNotificationsEnabled}
                                 onValueChange={setNotificationsEnabled}
                                 trackColor={{ false: isDarkMode ? '#374151' : '#E5E7EB', true: '#BFDBFE' }}
-                                thumbColor={notificationsEnabled ? '#2563EB' : isDarkMode ? '#9CA3AF' : '#F9FAFB'}
+                                thumbColor={isNotificationsEnabled ? '#2563EB' : isDarkMode ? '#9CA3AF' : '#F9FAFB'}
                             />
                         </View>
 

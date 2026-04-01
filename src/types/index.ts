@@ -127,3 +127,18 @@ export interface CreateReportPayload {
 
 }
 
+export type NotificationType = 'status_changed' | 'draft_published' | 'system';
+
+export interface Notification {
+    id: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    reportId?: number;
+    reportTitle?: string;
+    status?: ReportStatus;
+    previousStatus?: ReportStatus;
+    isRead: boolean;
+    createdAt: string;
+}
+

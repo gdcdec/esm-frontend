@@ -1,14 +1,15 @@
 import { Badge } from '@/src/components/ui';
 import { reportsService } from '@/src/services/reports';
 import { useAuthStore } from '@/src/store/authStore';
+import { useNotificationsStore } from '@/src/store/notificationsStore';
 import { useReportsStore } from '@/src/store/reportsStore';
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { Report } from '@/src/types';
 import * as Print from 'expo-print';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { ChevronLeft, ChevronRight, Download, FileText, Settings, X } from 'lucide-react-native';
+import { Bell, ChevronLeft, ChevronRight, Download, FileText, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -176,11 +177,15 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
 }
 
 export default function ProfileScreen() {
+    const params = useLocalSearchParams();
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const unreadCount = useNotificationsStore((s) => s.unreadCount());
+    const generateFromReports = useNotificationsStore((s) => s.generateFromReports);
 
     const [myReports, setMyReports] = useState<Report[]>(() => useReportsStore.getState().myReports);
+    const [previousReports, setPreviousReports] = useState<Report[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<number | null>(null);
@@ -193,18 +198,23 @@ export default function ProfileScreen() {
     const reportsPerPage = 5;
 
     const fetchMyReports = useCallback(async () => {
+        // Сохраняем текущие заявки как предыдущие перед загрузкой
+        setPreviousReports(myReports);
+
         if (useReportsStore.getState().myReports.length === 0) {
             setIsLoading(true);
         }
         try {
             const data = await useReportsStore.getState().fetchMine();
+            // Генерируем уведомления на основе изменений
+            generateFromReports(data, myReports);
             setMyReports(data);
         } catch (err) {
             console.warn('Failed to fetch my reports:', err);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [myReports, generateFromReports]);
 
     const fetchReportDetails = useCallback(async (reportId: number) => {
         // Мгновенно показываем то, что есть в списке
@@ -320,10 +330,16 @@ export default function ProfileScreen() {
         }
     };
 
+    const requestPushPermissions = useNotificationsStore((s) => s.requestPushPermissions);
+
     useFocusEffect(
         useCallback(() => {
             fetchMyReports();
-        }, [fetchMyReports])
+            // Запрашиваем разрешения на push-уведомления
+            if (Platform.OS !== 'web') {
+                requestPushPermissions();
+            }
+        }, [fetchMyReports, requestPushPermissions])
     );
 
     // Расширенная система статистики профиля
@@ -442,6 +458,16 @@ export default function ProfileScreen() {
         }
     };
 
+    // Обработка параметра открытия заявки из уведомления
+    React.useEffect(() => {
+        if (params.openReportId) {
+            const reportId = parseInt(params.openReportId as string, 10);
+            if (!isNaN(reportId)) {
+                fetchReportDetails(reportId);
+            }
+        }
+    }, [params.openReportId]);
+
     const handleEdit = (report: Report) => {
         setSelectedReport(null);
         router.push({
@@ -462,12 +488,27 @@ export default function ProfileScreen() {
                         <X size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
                     </TouchableOpacity>
                     <Text className="font-bold text-lg dark:text-gray-100">Мой профиль</Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(main)/settings' as any)}
-                        className="p-2 -mr-2 rounded-full"
-                    >
-                        <Settings size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
-                    </TouchableOpacity>
+                    <View className="flex-row items-center gap-1">
+                        <TouchableOpacity
+                            onPress={() => router.push('/(main)/notifications')}
+                            className="p-2 -mr-1 rounded-full relative"
+                        >
+                            <Bell size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
+                            {unreadCount > 0 && (
+                                <View className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full items-center justify-center px-1">
+                                    <Text className="text-white text-[10px] font-bold">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => router.push('/(main)/settings' as any)}
+                            className="p-2 -mr-2 rounded-full"
+                        >
+                            <Settings size={24} color={isDarkMode ? "#F9FAFB" : "#111827"} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </SafeAreaView>
 
