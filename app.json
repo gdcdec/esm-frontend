@@ -19,8 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.arsenyshangin.moydonos",
-      "usesCleartextTraffic": true
+      "package": "com.arsenyshangin.moydonos"
     },
     "web": {
       "output": "single",
@@ -28,6 +27,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {
