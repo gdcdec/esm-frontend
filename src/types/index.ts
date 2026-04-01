@@ -127,18 +127,23 @@ export interface CreateReportPayload {
 
 }
 
-export type NotificationType = 'status_changed' | 'draft_published' | 'system';
+export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'system' | 'post';
 
 export interface Notification {
-    id: string;
-    type: NotificationType;
-    title: string;
+    id: number;
+    subject: string;
     message: string;
-    reportId?: number;
-    reportTitle?: string;
-    status?: ReportStatus;
-    previousStatus?: ReportStatus;
-    isRead: boolean;
-    createdAt: string;
+    is_read: boolean;
+    notification_type: NotificationType;
+    notification_type_display?: string;
+    created_at: string;
+    read_at: string | null;
+    link: string | null;
+    metadata: Record<string, any>;
+}
+
+export interface NotificationsResponse {
+    notifications: Notification[];
+    unread_count: number;
 }
 

@@ -186,11 +186,10 @@ export default function ProfileScreen() {
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
-    const unreadCount = useNotificationsStore((s) => s.unreadCount());
-    const generateFromReports = useNotificationsStore((s) => s.generateFromReports);
+    const unreadCount = useNotificationsStore((s) => s.unreadCount);
+    const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount);
 
     const [myReports, setMyReports] = useState<Report[]>(() => useReportsStore.getState().myReports);
-    const [previousReports, setPreviousReports] = useState<Report[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedReport, setSelectedReport] = useState<Report | null>(null);
     const [reportToDelete, setReportToDelete] = useState<number | null>(null);
@@ -229,24 +228,18 @@ export default function ProfileScreen() {
     }, [myReports]);
 
     const fetchMyReports = useCallback(async () => {
-        const currentReports = myReportsRef.current;
-        // Сохраняем текущие заявки как предыдущие перед загрузкой
-        setPreviousReports(currentReports);
-
         if (useReportsStore.getState().myReports.length === 0) {
             setIsLoading(true);
         }
         try {
             const data = await useReportsStore.getState().fetchMine();
-            // Генерируем уведомления на основе изменений
-            generateFromReports(data, currentReports);
             setMyReports(data);
         } catch (err) {
             console.warn('Failed to fetch my reports:', err);
         } finally {
             setIsLoading(false);
         }
-    }, [generateFromReports]);
+    }, []);
 
     const fetchReportDetails = useCallback(async (reportId: number) => {
         // Мгновенно показываем то, что есть в списке
@@ -367,11 +360,13 @@ export default function ProfileScreen() {
     useFocusEffect(
         useCallback(() => {
             fetchMyReports();
+            // Fetch unread count from server
+            fetchUnreadCount();
             // Запрашиваем разрешения на push-уведомления
             if (Platform.OS !== 'web') {
                 requestPushPermissions();
             }
-        }, [fetchMyReports, requestPushPermissions])
+        }, [fetchMyReports, fetchUnreadCount, requestPushPermissions])
     );
 
     // Расширенная система статистики профиля

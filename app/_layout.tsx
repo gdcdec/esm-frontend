@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/src/store/authStore';
+import { useNotificationsStore } from '@/src/store/notificationsStore';
 import { useReportsStore } from '@/src/store/reportsStore';
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
@@ -39,6 +40,18 @@ export default function RootLayout() {
     useRubricsStore.getState().fetchRubrics();
     useReportsStore.getState().syncDrafts();
   }, []);
+
+  // Start / stop notification polling based on auth state
+  useEffect(() => {
+    if (isAuthenticated && _hasHydrated) {
+      useNotificationsStore.getState().startPolling();
+    } else {
+      useNotificationsStore.getState().stopPolling();
+    }
+    return () => {
+      useNotificationsStore.getState().stopPolling();
+    };
+  }, [isAuthenticated, _hasHydrated]);
 
     // Auth guard - redirect based on authentication state
     useEffect(() => {

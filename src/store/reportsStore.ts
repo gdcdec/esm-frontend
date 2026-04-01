@@ -1,6 +1,6 @@
 import { photosService } from '@/src/services/photos';
 import { reportsService } from '@/src/services/reports';
-import { useNotificationsStore } from '@/src/store/notificationsStore';
+
 import { Report } from '@/src/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -238,16 +238,7 @@ export const useReportsStore = create<ReportsState>()(
                         // Remove draft after successful sync
                         get().removeDraft(draft.localId);
 
-                        // Add notification that draft was sent
-                        useNotificationsStore.getState().addNotification({
-                            type: 'system',
-                            title: 'Черновик отправлен',
-                            message: `Черновик «${draft.title || 'Без названия'}» успешно сохранён на сервере`,
-                            reportId: report.id,
-                            reportTitle: draft.title,
-                            status: 'draft',
-                            isRead: false,
-                        });
+
                     } catch (err: any) {
                         console.error('Failed to sync draft:', err?.response?.data || err);
                         // Still offline or server error — keep draft for next sync

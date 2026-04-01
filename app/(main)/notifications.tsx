@@ -4,61 +4,49 @@ import { Notification } from '@/src/types';
 import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
 import {
+    AlertTriangle,
     Bell,
-    Trash2,
-    X
+    CheckCircle,
+    Info,
+    MessageSquare,
+    X,
+    XCircle,
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    Modal,
+    ActivityIndicator,
     Platform,
     ScrollView,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// Swipeable только для native (не для web)
-let Swipeable: any = null;
-if (Platform.OS !== 'web') {
-    try {
-        Swipeable = require('react-native-gesture-handler/Swipeable').default;
-    } catch {
-        Swipeable = null;
-    }
-}
 
 function NotificationItem({
     notification,
     onPress,
-    onDelete,
 }: {
     notification: Notification;
     onPress: () => void;
-    onDelete: () => void;
 }) {
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
-    const renderRightActions = () => (
-        <TouchableOpacity
-            onPress={onDelete}
-            className="bg-red-500 justify-center items-center px-6 rounded-r-2xl"
-        >
-            <Trash2 size={20} color="white" />
-        </TouchableOpacity>
-    );
-
-    const getIconColor = () => {
-        switch (notification.type) {
-            case 'draft_published':
-                return '#10B981'; // green
-            case 'status_changed':
-                return '#3B82F6'; // blue
+    const getIconConfig = () => {
+        switch (notification.notification_type) {
+            case 'success':
+                return { color: '#10B981', Icon: CheckCircle };
+            case 'warning':
+                return { color: '#F59E0B', Icon: AlertTriangle };
+            case 'error':
+                return { color: '#EF4444', Icon: XCircle };
             case 'system':
-                return '#8B5CF6'; // purple
+                return { color: '#8B5CF6', Icon: Bell };
+            case 'post':
+                return { color: '#3B82F6', Icon: MessageSquare };
+            case 'info':
             default:
-                return '#6B7280'; // gray
+                return { color: '#6366F1', Icon: Info };
         }
     };
 
@@ -73,12 +61,14 @@ function NotificationItem({
         return date.toLocaleDateString('ru-RU');
     };
 
-    const content = (
+    const { color, Icon } = getIconConfig();
+
+    return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
             className={`p-4 border-b border-gray-100 dark:border-gray-700 ${
-                notification.isRead
+                notification.is_read
                     ? 'bg-white dark:bg-gray-800'
                     : 'bg-blue-50/50 dark:bg-blue-900/20'
             }`}
@@ -86,111 +76,109 @@ function NotificationItem({
             <View className="flex-row items-start">
                 <View
                     className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                    style={{ backgroundColor: `${getIconColor()}20` }}
+                    style={{ backgroundColor: `${color}20` }}
                 >
-                    <Bell size={18} color={getIconColor()} />
+                    <Icon size={18} color={color} />
                 </View>
                 <View className="flex-1">
                     <Text
                         className={`font-semibold text-sm mb-1 ${
-                            notification.isRead
+                            notification.is_read
                                 ? 'text-gray-900 dark:text-gray-100'
                                 : 'text-gray-900 dark:text-white'
                         }`}
                     >
-                        {notification.title}
+                        {notification.subject}
                     </Text>
                     <Text className="text-sm text-gray-600 dark:text-gray-400 mb-2 leading-relaxed">
                         {notification.message}
                     </Text>
                     <Text className="text-xs text-gray-400 dark:text-gray-500">
-                        {formatDate(notification.createdAt)}
+                        {formatDate(notification.created_at)}
                     </Text>
                 </View>
-                {!notification.isRead && (
+                {!notification.is_read && (
                     <View className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
                 )}
             </View>
         </TouchableOpacity>
-    );
-
-    if (Platform.OS === 'web' || !Swipeable) {
-        return (
-            <View className="relative">
-                {content}
-                <TouchableOpacity
-                    onPress={onDelete}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 opacity-0 hover:opacity-100"
-                >
-                    <Trash2 size={18} color="#EF4444" />
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    return (
-        <Swipeable renderRightActions={renderRightActions}>
-            {content}
-        </Swipeable>
     );
 }
 
 export default function NotificationsScreen() {
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const notifications = useNotificationsStore((s) => s.notifications);
-    const unreadCount = useNotificationsStore((s) => s.unreadCount());
+    const unreadCount = useNotificationsStore((s) => s.unreadCount);
+    const isLoading = useNotificationsStore((s) => s.isLoading);
     const markAsRead = useNotificationsStore((s) => s.markAsRead);
     const markAllAsRead = useNotificationsStore((s) => s.markAllAsRead);
-    const deleteNotification = useNotificationsStore((s) => s.deleteNotification);
-    const clearAll = useNotificationsStore((s) => s.clearAll);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const fetchNotifications = useNotificationsStore((s) => s.fetchNotifications);
+
+    const [filter, setFilter] = useState<'all' | 'unread'>('unread');
+
+    // Fetch full notifications when screen mounts
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     const handleNotificationPress = (notification: Notification) => {
-        if (!notification.isRead) {
+        if (!notification.is_read) {
             markAsRead(notification.id);
         }
 
-        if (notification.reportId) {
+        // Navigate to linked content if available
+        if (notification.link) {
+            // If link looks like a post ID, navigate to profile with openReportId
+            const postIdMatch = notification.link.match(/\/posts\/(\d+)/);
+            if (postIdMatch) {
+                router.push({
+                    pathname: '/(main)/profile',
+                    params: { openReportId: postIdMatch[1] },
+                });
+                return;
+            }
+        }
+
+        // Also check metadata for post_id
+        if (notification.metadata?.post_id) {
             router.push({
                 pathname: '/(main)/profile',
-                params: { openReportId: String(notification.reportId) },
+                params: { openReportId: String(notification.metadata.post_id) },
             });
         }
     };
 
-    const handleClearAll = () => {
-        setShowConfirmModal(true);
-    };
+    const filteredNotifications = notifications.filter(
+        (n) => filter === 'all' || !n.is_read
+    );
 
-    const confirmClearAll = () => {
-        clearAll();
-        setShowConfirmModal(false);
-    };
+    const groupedNotifications = filteredNotifications.reduce(
+        (groups, notification) => {
+            const date = new Date(notification.created_at);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
 
-    const groupedNotifications = notifications.reduce((groups, notification) => {
-        const date = new Date(notification.createdAt);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+            let group: string;
+            if (date.toDateString() === today.toDateString()) {
+                group = 'Сегодня';
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                group = 'Вчера';
+            } else {
+                group = date.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                });
+            }
 
-        let group: string;
-        if (date.toDateString() === today.toDateString()) {
-            group = 'Сегодня';
-        } else if (date.toDateString() === yesterday.toDateString()) {
-            group = 'Вчера';
-        } else {
-            group = date.toLocaleDateString('ru-RU', {
-                day: 'numeric',
-                month: 'long',
-            });
-        }
-
-        if (!groups[group]) {
-            groups[group] = [];
-        }
-        groups[group].push(notification);
-        return groups;
-    }, {} as Record<string, Notification[]>);
+            if (!groups[group]) {
+                groups[group] = [];
+            }
+            groups[group].push(notification);
+            return groups;
+        },
+        {} as Record<string, Notification[]>
+    );
 
     return (
         <View className="flex-1 bg-gray-50 dark:bg-gray-900">
@@ -219,34 +207,85 @@ export default function NotificationsScreen() {
                     <View className="w-8" />
                 </View>
 
-                {/* Actions */}
-                {notifications.length > 0 && (
-                    <View className="flex-row justify-between px-4 py-2 border-t border-gray-100 dark:border-gray-800">
-                        <TouchableOpacity onPress={markAllAsRead}>
-                            <Text className="text-sm text-blue-500 font-medium">
-                                Отметить всё прочитанным
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={handleClearAll}>
-                            <Text className="text-sm text-red-500 font-medium">
-                                Очистить всё
-                            </Text>
-                        </TouchableOpacity>
+                {/* Actions & Filters */}
+                <View className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                            <TouchableOpacity
+                                onPress={() => setFilter('unread')}
+                                className={`px-4 py-1.5 rounded-md flex-row items-center ${
+                                    filter === 'unread' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
+                                }`}
+                            >
+                                <Text
+                                    className={`text-sm font-medium ${
+                                        filter === 'unread'
+                                            ? 'text-gray-900 dark:text-gray-100'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    }`}
+                                >
+                                    Непрочитанные
+                                </Text>
+                                {unreadCount > 0 && (
+                                    <View className="ml-1.5 bg-blue-500 px-1.5 rounded-full items-center justify-center">
+                                        <Text className="text-[10px] font-bold text-white leading-4">
+                                            {unreadCount}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setFilter('all')}
+                                className={`px-4 py-1.5 rounded-md flex-row items-center ${
+                                    filter === 'all' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
+                                }`}
+                            >
+                                <Text
+                                    className={`text-sm font-medium ${
+                                        filter === 'all'
+                                            ? 'text-gray-900 dark:text-gray-100'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    }`}
+                                >
+                                    Все
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {notifications.length > 0 && unreadCount > 0 && (
+                            <TouchableOpacity onPress={markAllAsRead} className="ml-2">
+                                <Text className="text-[13px] text-blue-500 font-medium">
+                                    Прочитать всё
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
-                )}
+                </View>
             </SafeAreaView>
 
             {/* Content */}
-            {notifications.length === 0 ? (
+            {isLoading && notifications.length === 0 ? (
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator
+                        size="large"
+                        color={isDarkMode ? '#60A5FA' : '#2563EB'}
+                    />
+                    <Text className="text-sm text-gray-400 dark:text-gray-500 mt-3">
+                        Загрузка уведомлений...
+                    </Text>
+                </View>
+            ) : filteredNotifications.length === 0 ? (
                 <View className="flex-1 items-center justify-center px-6">
                     <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
                         <Bell size={32} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
                     </View>
                     <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 text-center">
-                        Уведомлений пока нет
+                        {filter === 'unread' ? 'Нет непрочитанных уведомлений' : 'Уведомлений пока нет'}
                     </Text>
                     <Text className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-xs">
-                        Здесь будут появляться уведомления об изменении статуса ваших заявок
+                        {filter === 'unread'
+                            ? 'Все уведомления прочитаны'
+                            : 'Здесь будут появляться уведомления об изменении статуса ваших заявок'}
                     </Text>
                 </View>
             ) : (
@@ -263,8 +302,9 @@ export default function NotificationsScreen() {
                                     <NotificationItem
                                         key={notification.id}
                                         notification={notification}
-                                        onPress={() => handleNotificationPress(notification)}
-                                        onDelete={() => deleteNotification(notification.id)}
+                                        onPress={() =>
+                                            handleNotificationPress(notification)
+                                        }
                                     />
                                 ))}
                             </View>
@@ -273,43 +313,6 @@ export default function NotificationsScreen() {
                     <View className="h-8" />
                 </ScrollView>
             )}
-
-            {/* Confirm Modal */}
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={showConfirmModal}
-                onRequestClose={() => setShowConfirmModal(false)}
-            >
-                <View className="flex-1 bg-black/50 justify-center items-center px-4">
-                    <View className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-xl">
-                        <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                            Очистить уведомления?
-                        </Text>
-                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                            Все уведомления будут удалены. Это действие нельзя отменить.
-                        </Text>
-                        <View className="flex-row gap-3">
-                            <TouchableOpacity
-                                onPress={() => setShowConfirmModal(false)}
-                                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-700"
-                            >
-                                <Text className="text-gray-700 dark:text-gray-300 font-semibold text-center">
-                                    Отмена
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={confirmClearAll}
-                                className="flex-1 py-3 rounded-xl bg-red-500"
-                            >
-                                <Text className="text-white font-semibold text-center">
-                                    Удалить
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
