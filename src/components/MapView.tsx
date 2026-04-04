@@ -1,11 +1,5 @@
-import { Report } from '@/src/types';
+import { MapViewRef, Report } from '@/src/types';
 import { forwardRef } from 'react';
-
-export interface MapViewRef {
-    zoomIn: () => void;
-    zoomOut: () => void;
-    goToLocation: (lat: number, lng: number) => void;
-}
 
 interface MapViewProps {
     reports: Report[];

@@ -1,22 +1,12 @@
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
-import { Report } from '@/src/types';
+import { MapViewRef, Report } from '@/src/types';
 import { CityBoundaryData, fetchCityBoundary } from '@/src/utils/fetchCityBoundary';
 import { generateCloudyHole } from '@/src/utils/generateCloudyHole';
 import { generateCloudyPolygon } from '@/src/utils/generateCloudyPolygon';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import RNMapView, { Marker, Polygon, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
-
-export interface MapViewRef {
-
-    zoomIn: () => void;
-
-    zoomOut: () => void;
-
-    goToLocation: (lat: number, lng: number) => void;
-
-}
 
 
 

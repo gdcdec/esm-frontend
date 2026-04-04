@@ -51,80 +51,33 @@ export interface User {
     avatar?: string;
 }
 
-export interface Coordinates {
-
-    latitude: number;
-
-    longitude: number;
-
-}
-
-
-
-export interface ApiRubric {
-
-    name: string;
-
-    counter: number;
-
-}
-
-
-
 export interface AddressReverseResponse {
-
     in_working_area: boolean;
-
     address: string;
-
     latitude: number;
-
     longitude: number;
-
     city: string;
-
     street: string;
-
     house: string;
-
 }
-
-
 
 export interface AddressSearchResult {
-
     display_name: string;
-
     latitude: number;
-
     longitude: number;
-
     city?: string;
-
     street?: string;
-
     house?: string;
-
 }
 
-
-
 export interface CreateReportPayload {
-
     title: string;
-
     description: string;
-
     address: string;
-
     latitude: number;
-
     longitude: number;
-
     rubric?: string;
-
     status?: ReportStatus;
-
 }
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'system' | 'post';
@@ -146,4 +99,3 @@ export interface NotificationsResponse {
     notifications: Notification[];
     unread_count: number;
 }
-

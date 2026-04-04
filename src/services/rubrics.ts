@@ -1,6 +1,6 @@
 import api from './api';
 
-export interface Rubric {
+export interface ApiRubric {
     name: string;
     counter: number;
     photo: string | null;
@@ -8,8 +8,8 @@ export interface Rubric {
 }
 
 export const rubricsService = {
-    getAll: async (): Promise<Rubric[]> => {
-        const { data } = await api.get<Rubric[]>('/rubrics/');
+    getAll: async (): Promise<ApiRubric[]> => {
+        const { data } = await api.get<ApiRubric[]>('/rubrics/');
         return data;
     },
 };

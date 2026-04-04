@@ -8,7 +8,7 @@
  * - banned → Забанен
  */
 
-export type ReportStatusValue = 'draft' | 'published' | 'archived' | 'check' | 'banned';
+import { ReportStatus } from '@/src/types';
 
 export interface StatusConfig {
     label: string;
@@ -16,7 +16,7 @@ export interface StatusConfig {
     text: string;
 }
 
-export const STATUS_CONFIG: Record<ReportStatusValue, StatusConfig> = {
+export const STATUS_CONFIG: Record<ReportStatus, StatusConfig> = {
     draft: {
         label: 'Черновик',
         bg: 'bg-gray-100 dark:bg-gray-700',
@@ -53,12 +53,12 @@ export function getStatusConfig(status: string | undefined | null): StatusConfig
     const rawStatus = (status || '').toString().toLowerCase().trim();
 
     // Direct lookup for codes (draft, published, etc.)
-    if (STATUS_CONFIG[rawStatus as ReportStatusValue]) {
-        return STATUS_CONFIG[rawStatus as ReportStatusValue];
+    if (STATUS_CONFIG[rawStatus as ReportStatus]) {
+        return STATUS_CONFIG[rawStatus as ReportStatus];
     }
 
     // Map display names to codes (for when API returns display names)
-    const displayToCode: Record<string, ReportStatusValue> = {
+    const displayToCode: Record<string, ReportStatus> = {
         'черновик': 'draft',
         'опубликован': 'published',
         'в архиве': 'archived',

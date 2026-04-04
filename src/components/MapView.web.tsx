@@ -2,7 +2,7 @@ import { useRubricsStore } from '@/src/store/rubricsStore';
 
 import { useThemeStore } from '@/src/store/themeStore';
 
-import { Report } from '@/src/types';
+import { MapViewRef, Report } from '@/src/types';
 
 import { CityBoundaryData, fetchCityBoundary, GeoCoordinate } from '@/src/utils/fetchCityBoundary';
 
@@ -19,18 +19,6 @@ import { View } from 'react-native';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import Map, { Layer, Marker as MapMarker, MapRef, Source } from 'react-map-gl/maplibre';
-
-
-
-export interface MapViewRef {
-
-    zoomIn: () => void;
-
-    zoomOut: () => void;
-
-    goToLocation: (lat: number, lng: number) => void;
-
-}
 
 
 

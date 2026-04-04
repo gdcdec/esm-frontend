@@ -1,9 +1,10 @@
-import { getStatusConfig, ReportStatusValue } from '@/src/constants/status';
+import { getStatusConfig } from '@/src/constants/status';
+import { ReportStatus } from '@/src/types';
 import React from 'react';
 import { Text, View } from 'react-native';
 
 interface BadgeProps {
-    status: ReportStatusValue | string;
+    status: ReportStatus | string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({ status }) => {
