@@ -3,9 +3,11 @@ import { authService } from '@/src/services/auth';
 import { useAuthStore } from '@/src/store/authStore';
 import { useThemeStore } from '@/src/store/themeStore';
 import { router } from 'expo-router';
-import { CheckSquare, Eye, EyeOff, Square } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Modal } from 'react-native';
+import { CheckSquare, ChevronDown, Eye, EyeOff, MapPin, Square } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+const isWeb = Platform.OS === 'web';
 
 export default function LoginScreen() {
     const [isLogin, setIsLogin] = useState(true);
@@ -23,7 +25,7 @@ export default function LoginScreen() {
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    
+
     // Modals
     const [showCityModal, setShowCityModal] = useState(false);
     const [citySearchQuery, setCitySearchQuery] = useState('');
@@ -39,10 +41,10 @@ export default function LoginScreen() {
     const passwordHasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/? ]/.test(password);
 
     const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
-    const isPasswordValid = passwordMinLength && 
-        passwordHasUpper && 
-        passwordHasLower && 
-        passwordHasNumber && 
+    const isPasswordValid = passwordMinLength &&
+        passwordHasUpper &&
+        passwordHasLower &&
+        passwordHasNumber &&
         passwordHasSpecial;
 
     // Phone validation
@@ -51,6 +53,32 @@ export default function LoginScreen() {
 
     const login = useAuthStore((state) => state.login);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+
+    // Animations
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
+    const logoScale = useRef(new Animated.Value(0.8)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(logoScale, {
+                toValue: 1,
+                friction: 4,
+                tension: 50,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, []);
 
     const handleSubmit = async () => {
         setError('');
@@ -150,245 +178,441 @@ export default function LoginScreen() {
 
     const isSubmitDisabled = isLoading || (!isLogin && !agreed);
 
-    return (
-        <KeyboardAvoidingView
-            className="flex-1 bg-white dark:bg-gray-900"
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    // ── Tab switcher ──
+    const TabSwitcher = () => (
+        <View
+            style={{
+                flexDirection: 'row',
+                backgroundColor: isDarkMode ? '#1F2937' : '#F3F4F6',
+                borderRadius: 14,
+                padding: 4,
+                marginBottom: 24,
+            }}
         >
-            <ScrollView
-                contentContainerClassName="flex-grow justify-center p-6"
-                keyboardShouldPersistTaps="handled"
+            <TouchableOpacity
+                onPress={() => { setIsLogin(true); setError(''); }}
+                style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 11,
+                    alignItems: 'center',
+                    backgroundColor: isLogin
+                        ? (isDarkMode ? '#374151' : '#FFFFFF')
+                        : 'transparent',
+                    ...(isLogin ? {
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 4,
+                        elevation: 2,
+                    } : {}),
+                }}
             >
-                {/* Logo */}
-                <View className="items-center mb-8">
-                    <View className="w-24 h-24 rounded-full bg-blue-50 dark:bg-gray-800 items-center justify-center mb-6 shadow-sm">
-                        <Text className="text-5xl">🏙️</Text>
-                    </View>
-                    <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Мой Донос*</Text>
-                    <Text className="text-gray-500 dark:text-gray-400 text-center px-4">
-                        Сделаем наш город лучше вместе
-                    </Text>
-                </View>
+                <Text style={{
+                    fontWeight: isLogin ? '700' : '500',
+                    fontSize: 15,
+                    color: isLogin
+                        ? (isDarkMode ? '#F9FAFB' : '#111827')
+                        : (isDarkMode ? '#9CA3AF' : '#6B7280'),
+                }}>
+                    Вход
+                </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+                onPress={() => { setIsLogin(false); setError(''); }}
+                style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 11,
+                    alignItems: 'center',
+                    backgroundColor: !isLogin
+                        ? (isDarkMode ? '#374151' : '#FFFFFF')
+                        : 'transparent',
+                    ...(!isLogin ? {
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 4,
+                        elevation: 2,
+                    } : {}),
+                }}
+            >
+                <Text style={{
+                    fontWeight: !isLogin ? '700' : '500',
+                    fontSize: 15,
+                    color: !isLogin
+                        ? (isDarkMode ? '#F9FAFB' : '#111827')
+                        : (isDarkMode ? '#9CA3AF' : '#6B7280'),
+                }}>
+                    Регистрация
+                </Text>
+            </TouchableOpacity>
+        </View>
+    );
 
-                {/* Form */}
-                <View className="w-full max-w-sm self-center">
-                    {!isLogin && (
-                        <>
-                            <Input
-                                placeholder="Имя"
-                                value={firstName}
-                                onChangeText={setFirstName}
-                            />
-                            <Input
-                                placeholder="Фамилия"
-                                value={lastName}
-                                onChangeText={setLastName}
-                            />
-                            <Input
-                                placeholder="Отчество (необязательно)"
-                                value={patronymic}
-                                onChangeText={setPatronymic}
-                            />
-                            <Input
-                                placeholder="Телефон"
-                                value={phoneNumber}
-                                onChangeText={(text) => {
-                                    let digits = text.replace(/\D/g, '');
-                                    if (digits.startsWith('8')) digits = '7' + digits.slice(1);
-                                    if (!digits) { setPhoneNumber(''); return; }
-                                    if (!digits.startsWith('7')) digits = '7' + digits;
-                                    
-                                    let res = '+7';
-                                    if (digits.length > 1) res += ' (' + digits.slice(1, 4);
-                                    if (digits.length >= 5) res += ') ' + digits.slice(4, 7);
-                                    if (digits.length >= 8) res += '-' + digits.slice(7, 9);
-                                    if (digits.length >= 10) res += '-' + digits.slice(9, 11);
-                                    
-                                    setPhoneNumber(res);
-                                }}
-                                keyboardType="phone-pad"
-                            />
-                            <TouchableOpacity 
-                                onPress={() => setShowCityModal(true)}
-                                className="flex-row items-center h-12 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 border border-gray-200 dark:border-gray-700 mb-4"
-                            >
-                                <Text className={city ? 'text-gray-900 dark:text-gray-100 flex-1' : 'text-gray-400 dark:text-gray-500 flex-1'}>
-                                    {city || 'Выберите город'}
-                                </Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
+    // ── Password requirement row ──
+    const ReqRow = ({ ok, text }: { ok: boolean; text: string }) => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <View style={{
+                width: 18, height: 18, borderRadius: 9,
+                backgroundColor: ok ? '#22C55E' : (isDarkMode ? '#374151' : '#E5E7EB'),
+                alignItems: 'center', justifyContent: 'center',
+            }}>
+                {ok && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
+            </View>
+            <Text style={{
+                fontSize: 13,
+                color: ok
+                    ? (isDarkMode ? '#86EFAC' : '#16A34A')
+                    : (isDarkMode ? '#6B7280' : '#9CA3AF'),
+            }}>
+                {text}
+            </Text>
+        </View>
+    );
 
-                    <Input
-                        placeholder={isLogin ? "Имя пользователя или Email" : "Имя пользователя"}
-                        value={username}
-                        onChangeText={setUsername}
-                        autoCapitalize="none"
-                    />
+    return (
+        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#030712' : '#EFF6FF', overflow: 'hidden' }}>
+            {/* Decorative gradient circles (web only, native handles via bg color) */}
+            {isWeb && (
+                <>
+                    <div style={{
+                        position: 'absolute', top: -120, right: -100,
+                        width: 400, height: 400, borderRadius: 999,
+                        background: isDarkMode
+                            ? 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)'
+                            : 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)',
+                        pointerEvents: 'none',
+                    }} />
+                    <div style={{
+                        position: 'absolute', bottom: -80, left: -120,
+                        width: 350, height: 350, borderRadius: 999,
+                        background: isDarkMode
+                            ? 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)'
+                            : 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)',
+                        pointerEvents: 'none',
+                    }} />
+                </>
+            )}
 
-                    {!isLogin && (
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        justifyContent: 'center',
+                        paddingVertical: 24,
+                        paddingHorizontal: 16,
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    bounces={false}
+                    overScrollMode="never"
+                >
+                    {/* ── Animated Logo ── */}
+                    <Animated.View style={{
+                        alignItems: 'center',
+                        marginBottom: 28,
+                        paddingHorizontal: 24,
+                        opacity: fadeAnim,
+                        transform: [
+                            { translateY: slideAnim },
+                            { scale: logoScale },
+                        ],
+                    }}>
+                        <View style={{
+                            width: 88, height: 88, borderRadius: 24,
+                            alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 16,
+                            shadowColor: '#3B82F6',
+                            shadowOffset: { width: 0, height: 8 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 16,
+                            elevation: 8,
+                            overflow: 'hidden',
+                        }}>
+                            <Image
+                                source={require('@/assets/images/icon.png')}
+                                style={{ width: 88, height: 88, borderRadius: 24 }}
+                                resizeMode="cover"
+                            />
+                        </View>
+                        <Text style={{
+                            fontSize: 28, fontWeight: '800',
+                            color: isDarkMode ? '#F9FAFB' : '#111827',
+                            letterSpacing: -0.5,
+                            marginBottom: 6,
+                        }}>
+                            Мой Донос
+                        </Text>
+                        <Text style={{
+                            fontSize: 15, fontWeight: '400',
+                            color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                            textAlign: 'center',
+                        }}>
+                            Сделаем наш город лучше вместе
+                        </Text>
+                    </Animated.View>
+
+                    {/* ── Form Card ── */}
+                    <Animated.View style={{
+                        width: '100%',
+                        maxWidth: 420,
+                        alignSelf: 'center',
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }],
+                        backgroundColor: isDarkMode ? '#111827' : '#FFFFFF',
+                        borderRadius: 24,
+                        padding: 24,
+                        shadowColor: isDarkMode ? '#000' : '#94A3B8',
+                        shadowOffset: { width: 0, height: 12 },
+                        shadowOpacity: isDarkMode ? 0.4 : 0.12,
+                        shadowRadius: 24,
+                        elevation: 12,
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? '#1F2937' : '#F1F5F9',
+                    }}>
+                        <TabSwitcher />
+
+                        {!isLogin && (
+                            <>
+                                <Input
+                                    placeholder="Имя"
+                                    value={firstName}
+                                    onChangeText={setFirstName}
+                                />
+                                <Input
+                                    placeholder="Фамилия"
+                                    value={lastName}
+                                    onChangeText={setLastName}
+                                />
+                                <Input
+                                    placeholder="Отчество (необязательно)"
+                                    value={patronymic}
+                                    onChangeText={setPatronymic}
+                                />
+                                <Input
+                                    placeholder="Телефон"
+                                    value={phoneNumber}
+                                    onChangeText={(text) => {
+                                        let digits = text.replace(/\D/g, '');
+                                        if (digits.startsWith('8')) digits = '7' + digits.slice(1);
+                                        if (!digits) { setPhoneNumber(''); return; }
+                                        if (!digits.startsWith('7')) digits = '7' + digits;
+
+                                        let res = '+7';
+                                        if (digits.length > 1) res += ' (' + digits.slice(1, 4);
+                                        if (digits.length >= 5) res += ') ' + digits.slice(4, 7);
+                                        if (digits.length >= 8) res += '-' + digits.slice(7, 9);
+                                        if (digits.length >= 10) res += '-' + digits.slice(9, 11);
+
+                                        setPhoneNumber(res);
+                                    }}
+                                    keyboardType="phone-pad"
+                                />
+                                <TouchableOpacity
+                                    onPress={() => setShowCityModal(true)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        height: 52,
+                                        backgroundColor: isDarkMode ? '#1F2937' : '#F9FAFB',
+                                        borderRadius: 12,
+                                        paddingHorizontal: 16,
+                                        borderWidth: 1,
+                                        borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+                                        marginBottom: 12,
+                                    }}
+                                >
+                                    <MapPin size={18} color={isDarkMode ? '#6B7280' : '#9CA3AF'} style={{ marginRight: 10 }} />
+                                    <Text style={{
+                                        flex: 1,
+                                        fontSize: 16,
+                                        color: city
+                                            ? (isDarkMode ? '#F3F4F6' : '#111827')
+                                            : (isDarkMode ? '#6B7280' : '#9CA3AF'),
+                                    }}>
+                                        {city || 'Выберите город'}
+                                    </Text>
+                                    <ChevronDown size={18} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                </TouchableOpacity>
+                            </>
+                        )}
+
                         <Input
-                            placeholder="Email"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
+                            placeholder={isLogin ? "Имя пользователя или Email" : "Имя пользователя"}
+                            value={username}
+                            onChangeText={setUsername}
                             autoCapitalize="none"
                         />
-                    )}
 
-                    <View className="relative">
-                        <Input
-                            placeholder="Пароль"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry={!showPassword}
-                            hideClearButton
-                        />
-                        {password.length > 0 && (
-                            <View className="absolute right-0 top-0 bottom-3 justify-center">
-                                <TouchableOpacity
-                                    onPress={() => setShowPassword(!showPassword)}
-                                    className="px-4 py-2"
-                                >
-                                    {showPassword ? (
-                                        <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                    ) : (
-                                        <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                        {!isLogin && (
+                            <Input
+                                placeholder="Email"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
                         )}
-                    </View>
 
-                    {!isLogin && (
-                        <>
-                            <View className="relative">
-                                <Input
-                                    placeholder="Повторите пароль"
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    secureTextEntry={!showConfirmPassword}
-                                    hideClearButton
-                                />
-                                {confirmPassword.length > 0 && (
-                                    <View className="absolute right-0 top-0 bottom-3 justify-center">
-                                        <TouchableOpacity
-                                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="px-4 py-2"
-                                        >
-                                            {showConfirmPassword ? (
-                                                <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                            ) : (
-                                                <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </View>
-
-                            {/* Password requirements */}
+                        <View className="relative">
+                            <Input
+                                placeholder="Пароль"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                                hideClearButton
+                            />
                             {password.length > 0 && (
-                                <View className="mb-3 px-1">
-                                    <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordMinLength ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        <Text className={`text-xs ${passwordMinLength ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Минимум 8 символов
-                                        </Text>
-                                    </View>
-                                    <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasUpper ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        <Text className={`text-xs ${passwordHasUpper ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Заглавная буква
-                                        </Text>
-                                    </View>
-                                    <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasLower ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        <Text className={`text-xs ${passwordHasLower ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Строчная буква
-                                        </Text>
-                                    </View>
-                                    <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasNumber ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        <Text className={`text-xs ${passwordHasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Цифра
-                                        </Text>
-                                    </View>
-                                    <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-1.5 h-1.5 rounded-full ${passwordHasSpecial ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        <Text className={`text-xs ${passwordHasSpecial ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                                            Спецсимвол или пробел
-                                        </Text>
-                                    </View>
+                                <View className="absolute right-0 top-0 bottom-3 justify-center">
+                                    <TouchableOpacity
+                                        onPress={() => setShowPassword(!showPassword)}
+                                        className="px-4 py-2"
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                        ) : (
+                                            <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+
+                        {!isLogin && (
+                            <>
+                                <View className="relative">
+                                    <Input
+                                        placeholder="Повторите пароль"
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry={!showConfirmPassword}
+                                        hideClearButton
+                                    />
                                     {confirmPassword.length > 0 && (
-                                        <View className="flex-row items-center gap-2">
-                                            <View className={`w-1.5 h-1.5 rounded-full ${passwordsMatch ? 'bg-green-500' : 'bg-red-400'}`} />
-                                            <Text className={`text-xs ${passwordsMatch ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                                                {passwordsMatch ? 'Пароли совпадают' : 'Пароли не совпадают'}
-                                            </Text>
+                                        <View className="absolute right-0 top-0 bottom-3 justify-center">
+                                            <TouchableOpacity
+                                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="px-4 py-2"
+                                            >
+                                                {showConfirmPassword ? (
+                                                    <EyeOff size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                                ) : (
+                                                    <Eye size={20} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+                                                )}
+                                            </TouchableOpacity>
                                         </View>
                                     )}
                                 </View>
-                            )}
 
-                            <View className="flex-row items-center gap-3 py-2">
-                                <TouchableOpacity onPress={() => setAgreed(!agreed)}>
-                                    {agreed ? (
-                                        <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                                    ) : (
-                                        <Square size={20} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} />
-                                    )}
-                                </TouchableOpacity>
-                                <Text className="text-sm text-gray-600 dark:text-gray-300 flex-1 flex-wrap">
-                                    Я согласен с{' '}
-                                    <Text
-                                        className="text-blue-600 dark:text-blue-400 underline"
-                                        onPress={() => router.push('/(auth)/rules')}
-                                    >
-                                        пользовательским соглашением
+                                {/* Password requirements */}
+                                {password.length > 0 && (
+                                    <View style={{
+                                        marginBottom: 16,
+                                        paddingHorizontal: 4,
+                                        paddingVertical: 12,
+                                        backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
+                                        borderRadius: 12,
+                                        paddingLeft: 16,
+                                    }}>
+                                        <ReqRow ok={passwordMinLength} text="Минимум 8 символов" />
+                                        <ReqRow ok={passwordHasUpper} text="Заглавная буква" />
+                                        <ReqRow ok={passwordHasLower} text="Строчная буква" />
+                                        <ReqRow ok={passwordHasNumber} text="Цифра" />
+                                        <ReqRow ok={passwordHasSpecial} text="Спецсимвол или пробел" />
+                                        {confirmPassword.length > 0 && (
+                                            <ReqRow ok={passwordsMatch} text={passwordsMatch ? 'Пароли совпадают' : 'Пароли не совпадают'} />
+                                        )}
+                                    </View>
+                                )}
+
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
+                                    <TouchableOpacity onPress={() => setAgreed(!agreed)}>
+                                        {agreed ? (
+                                            <CheckSquare size={22} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                                        ) : (
+                                            <Square size={22} color={isDarkMode ? '#4B5563' : '#D1D5DB'} />
+                                        )}
+                                    </TouchableOpacity>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: isDarkMode ? '#D1D5DB' : '#4B5563',
+                                        flex: 1, flexWrap: 'wrap',
+                                    }}>
+                                        Я согласен с{' '}
+                                        <Text
+                                            style={{ color: isDarkMode ? '#60A5FA' : '#2563EB', textDecorationLine: 'underline' }}
+                                            onPress={() => router.push('/(auth)/rules')}
+                                        >
+                                            пользовательским соглашением
+                                        </Text>
                                     </Text>
-                                </Text>
+                                </View>
+                            </>
+                        )}
+
+                        {isLogin && (
+                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingBottom: 8 }}>
+                                <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+                                    <Text style={{
+                                        fontSize: 14, fontWeight: '500',
+                                        color: isDarkMode ? '#60A5FA' : '#2563EB',
+                                    }}>
+                                        Забыли пароль?
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
-                        </>
-                    )}
+                        )}
 
-                    {isLogin && (
-                        <View className="flex-row justify-end pb-2">
-                            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
-                                <Text className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                                    Забыли пароль?
-                                </Text>
-                            </TouchableOpacity>
+                        {/* Error message */}
+                        {error ? (
+                            <View style={{
+                                backgroundColor: isDarkMode ? 'rgba(239,68,68,0.1)' : '#FEF2F2',
+                                padding: 14,
+                                borderRadius: 12,
+                                marginBottom: 8,
+                                borderWidth: 1,
+                                borderColor: isDarkMode ? 'rgba(239,68,68,0.2)' : '#FECACA',
+                            }}>
+                                <Text style={{
+                                    color: isDarkMode ? '#FCA5A5' : '#DC2626',
+                                    fontSize: 14, textAlign: 'center', fontWeight: '500',
+                                }}>{error}</Text>
+                            </View>
+                        ) : null}
+
+                        <View style={{ paddingTop: 8 }}>
+                            <Button
+                                title={isLoading
+                                    ? (isLogin ? 'Вход...' : 'Регистрация...')
+                                    : (isLogin ? 'Войти' : 'Зарегистрироваться')
+                                }
+                                onPress={handleSubmit}
+                                disabled={isSubmitDisabled}
+                                loading={isLoading}
+                            />
                         </View>
-                    )}
+                    </Animated.View>
 
-                    {/* Error message */}
-                    {error ? (
-                        <View className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl mb-2">
-                            <Text className="text-red-600 dark:text-red-400 text-sm text-center">{error}</Text>
-                        </View>
-                    ) : null}
-
-                    <View className="pt-2">
-                        <Button
-                            title={isLoading
-                                ? (isLogin ? 'Вход...' : 'Регистрация...')
-                                : (isLogin ? 'Войти' : 'Зарегистрироваться')
-                            }
-                            onPress={handleSubmit}
-                            disabled={isSubmitDisabled}
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        className="py-4 items-center"
-                        onPress={() => { setIsLogin(!isLogin); setError(''); }}
-                    >
-                        <Text className="text-blue-600 dark:text-blue-400 font-medium">
-                            {isLogin ? 'Нет аккаунта? Создать' : 'Уже есть аккаунт? Войти'}
+                    {/* ── Footer ── */}
+                    <Animated.View style={{
+                        opacity: fadeAnim,
+                        alignItems: 'center',
+                        paddingTop: 24,
+                        paddingBottom: 16,
+                    }}>
+                        <Text style={{
+                            fontSize: 14,
+                            color: isDarkMode ? '#6B7280' : '#9CA3AF',
+                        }}>
+                            © 2026 Мой Донос
                         </Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                    </Animated.View>
+                </ScrollView>
+            </KeyboardAvoidingView>
 
             {/* City Input Modal */}
             <Modal
@@ -397,20 +621,60 @@ export default function LoginScreen() {
                 visible={showCityModal}
                 onRequestClose={() => setShowCityModal(false)}
             >
-                <View className="flex-1 bg-black/50 justify-center items-center px-4">
-                    <View className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-xl leading-relaxed">
-                        <Text className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Выберите город</Text>
-                        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">Укажите город проживания</Text>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                }}>
+                    <View style={{
+                        backgroundColor: isDarkMode ? '#1F2937' : '#FFFFFF',
+                        borderRadius: 24,
+                        width: '100%',
+                        maxWidth: 400,
+                        padding: 24,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 20 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 25,
+                        elevation: 20,
+                    }}>
+                        <Text style={{
+                            fontSize: 22, fontWeight: '700',
+                            color: isDarkMode ? '#F9FAFB' : '#111827',
+                            marginBottom: 6,
+                        }}>Выберите город</Text>
+                        <Text style={{
+                            fontSize: 14,
+                            color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                            marginBottom: 16,
+                        }}>Укажите город проживания</Text>
 
                         <TextInput
-                            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 mb-4"
+                            style={{
+                                backgroundColor: isDarkMode ? '#111827' : '#F9FAFB',
+                                borderWidth: 1,
+                                borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+                                borderRadius: 12,
+                                paddingHorizontal: 16,
+                                paddingVertical: 14,
+                                fontSize: 16,
+                                color: isDarkMode ? '#F3F4F6' : '#111827',
+                                marginBottom: 16,
+                            }}
                             placeholder="Поиск города..."
                             placeholderTextColor={isDarkMode ? "#6B7280" : "#9CA3AF"}
                             value={citySearchQuery}
                             onChangeText={setCitySearchQuery}
                         />
 
-                        <ScrollView style={{ maxHeight: 250 }} className="mb-4 rounded-xl bg-gray-50 dark:bg-gray-900">
+                        <ScrollView style={{
+                            maxHeight: 250,
+                            marginBottom: 16,
+                            borderRadius: 12,
+                            backgroundColor: isDarkMode ? '#111827' : '#F9FAFB',
+                        }}>
                             {filteredCities.map((c) => (
                                 <TouchableOpacity
                                     key={c}
@@ -419,9 +683,25 @@ export default function LoginScreen() {
                                         setShowCityModal(false);
                                         setCitySearchQuery('');
                                     }}
-                                    className={`p-4 border-b border-gray-200 dark:border-gray-800 flex-row justify-between items-center ${city === c ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}
+                                    style={{
+                                        padding: 16,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: isDarkMode ? '#1F2937' : '#F3F4F6',
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        backgroundColor: city === c
+                                            ? (isDarkMode ? 'rgba(59,130,246,0.15)' : '#EFF6FF')
+                                            : 'transparent',
+                                    }}
                                 >
-                                    <Text className={`text-base ${city === c ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    <Text style={{
+                                        fontSize: 16,
+                                        fontWeight: city === c ? '700' : '400',
+                                        color: city === c
+                                            ? (isDarkMode ? '#93C5FD' : '#1D4ED8')
+                                            : (isDarkMode ? '#D1D5DB' : '#374151'),
+                                    }}>
                                         {c}
                                     </Text>
                                     {city === c && <CheckSquare size={20} color={isDarkMode ? '#60A5FA' : '#2563EB'} />}
@@ -429,17 +709,24 @@ export default function LoginScreen() {
                             ))}
                         </ScrollView>
 
-                        <View className="flex-row justify-end gap-3">
-                            <TouchableOpacity
-                                onPress={() => setShowCityModal(false)}
-                                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 w-full"
-                            >
-                                <Text className="text-gray-700 dark:text-gray-300 font-semibold text-center">Отмена</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity
+                            onPress={() => setShowCityModal(false)}
+                            style={{
+                                paddingVertical: 14,
+                                borderRadius: 12,
+                                backgroundColor: isDarkMode ? '#374151' : '#F3F4F6',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Text style={{
+                                fontWeight: '600',
+                                fontSize: 16,
+                                color: isDarkMode ? '#D1D5DB' : '#374151',
+                            }}>Отмена</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
-        </KeyboardAvoidingView>
+        </View>
     );
 }

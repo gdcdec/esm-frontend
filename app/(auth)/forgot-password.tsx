@@ -3,9 +3,11 @@ import { authService } from '@/src/services/auth';
 import { useThemeStore } from '@/src/store/themeStore';
 import { navigateBack } from '@/src/utils/navigation';
 import { router } from 'expo-router';
-import { Mail } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ArrowLeft, KeyRound, Lock, Mail, ShieldCheck } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+
+const isWeb = Platform.OS === 'web';
 
 export default function ForgotPasswordScreen() {
     const [email, setEmail] = useState('');
@@ -18,6 +20,32 @@ export default function ForgotPasswordScreen() {
     const [isCodeVerified, setIsCodeVerified] = useState(false);
 
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+
+    // Animations
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
+    const logoScale = useRef(new Animated.Value(0.8)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(logoScale, {
+                toValue: 1,
+                friction: 4,
+                tension: 50,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, []);
 
     const handleRequestReset = async () => {
         if (!email) {
@@ -87,10 +115,8 @@ export default function ForgotPasswordScreen() {
         setError('');
         try {
             await authService.confirmPasswordReset(email, code, newPassword);
-            // Success — show alert and go back
             setError('');
             router.replace('/(auth)/login');
-            // Use setTimeout to show alert after navigation
             setTimeout(() => {
                 Alert.alert('Успех', 'Пароль успешно изменен! Теперь вы можете войти с новым паролем.');
             }, 300);
@@ -106,6 +132,12 @@ export default function ForgotPasswordScreen() {
         }
     };
 
+    const getIcon = () => {
+        if (!isCodeSent) return <Mail size={36} color={isDarkMode ? '#60A5FA' : '#2563EB'} />;
+        if (!isCodeVerified) return <KeyRound size={36} color={isDarkMode ? '#60A5FA' : '#2563EB'} />;
+        return <Lock size={36} color={isDarkMode ? '#60A5FA' : '#2563EB'} />;
+    };
+
     const getTitle = () => {
         if (!isCodeSent) return 'Забыли пароль?';
         if (!isCodeVerified) return 'Введите код';
@@ -118,141 +150,324 @@ export default function ForgotPasswordScreen() {
         return 'Придумайте новый надёжный пароль';
     };
 
+    // ── Step indicator ──
+    const StepIndicator = () => {
+        const currentStep = !isCodeSent ? 0 : !isCodeVerified ? 1 : 2;
+        return (
+            <View style={{
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 8,
+                marginBottom: 24,
+            }}>
+                {[0, 1, 2].map((step) => (
+                    <View
+                        key={step}
+                        style={{
+                            width: step === currentStep ? 32 : 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: step <= currentStep
+                                ? '#3B82F6'
+                                : (isDarkMode ? '#374151' : '#E5E7EB'),
+                        }}
+                    />
+                ))}
+            </View>
+        );
+    };
+
     return (
-        <KeyboardAvoidingView
-            className="flex-1 bg-white dark:bg-gray-900"
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <ScrollView
-                contentContainerClassName="flex-grow justify-center p-6"
-                keyboardShouldPersistTaps="handled"
+        <View style={{ flex: 1, backgroundColor: isDarkMode ? '#030712' : '#EFF6FF', overflow: 'hidden' }}>
+            {/* Decorative gradient circles (web only) */}
+            {isWeb && (
+                <>
+                    <div style={{
+                        position: 'absolute', top: -120, right: -100,
+                        width: 400, height: 400, borderRadius: 999,
+                        background: isDarkMode
+                            ? 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)'
+                            : 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)',
+                        pointerEvents: 'none',
+                    }} />
+                    <div style={{
+                        position: 'absolute', bottom: -80, left: -120,
+                        width: 350, height: 350, borderRadius: 999,
+                        background: isDarkMode
+                            ? 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)'
+                            : 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)',
+                        pointerEvents: 'none',
+                    }} />
+                </>
+            )}
+
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                {/* Header */}
-                <View className="items-center mb-8">
-                    <View className="w-20 h-20 rounded-full bg-blue-50 dark:bg-gray-800 items-center justify-center mb-4">
-                        <Mail size={40} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
-                    </View>
-                    <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                        {getTitle()}
-                    </Text>
-                    <Text className="text-gray-600 dark:text-gray-400 text-center">
-                        {getSubtitle()}
-                    </Text>
-                </View>
-
-                {/* Error */}
-                {error ? (
-                    <View className="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl mb-4 w-full max-w-sm self-center">
-                        <Text className="text-red-600 dark:text-red-400 text-sm text-center">{error}</Text>
-                    </View>
-                ) : null}
-
-                {!isCodeSent ? (
-                    // Step 1: Enter email
-                    <View className="w-full max-w-sm self-center space-y-4">
-                        <View>
-                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Email</Text>
-                            <Input
-                                placeholder="your@email.com"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                className="mb-0"
-                            />
-                        </View>
-
-                        <Button
-                            title={isLoading ? 'Отправка...' : 'Отправить код'}
-                            onPress={handleRequestReset}
-                            disabled={!email || isLoading}
-                            className="mt-6"
-                        />
-                    </View>
-                ) : !isCodeVerified ? (
-                    // Step 2: Enter verification code
-                    <View className="w-full max-w-sm self-center space-y-4">
-                        <View>
-                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Код из письма</Text>
-                            <Input
-                                placeholder="123456"
-                                value={code}
-                                onChangeText={setCode}
-                                keyboardType="number-pad"
-                                maxLength={6}
-                                className="mb-0"
-                            />
-                        </View>
-
-                        <Button
-                            title={isLoading ? 'Проверка...' : 'Подтвердить код'}
-                            onPress={handleVerifyCode}
-                            disabled={!code || isLoading}
-                            className="mt-6"
-                        />
-
-                        <TouchableOpacity
-                            className="py-3 items-center"
-                            onPress={handleRequestReset}
-                            disabled={isLoading}
-                        >
-                            <Text className="text-blue-600 dark:text-blue-400 text-sm">Отправить код повторно</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    // Step 3: Set new password
-                    <View className="w-full max-w-sm self-center space-y-4">
-                        <View>
-                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Новый пароль</Text>
-                            <Input
-                                placeholder="Минимум 6 символов"
-                                value={newPassword}
-                                onChangeText={setNewPassword}
-                                secureTextEntry
-                                className="mb-0"
-                            />
-                        </View>
-
-                        <View>
-                            <Text className="text-gray-700 dark:text-gray-300 font-medium mb-2">Подтвердите пароль</Text>
-                            <Input
-                                placeholder="Повторите пароль"
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                secureTextEntry
-                                className="mb-0"
-                            />
-                        </View>
-
-                        <Button
-                            title={isLoading ? 'Сохранение...' : 'Изменить пароль'}
-                            onPress={handleSetNewPassword}
-                            disabled={!newPassword || !confirmPassword || isLoading}
-                            className="mt-6"
-                        />
-                    </View>
-                )}
-
-                {/* Info text */}
-                <View className="mt-6 items-center">
-                    <Text className="text-gray-500 dark:text-gray-400 text-sm text-center">
-                        {!isCodeSent
-                            ? 'Мы отправим вам код подтверждения на указанный email'
-                            : 'Если письмо не пришло, проверьте папку Спам'
-                        }
-                    </Text>
-                </View>
-
-                <TouchableOpacity
-                    className="py-4 items-center"
-                    onPress={() => navigateBack('/(auth)/login')}
+                <ScrollView
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        justifyContent: 'center',
+                        paddingVertical: 24,
+                        paddingHorizontal: 16,
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    bounces={false}
+                    overScrollMode="never"
                 >
-                    <Text className="text-blue-600 dark:text-blue-400 font-medium">
-                        Вспомнили пароль? Войти
-                    </Text>
-                </TouchableOpacity>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                    {/* ── Animated Header ── */}
+                    <Animated.View style={{
+                        alignItems: 'center',
+                        marginBottom: 28,
+                        paddingHorizontal: 24,
+                        opacity: fadeAnim,
+                        transform: [
+                            { translateY: slideAnim },
+                            { scale: logoScale },
+                        ],
+                    }}>
+                        <View style={{
+                            width: 80, height: 80, borderRadius: 24,
+                            alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 16,
+                            backgroundColor: isDarkMode ? '#1E3A5F' : '#DBEAFE',
+                            shadowColor: '#3B82F6',
+                            shadowOffset: { width: 0, height: 8 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 16,
+                            elevation: 8,
+                        }}>
+                            {getIcon()}
+                        </View>
+                        <Text style={{
+                            fontSize: 26, fontWeight: '800',
+                            color: isDarkMode ? '#F9FAFB' : '#111827',
+                            letterSpacing: -0.5,
+                            marginBottom: 6,
+                        }}>
+                            {getTitle()}
+                        </Text>
+                        <Text style={{
+                            fontSize: 15, fontWeight: '400',
+                            color: isDarkMode ? '#9CA3AF' : '#6B7280',
+                            textAlign: 'center',
+                            lineHeight: 22,
+                        }}>
+                            {getSubtitle()}
+                        </Text>
+                    </Animated.View>
+
+                    {/* ── Form Card ── */}
+                    <Animated.View style={{
+                        width: '100%',
+                        maxWidth: 420,
+                        alignSelf: 'center',
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }],
+                        backgroundColor: isDarkMode ? '#111827' : '#FFFFFF',
+                        borderRadius: 24,
+                        padding: 24,
+                        shadowColor: isDarkMode ? '#000' : '#94A3B8',
+                        shadowOffset: { width: 0, height: 12 },
+                        shadowOpacity: isDarkMode ? 0.4 : 0.12,
+                        shadowRadius: 24,
+                        elevation: 12,
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? '#1F2937' : '#F1F5F9',
+                    }}>
+                        <StepIndicator />
+
+                        {/* Error message */}
+                        {error ? (
+                            <View style={{
+                                backgroundColor: isDarkMode ? 'rgba(239,68,68,0.1)' : '#FEF2F2',
+                                padding: 14,
+                                borderRadius: 12,
+                                marginBottom: 16,
+                                borderWidth: 1,
+                                borderColor: isDarkMode ? 'rgba(239,68,68,0.2)' : '#FECACA',
+                            }}>
+                                <Text style={{
+                                    color: isDarkMode ? '#FCA5A5' : '#DC2626',
+                                    fontSize: 14, textAlign: 'center', fontWeight: '500',
+                                }}>{error}</Text>
+                            </View>
+                        ) : null}
+
+                        {!isCodeSent ? (
+                            // Step 1: Enter email
+                            <View>
+                                <Text style={{
+                                    fontSize: 14, fontWeight: '600',
+                                    color: isDarkMode ? '#D1D5DB' : '#374151',
+                                    marginBottom: 8,
+                                }}>Email</Text>
+                                <Input
+                                    placeholder="your@email.com"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+
+                                <View style={{ paddingTop: 8 }}>
+                                    <Button
+                                        title={isLoading ? 'Отправка...' : 'Отправить код'}
+                                        onPress={handleRequestReset}
+                                        disabled={!email || isLoading}
+                                        loading={isLoading}
+                                    />
+                                </View>
+
+                                <View style={{
+                                    marginTop: 16,
+                                    paddingVertical: 14,
+                                    paddingHorizontal: 16,
+                                    backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
+                                    borderRadius: 12,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                }}>
+                                    <ShieldCheck size={18} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                    <Text style={{
+                                        fontSize: 13,
+                                        color: isDarkMode ? '#6B7280' : '#9CA3AF',
+                                        flex: 1,
+                                        lineHeight: 18,
+                                    }}>
+                                        Мы отправим вам код подтверждения на указанный email
+                                    </Text>
+                                </View>
+                            </View>
+                        ) : !isCodeVerified ? (
+                            // Step 2: Enter verification code
+                            <View>
+                                <Text style={{
+                                    fontSize: 14, fontWeight: '600',
+                                    color: isDarkMode ? '#D1D5DB' : '#374151',
+                                    marginBottom: 8,
+                                }}>Код из письма</Text>
+                                <Input
+                                    placeholder="123456"
+                                    value={code}
+                                    onChangeText={setCode}
+                                    keyboardType="number-pad"
+                                    maxLength={6}
+                                />
+
+                                <View style={{ paddingTop: 8 }}>
+                                    <Button
+                                        title={isLoading ? 'Проверка...' : 'Подтвердить код'}
+                                        onPress={handleVerifyCode}
+                                        disabled={!code || isLoading}
+                                        loading={isLoading}
+                                    />
+                                </View>
+
+                                <TouchableOpacity
+                                    style={{ paddingVertical: 14, alignItems: 'center' }}
+                                    onPress={handleRequestReset}
+                                    disabled={isLoading}
+                                >
+                                    <Text style={{
+                                        fontSize: 14,
+                                        color: isDarkMode ? '#60A5FA' : '#2563EB',
+                                        fontWeight: '500',
+                                    }}>Отправить код повторно</Text>
+                                </TouchableOpacity>
+
+                                <View style={{
+                                    marginTop: 4,
+                                    paddingVertical: 14,
+                                    paddingHorizontal: 16,
+                                    backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
+                                    borderRadius: 12,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                }}>
+                                    <Mail size={18} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+                                    <Text style={{
+                                        fontSize: 13,
+                                        color: isDarkMode ? '#6B7280' : '#9CA3AF',
+                                        flex: 1,
+                                        lineHeight: 18,
+                                    }}>
+                                        Если письмо не пришло, проверьте папку Спам
+                                    </Text>
+                                </View>
+                            </View>
+                        ) : (
+                            // Step 3: Set new password
+                            <View>
+                                <Text style={{
+                                    fontSize: 14, fontWeight: '600',
+                                    color: isDarkMode ? '#D1D5DB' : '#374151',
+                                    marginBottom: 8,
+                                }}>Новый пароль</Text>
+                                <Input
+                                    placeholder="Минимум 6 символов"
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    secureTextEntry
+                                />
+
+                                <Text style={{
+                                    fontSize: 14, fontWeight: '600',
+                                    color: isDarkMode ? '#D1D5DB' : '#374151',
+                                    marginBottom: 8,
+                                }}>Подтвердите пароль</Text>
+                                <Input
+                                    placeholder="Повторите пароль"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry
+                                />
+
+                                <View style={{ paddingTop: 8 }}>
+                                    <Button
+                                        title={isLoading ? 'Сохранение...' : 'Изменить пароль'}
+                                        onPress={handleSetNewPassword}
+                                        disabled={!newPassword || !confirmPassword || isLoading}
+                                        loading={isLoading}
+                                    />
+                                </View>
+                            </View>
+                        )}
+                    </Animated.View>
+
+                    {/* ── Back link ── */}
+                    <Animated.View style={{
+                        opacity: fadeAnim,
+                        paddingTop: 24,
+                        paddingBottom: 16,
+                        alignItems: 'center',
+                    }}>
+                        <TouchableOpacity
+                            onPress={() => navigateBack('/(auth)/login')}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 6,
+                                paddingVertical: 8,
+                                paddingHorizontal: 16,
+                            }}
+                        >
+                            <ArrowLeft size={18} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
+                            <Text style={{
+                                fontSize: 15, fontWeight: '600',
+                                color: isDarkMode ? '#60A5FA' : '#2563EB',
+                            }}>
+                                Вернуться ко входу
+                            </Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </View>
     );
 }
