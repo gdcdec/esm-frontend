@@ -202,10 +202,17 @@ export const useReportsStore = create<ReportsState>()(
 
                 for (const draft of drafts) {
                     try {
-                        // Create report without status first (backend might not accept draft on create)
+                        const safeTitle = draft.title && draft.title.length >= 5
+                            ? draft.title
+                            : (draft.title || 'Без названия').padEnd(5, ' ');
+
+                        const safeDescription = draft.description && draft.description.trim().length >= 10
+                            ? draft.description
+                            : (draft.description || 'Нет описания').padEnd(10, '.');
+
                         const report = await reportsService.create({
-                            title: draft.title,
-                            description: draft.description,
+                            title: safeTitle,
+                            description: safeDescription,
                             address: draft.address,
                             latitude: draft.latitude,
                             longitude: draft.longitude,
