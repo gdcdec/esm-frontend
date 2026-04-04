@@ -22,6 +22,7 @@ import {
     Minus,
     Plus,
     Search,
+    User,
     X
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -62,8 +63,12 @@ function useMapState() {
     const visibilityArea = useThemeStore((s) => s.visibilityArea);
     const city = useThemeStore((s) => s.city);
     const feedReports = useReportsStore((s) => s.feedReports);
+    const myReports = useReportsStore((s) => s.myReports);
     const isFeedLoading = useReportsStore((s) => s.isFeedLoading);
+    const isMyLoading = useReportsStore((s) => s.isMyLoading);
     const fetchFeed = useReportsStore((s) => s.fetchFeed);
+    const fetchMine = useReportsStore((s) => s.fetchMine);
+    const [showMine, setShowMine] = useState(false);
     const [selectedCoord, setSelectedCoord] = useState<{
         latitude: number;
         longitude: number;
@@ -168,16 +173,26 @@ function useMapState() {
         fetchReports(filters);
     }, [filters, visibilityArea, city]);
 
+    // When showMine is toggled, fetch the user's own reports
+    useEffect(() => {
+        if (showMine) {
+            fetchMine();
+        }
+    }, [showMine]);
+
+    // Select the active report source based on showMine toggle
+    const displayReports = useMemo(() => showMine ? myReports : feedReports, [showMine, myReports, feedReports]);
+
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
 
     const filteredReports = useMemo(
         () =>
-            feedReports.filter(
+            displayReports.filter(
                 (r) =>
                     r.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     r.address?.toLowerCase().includes(searchQuery.toLowerCase())
             ),
-        [feedReports, searchQuery]
+        [displayReports, searchQuery]
     );
 
     const handleMapPress = useCallback(
@@ -253,18 +268,19 @@ function useMapState() {
     }, []);
 
     return {
-        reports: feedReports, selectedCoord, setSelectedCoord,
+        reports: displayReports, selectedCoord, setSelectedCoord,
         selectedAddress, setSelectedAddress,
         activeReports, setActiveReports,
         searchQuery, setSearchQuery,
         searchHistory, setSearchHistory,
         mapRef, singleReport, filteredReports,
         userLocation, userAddress,
-        isLoadingReports: isFeedLoading, fetchReports,
+        isLoadingReports: isFeedLoading || isMyLoading, fetchReports,
         handleMapPress, handleMarkerPress, handleCloseDetail, handleLocate,
         filters, setFilters, rubrics,
         suggestions, setSuggestions, isSearching, fetchSuggestions,
         showFilters, setShowFilters,
+        showMine, setShowMine,
         cityBoundary, showCityAlert, alertMessage, setShowCityAlert,
     };
 }
@@ -304,6 +320,7 @@ function InlineFilters({
     );
 
     const hasActiveFilters = useMemo(() => {
+        if (state.showMine) return true;
         return Object.keys(state.filters).some(key => {
             const val = state.filters[key as keyof typeof state.filters];
             if (val === undefined) return false;
@@ -311,7 +328,7 @@ function InlineFilters({
             if (key === 'city' && visibilityArea && val === city) return false;
             return true;
         });
-    }, [state.filters, visibilityArea, city]);
+    }, [state.filters, state.showMine, visibilityArea, city]);
 
     return (
         <View className="bg-white dark:bg-[#1f2937] z-50">
@@ -329,6 +346,7 @@ function InlineFilters({
                         onPress={() => {
                             const newFilters = visibilityArea && city ? { city } : {};
                             state.setFilters(newFilters);
+                            state.setShowMine(false);
                         }}
                         className="bg-blue-500/10 dark:bg-blue-500/20 px-3 py-1.5 rounded-full"
                     >
@@ -341,11 +359,25 @@ function InlineFilters({
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center' }}
+                    contentContainerStyle={{ paddingLeft: 0, paddingRight: 0, paddingVertical: 12, alignItems: 'center' }}
                     className="flex-row"
                     style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
                     nestedScrollEnabled={true}
                 >
+                    {/* My Reports Toggle */}
+                    <TouchableOpacity
+                        onPress={() => state.setShowMine(!state.showMine)}
+                        className={`px-3 py-2 mr-3 rounded-xl border flex-row items-center gap-2 ${state.showMine
+                            ? 'bg-blue-500/10 border-blue-500/30'
+                            : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
+                            }`}
+                    >
+                        <User size={14} color={state.showMine ? '#3B82F6' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
+                        <Text className={`text-[13px] font-medium ${state.showMine ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                            Мои
+                        </Text>
+                    </TouchableOpacity>
+
                     {/* Rubrics Dropdown Trigger */}
                     <TouchableOpacity
                         onPress={() => setOpenDropdown(openDropdown === 'rubrics' ? null : 'rubrics')}
@@ -363,7 +395,7 @@ function InlineFilters({
                     {/* Sorting Dropdown Trigger */}
                     <TouchableOpacity
                         onPress={() => setOpenDropdown(openDropdown === 'ordering' ? null : 'ordering')}
-                        className="px-3 py-2 mx-2 rounded-xl border border-gray-200/50 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-800/40 flex-row items-center gap-2"
+                        className="px-3 py-2 mr-2 rounded-xl border border-gray-200/50 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-800/40 flex-row items-center gap-2"
                     >
                         <Clock size={14} color={isDarkMode ? '#94A3B8' : '#6B7280'} />
                         <Text className="text-[13px] font-medium text-gray-500 dark:text-slate-400">
@@ -629,7 +661,7 @@ function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: bo
 }
 
 function ReportDetail({
-    report,
+    report: initialReport,
     onClose,
     isDarkMode,
 }: {
@@ -637,6 +669,27 @@ function ReportDetail({
     onClose: () => void;
     isDarkMode: boolean;
 }) {
+    const [report, setReport] = useState<Report>(initialReport);
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+    const getById = useReportsStore((s) => s.getById);
+
+    // Fetch full report details (with description, photos) when opened
+    useEffect(() => {
+        let cancelled = false;
+        if (!initialReport.description && initialReport.id) {
+            setIsLoadingDetails(true);
+            getById(initialReport.id)
+                .then((full) => {
+                    if (!cancelled) setReport(full);
+                })
+                .catch(() => { })
+                .finally(() => {
+                    if (!cancelled) setIsLoadingDetails(false);
+                });
+        }
+        return () => { cancelled = true; };
+    }, [initialReport.id]);
+
     const status = getStatusConfig(report.status);
 
     const handleAddReportHere = () => {
