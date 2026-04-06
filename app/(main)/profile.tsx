@@ -388,6 +388,9 @@ export default function ProfileScreen() {
         setIsSyncing(true);
         try {
             await useReportsStore.getState().syncDrafts();
+            // Обновляем список заявок после синхронизации
+            const data = await useReportsStore.getState().fetchMine();
+            setMyReports(data);
             Alert.alert('Успех', 'Черновики синхронизированы');
         } catch (err) {
             Alert.alert('Ошибка', 'Не удалось синхронизировать черновики. Проверьте подключение к интернету.');
