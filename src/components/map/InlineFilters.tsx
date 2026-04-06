@@ -1,16 +1,27 @@
-import { useMapState } from '@/src/hooks/useMapState';
+import { ReportFilters } from '@/src/components/FiltersModal';
 import { useThemeStore } from '@/src/store/themeStore';
 import { ChevronDown, Clock, User } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
+interface InlineFiltersState {
+    searchQuery: string;
+    filters: ReportFilters;
+    setFilters: React.Dispatch<React.SetStateAction<ReportFilters>>;
+    showMine: boolean;
+    setShowMine: React.Dispatch<React.SetStateAction<boolean>>;
+    rubrics: string[];
+}
+
+interface InlineFiltersProps {
+    state: InlineFiltersState;
+    isDarkMode: boolean;
+}
+
 export function InlineFilters({
     state,
     isDarkMode
-}: {
-    state: ReturnType<typeof useMapState>,
-    isDarkMode: boolean
-}) {
+}: InlineFiltersProps) {
     const visibilityArea = useThemeStore((s) => s.visibilityArea);
     const city = useThemeStore((s) => s.city);
     const [openDropdown, setOpenDropdown] = useState<'rubrics' | 'ordering' | null>(null);
