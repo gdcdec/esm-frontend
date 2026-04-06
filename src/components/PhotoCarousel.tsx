@@ -1,7 +1,7 @@
-import { X, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Image, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, Text, TouchableOpacity, View } from 'react-native';
 
 const isWeb = Platform.OS === 'web';
 
@@ -11,9 +11,28 @@ export interface Photo {
     caption?: string | null;
 }
 
-export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkMode: boolean }) {
+interface PhotoCarouselProps {
+    photos: Photo[];
+    isDarkMode: boolean;
+    showLabel?: boolean;
+    height?: number;
+    onPhotoOpenChange?: (isOpen: boolean) => void;
+}
+
+export function PhotoCarousel({
+    photos,
+    isDarkMode,
+    showLabel = false,
+    height = 224,
+    onPhotoOpenChange,
+}: PhotoCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+
+    // Сообщаем родителю о состоянии фото-модалки
+    useEffect(() => {
+        onPhotoOpenChange?.(!!selectedPhoto);
+    }, [selectedPhoto, onPhotoOpenChange]);
 
     if (!photos || photos.length === 0) {
         return null;
@@ -23,30 +42,39 @@ export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkM
         setCurrentIndex((prev) => prev === photos.length - 1 ? 0 : prev + 1);
     };
 
+    const goToPrevious = () => {
+        setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1);
+    };
+
     const handlePhotoPress = (photo: Photo) => {
         setSelectedPhoto(photo);
+        onPhotoOpenChange?.(true); // Синхронный вызов
     };
 
     const closeModal = () => {
         setSelectedPhoto(null);
+        onPhotoOpenChange?.(false);
     };
 
     // Обработка ESC для закрытия модального окна
     useEffect(() => {
+        if (!isWeb) return;
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && selectedPhoto) {
+                e.preventDefault();
+                e.stopPropagation();
                 closeModal();
             }
         };
 
         if (selectedPhoto) {
-            window.addEventListener('keydown', handleKeyDown);
-            return () => window.removeEventListener('keydown', handleKeyDown);
+            window.addEventListener('keydown', handleKeyDown, true); // capture phase
+            return () => window.removeEventListener('keydown', handleKeyDown, true);
         }
     }, [selectedPhoto]);
 
-    // Модальное окно для полного просмотра фото (с порталом)
-    const photoModal = selectedPhoto && isWeb ? createPortal(
+    // Модальное окно для web (с порталом)
+    const webModal = selectedPhoto && isWeb ? createPortal(
         <div
             onClick={closeModal}
             style={{
@@ -94,13 +122,83 @@ export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkM
                     }}
                 />
             </div>
+            {selectedPhoto.caption && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: 40,
+                        left: 40,
+                        right: 40,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 16,
+                        borderRadius: 8,
+                    }}
+                >
+                    <p style={{ color: 'white', margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+                        {selectedPhoto.caption}
+                    </p>
+                </div>
+            )}
         </div>,
         document.body
+    ) : null;
+
+    // Модальное окно для native
+    const nativeModal = !isWeb && selectedPhoto ? (
+        <Modal
+            visible={!!selectedPhoto}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={closeModal}
+        >
+            <TouchableOpacity
+                style={{ flex: 1 }}
+                activeOpacity={1}
+                onPress={closeModal}
+            >
+                <View className="flex-1 bg-black/95 relative">
+                    <TouchableOpacity
+                        onPress={closeModal}
+                        className="absolute top-12 right-4 p-2 -mr-2 rounded-full bg-white/10 z-50"
+                    >
+                        <X size={28} color="white" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                        style={{ flex: 1 }}
+                    >
+                        <View className="flex-1 justify-center items-center p-4">
+                            <Image
+                                source={{ uri: selectedPhoto.photo_url }}
+                                className="w-full h-full"
+                                resizeMode="contain"
+                            />
+                        </View>
+                    </TouchableOpacity>
+
+                    {selectedPhoto.caption && (
+                        <View className="absolute bottom-8 left-4 right-4 bg-black/80 rounded-xl p-4">
+                            <Text className="text-white text-sm leading-relaxed">
+                                {selectedPhoto.caption}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+        </Modal>
     ) : null;
 
     return (
         <>
             <View className="mb-4">
+                {showLabel && (
+                    <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Фотографии ({currentIndex + 1}/{photos.length})
+                    </Text>
+                )}
+
                 <View className="relative">
                     <TouchableOpacity
                         activeOpacity={isWeb ? 1 : 0.8}
@@ -114,7 +212,8 @@ export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkM
                     >
                         <Image
                             source={{ uri: photos[currentIndex].photo_url }}
-                            className="w-full h-56 rounded-2xl bg-gray-200 dark:bg-gray-700"
+                            style={{ width: '100%', height }}
+                            className="rounded-2xl bg-gray-200 dark:bg-gray-700"
                             resizeMode="cover"
                         />
 
@@ -124,7 +223,7 @@ export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkM
                                 <TouchableOpacity
                                     onPress={(e) => {
                                         e.stopPropagation?.();
-                                        setCurrentIndex((prev) => prev === 0 ? photos.length - 1 : prev - 1);
+                                        goToPrevious();
                                     }}
                                     style={{
                                         position: 'absolute',
@@ -143,7 +242,7 @@ export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkM
                                 <TouchableOpacity
                                     onPress={(e) => {
                                         e.stopPropagation?.();
-                                        setCurrentIndex((prev) => prev === photos.length - 1 ? 0 : prev + 1);
+                                        goToNext();
                                     }}
                                     style={{
                                         position: 'absolute',
@@ -186,18 +285,20 @@ export function PhotoCarousel({ photos, isDarkMode }: { photos: Photo[], isDarkM
                 {photos.length > 1 && (
                     <View className="flex-row justify-center items-center mt-3 gap-2">
                         {photos.map((_, index) => (
-                            <View
+                            <TouchableOpacity
                                 key={index}
-                                className={`w-2 h-2 rounded-full ${index === currentIndex
+                                onPress={() => setCurrentIndex(index)}
+                                className={`h-2 rounded-full transition-all duration-200 ${index === currentIndex
                                     ? 'bg-blue-600 dark:bg-blue-400 w-6'
-                                    : 'bg-gray-300 dark:bg-gray-600'
+                                    : 'bg-gray-300 dark:bg-gray-600 w-2'
                                     }`}
                             />
                         ))}
                     </View>
                 )}
             </View>
-            {photoModal}
+            {webModal}
+            {nativeModal}
         </>
     );
 }

@@ -1,3 +1,4 @@
+import { Photo, PhotoCarousel } from '@/src/components/PhotoCarousel';
 import { Button } from '@/src/components/ui';
 import { getStatusConfig } from '@/src/constants/status';
 import { useReportsStore } from '@/src/store/reportsStore';
@@ -7,7 +8,6 @@ import { router } from 'expo-router';
 import { MapPin, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
-import { Photo, PhotoCarousel } from './PhotoCarousel';
 
 export function ReportDetail({
     report: initialReport,
