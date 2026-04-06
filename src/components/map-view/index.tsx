@@ -1,14 +1,14 @@
-import { useThemeStore } from '@/src/store/themeStore';
-import { MapViewRef, Report } from '@/src/types';
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { View } from 'react-native';
-import Map, { MapRef } from 'react-map-gl/maplibre';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { useCityBoundary } from '@/src/hooks/map/useCityBoundary';
 import { useFogLayer } from '@/src/hooks/map/useFogLayer';
+import { useThemeStore } from '@/src/store/themeStore';
+import { MapViewRef, Report } from '@/src/types';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import Map, { MapRef } from 'react-map-gl/maplibre';
+import { View } from 'react-native';
+import { FogLayer } from './components/FogLayer';
 import { ReportMarkers } from './components/ReportMarkers';
 import { SelectedMarker } from './components/SelectedMarker';
-import { FogLayer } from './components/FogLayer';
 
 interface MapViewProps {
   reports: Report[];
@@ -87,6 +87,17 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(
       setIsMapLoading(false);
       setMapError('Не удалось загрузить карту. Проверьте подключение к интернету.');
     };
+
+    // Center map on city when city changes (regardless of visibilityArea setting)
+    useEffect(() => {
+      if (cityBoundary?.center) {
+        mapRef.current?.flyTo({
+          center: [cityBoundary.center.longitude, cityBoundary.center.latitude],
+          zoom: 13,
+          duration: 1000,
+        });
+      }
+    }, [cityBoundary]);
 
     return (
       <View style={{ width: '100%', height: '100%', position: 'relative' }}>
