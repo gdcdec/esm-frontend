@@ -2,7 +2,7 @@ import { useMapState } from '@/src/hooks/useMapState';
 import { useThemeStore } from '@/src/store/themeStore';
 import { ChevronDown, Clock, User } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export function InlineFilters({
     state,
@@ -50,8 +50,8 @@ export function InlineFilters({
 
     return (
         <View className="bg-white dark:bg-[#1f2937] z-50">
-            <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
-                <Text className="font-bold text-gray-900 dark:text-slate-50 text-xl tracking-tight">
+            <View className="px-4 pt-4 pb-1 flex-row items-center justify-between">
+                <Text className="font-bold text-gray-900 dark:text-slate-50 text-lg tracking-tight">
                     {state.searchQuery
                         ? 'Результаты поиска'
                         : visibilityArea && city
@@ -74,24 +74,17 @@ export function InlineFilters({
             </View>
 
             <View className="relative">
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingLeft: 0, paddingRight: 0, paddingVertical: 12, alignItems: 'center' }}
-                    className="flex-row"
-                    style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
-                    nestedScrollEnabled={true}
-                >
+                <View className="flex-row flex-wrap px-4 py-3 items-center">
                     {/* My Reports Toggle */}
                     <TouchableOpacity
                         onPress={() => state.setShowMine(!state.showMine)}
-                        className={`px-3 py-2 mr-3 rounded-xl border flex-row items-center gap-2 ${state.showMine
+                        className={`px-3 py-2 mr-2 mb-2 rounded-xl border flex-row items-center gap-2 ${state.showMine
                             ? 'bg-blue-500/10 border-blue-500/30'
                             : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
                             }`}
                     >
                         <User size={14} color={state.showMine ? '#3B82F6' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
-                        <Text className={`text-[13px] font-medium ${state.showMine ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                        <Text className={`text-[11px] font-medium ${state.showMine ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
                             Мои
                         </Text>
                     </TouchableOpacity>
@@ -99,12 +92,12 @@ export function InlineFilters({
                     {/* Rubrics Dropdown Trigger */}
                     <TouchableOpacity
                         onPress={() => setOpenDropdown(openDropdown === 'rubrics' ? null : 'rubrics')}
-                        className={`px-3 py-2 mr-3 rounded-xl border flex-row items-center gap-2 ${selectedRubricsCount > 0
+                        className={`px-3 py-2 mr-2 mb-2 rounded-xl border flex-row items-center gap-2 ${selectedRubricsCount > 0
                             ? 'bg-blue-500/10 border-blue-500/30'
                             : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
                             }`}
                     >
-                        <Text className={`text-[13px] font-medium ${selectedRubricsCount > 0 ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                        <Text className={`text-[11px] font-medium flex-1 ${selectedRubricsCount > 0 ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
                             {rubricsLabel}
                         </Text>
                         <ChevronDown size={14} color={selectedRubricsCount > 0 ? '#3B82F6' : (isDarkMode ? '#94A3B8' : '#6B7280')} />
@@ -113,20 +106,20 @@ export function InlineFilters({
                     {/* Sorting Dropdown Trigger */}
                     <TouchableOpacity
                         onPress={() => setOpenDropdown(openDropdown === 'ordering' ? null : 'ordering')}
-                        className="px-3 py-2 mr-2 rounded-xl border border-gray-200/50 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-800/40 flex-row items-center gap-2"
+                        className="px-3 py-2 mr-2 mb-2 rounded-xl border border-gray-200/50 dark:border-slate-700/50 bg-gray-100/50 dark:bg-slate-800/40 flex-row items-center gap-2"
                     >
                         <Clock size={14} color={isDarkMode ? '#94A3B8' : '#6B7280'} />
-                        <Text className="text-[13px] font-medium text-gray-500 dark:text-slate-400">
+                        <Text className="text-[11px] font-medium text-gray-500 dark:text-slate-400">
                             {currentSorting.label}
                         </Text>
                         <ChevronDown size={14} color={isDarkMode ? '#94A3B8' : '#6B7280'} />
                     </TouchableOpacity>
-                </ScrollView>
+                </View>
 
                 {/* Dropdown Menus */}
                 {openDropdown === 'rubrics' && (
                     <View
-                        className="absolute left-5 top-14 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-72 py-2 overflow-hidden"
+                        className="absolute left-4 top-20 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-80 py-2 overflow-hidden"
                         style={{ elevation: 25 }}
                     >
                         <ScrollView style={{ maxHeight: 350 }}>
@@ -168,7 +161,7 @@ export function InlineFilters({
 
                 {openDropdown === 'ordering' && (
                     <View
-                        className="absolute right-5 top-14 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-56 py-2 overflow-hidden"
+                        className="absolute right-4 top-20 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-slate-700 rounded-2xl shadow-2xl z-[100] w-56 py-2 overflow-hidden"
                         style={{ elevation: 25 }}
                     >
                         {sortings.map((s) => (

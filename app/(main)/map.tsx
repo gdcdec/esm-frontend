@@ -1,6 +1,6 @@
-import { AppMapView } from '@/src/components/MapView';
 import { InlineFilters } from '@/src/components/map/InlineFilters';
 import { ReportDetail } from '@/src/components/map/ReportDetail';
+import { AppMapView } from '@/src/components/MapView';
 import { ReportCard } from '@/src/components/ReportCard';
 import { Button } from '@/src/components/ui';
 import { useIsMobile } from '@/src/hooks/useIsMobile';
@@ -45,7 +45,7 @@ function WebMapScreen() {
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    const PANEL_WIDTH = 420;
+    const PANEL_WIDTH = 480;
     const isOpen = panelMode === 'open';
 
     const handleSearchChange = (value: string) => {
