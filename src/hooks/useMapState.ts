@@ -90,10 +90,10 @@ export function useMapState() {
         let isMounted = true;
 
         const loadInitialData = async () => {
-            // Fetch rubrics into store (already cached)
+            // Fetch rubrics into store (already cached via persist)
             await useRubricsStore.getState().fetchRubrics();
             if (isMounted) {
-                setRubrics(rubricNames.length > 0 ? rubricNames : ['Дороги', 'ЖКХ', 'Мусор', 'Парки', 'Свет']);
+                setRubrics(rubricNames);
             }
 
             // Fetch city boundary if visibility area is enabled
