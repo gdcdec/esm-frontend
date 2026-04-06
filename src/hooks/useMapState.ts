@@ -61,7 +61,9 @@ export function useMapState() {
         searchTimeoutRef.current = setTimeout(async () => {
             setIsSearching(true);
             try {
-                const results = await addressService.search(query);
+                // Если включена область видимости, ограничиваем поиск городом
+                const cityFilter = visibilityArea && city ? city : undefined;
+                const results = await addressService.search(query, 5, cityFilter);
                 setSuggestions(results);
             } catch {
                 // ignore
@@ -69,7 +71,7 @@ export function useMapState() {
                 setIsSearching(false);
             }
         }, 500);
-    }, []);
+    }, [visibilityArea, city]);
 
     // Fetch real posts from API (through cached store)
     const fetchReports = useCallback(async (currentFilters?: ReportFilters) => {

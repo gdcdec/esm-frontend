@@ -40,12 +40,17 @@ export const addressService = {
 
     search: async (
         query: string,
-        limit: number = 5
+        limit: number = 5,
+        city?: string
     ): Promise<AddressSearchResult[]> => {
         try {
+            const params: Record<string, string | number> = { q: query, limit };
+            if (city) {
+                params.city = city;
+            }
             const { data } = await api.get<AddressSearchResult[]>(
                 '/address/search/',
-                { params: { q: query, limit } }
+                { params }
             );
             return Array.isArray(data) ? data : [];
         } catch (error) {
