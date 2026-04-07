@@ -25,9 +25,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 function NotificationItem({
     notification,
     onPress,
+    isLast = false,
 }: {
     notification: Notification;
     onPress: () => void;
+    isLast?: boolean;
 }) {
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
@@ -66,7 +68,7 @@ function NotificationItem({
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.7}
-            className={`p-4 border-b border-gray-100 dark:border-gray-700 ${
+            className={`p-4 ${!isLast ? 'border-b border-gray-100 dark:border-gray-700' : ''} ${
                 notification.is_read
                     ? 'bg-white dark:bg-gray-800'
                     : 'bg-blue-50/50 dark:bg-blue-900/20'
@@ -193,72 +195,10 @@ export default function NotificationsScreen() {
                     >
                         <X size={24} color={isDarkMode ? '#F9FAFB' : '#111827'} />
                     </TouchableOpacity>
-                    <View className="flex-1 items-center">
-                        <Text className="font-bold text-lg dark:text-gray-100">
-                            Уведомления
-                        </Text>
-                        {unreadCount > 0 && (
-                            <Text className="text-xs text-blue-500">
-                                {unreadCount} новых
-                            </Text>
-                        )}
-                    </View>
+                    <Text className="font-bold text-lg dark:text-gray-100">
+                        Уведомления
+                    </Text>
                     <View className="w-8" />
-                </View>
-
-                {/* Actions & Filters */}
-                <View className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
-                    <View className="flex-row items-center justify-between">
-                        <View className="flex-row items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                            <TouchableOpacity
-                                onPress={() => setFilter('unread')}
-                                className={`px-4 py-1.5 rounded-md flex-row items-center ${
-                                    filter === 'unread' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
-                                }`}
-                            >
-                                <Text
-                                    className={`text-sm font-medium ${
-                                        filter === 'unread'
-                                            ? 'text-gray-900 dark:text-gray-100'
-                                            : 'text-gray-500 dark:text-gray-400'
-                                    }`}
-                                >
-                                    Непрочитанные
-                                </Text>
-                                {unreadCount > 0 && (
-                                    <View className="ml-1.5 bg-blue-500 px-1.5 rounded-full items-center justify-center">
-                                        <Text className="text-[10px] font-bold text-white leading-4">
-                                            {unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => setFilter('all')}
-                                className={`px-4 py-1.5 rounded-md flex-row items-center ${
-                                    filter === 'all' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
-                                }`}
-                            >
-                                <Text
-                                    className={`text-sm font-medium ${
-                                        filter === 'all'
-                                            ? 'text-gray-900 dark:text-gray-100'
-                                            : 'text-gray-500 dark:text-gray-400'
-                                    }`}
-                                >
-                                    Все
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {notifications.length > 0 && unreadCount > 0 && (
-                            <TouchableOpacity onPress={markAllAsRead} className="ml-2">
-                                <Text className="text-[13px] text-blue-500 font-medium">
-                                    Прочитать всё
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
                 </View>
             </SafeAreaView>
 
@@ -288,27 +228,86 @@ export default function NotificationsScreen() {
                     </Text>
                 </View>
             ) : (
-                <ScrollView className="flex-1">
-                    {Object.entries(groupedNotifications).map(([group, items]) => (
-                        <View key={group}>
-                            <View className="px-4 py-2 bg-gray-50 dark:bg-gray-900">
-                                <Text className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    {group}
+                <ScrollView className="flex-1 pt-4">
+                    <View className="w-full max-w-lg self-center px-4">
+                        {/* Tabs Filter */}
+                        <View className="flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+                            <TouchableOpacity
+                                onPress={() => setFilter('unread')}
+                                className={`flex-1 py-2 rounded-lg flex-row items-center justify-center ${
+                                    filter === 'unread' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
+                                }`}
+                            >
+                                <Text
+                                    className={`text-sm font-medium ${
+                                        filter === 'unread'
+                                            ? 'text-blue-600 dark:text-blue-400'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    }`}
+                                >
+                                    Непрочитанные
                                 </Text>
-                            </View>
-                            <View className="bg-white dark:bg-gray-800">
-                                {items.map((notification) => (
-                                    <NotificationItem
-                                        key={notification.id}
-                                        notification={notification}
-                                        onPress={() =>
-                                            handleNotificationPress(notification)
-                                        }
-                                    />
-                                ))}
-                            </View>
+                                {unreadCount > 0 && (
+                                    <View className="ml-1.5 bg-blue-500 px-1.5 py-0.5 rounded-full items-center justify-center">
+                                        <Text className="text-[10px] font-bold text-white">
+                                            {unreadCount}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setFilter('all')}
+                                className={`flex-1 py-2 rounded-lg items-center justify-center ${
+                                    filter === 'all' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
+                                }`}
+                            >
+                                <Text
+                                    className={`text-sm font-medium ${
+                                        filter === 'all'
+                                            ? 'text-blue-600 dark:text-blue-400'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    }`}
+                                >
+                                    Все
+                                </Text>
+                            </TouchableOpacity>
                         </View>
-                    ))}
+
+                        {/* Mark all as read button */}
+                        {notifications.length > 0 && unreadCount > 0 && (
+                            <TouchableOpacity 
+                                onPress={markAllAsRead}
+                                className="mb-4 py-3 px-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
+                            >
+                                <Text className="text-sm text-blue-600 dark:text-blue-400 font-semibold text-center">
+                                    Отметить все как прочитанные
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Notifications grouped by date */}
+                        {Object.entries(groupedNotifications).map(([group, items]) => (
+                            <View key={group} className="mb-4">
+                                <View className="mb-2 px-1">
+                                    <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                        {group}
+                                    </Text>
+                                </View>
+                                <View className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                                    {items.map((notification, index) => (
+                                        <NotificationItem
+                                            key={notification.id}
+                                            notification={notification}
+                                            onPress={() =>
+                                                handleNotificationPress(notification)
+                                            }
+                                            isLast={index === items.length - 1}
+                                        />
+                                    ))}
+                                </View>
+                            </View>
+                        ))}
+                    </View>
                     <View className="h-8" />
                 </ScrollView>
             )}
