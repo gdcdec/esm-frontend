@@ -73,7 +73,7 @@ export default function CreateReportScreen() {
 
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
-          <View className="w-full max-w-md self-center pt-4">
+          <View className="w-full max-w-lg self-center pt-4">
             {formState.isFetchingInitial && (
               <View className="py-20 items-center">
                 <ActivityIndicator size="large" color="#2563EB" />
@@ -173,7 +173,7 @@ export default function CreateReportScreen() {
       </KeyboardAvoidingView>
 
       <SafeAreaView edges={['bottom']} className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3">
-        <View className="w-full max-w-md self-center">
+        <View className="w-full max-w-lg self-center">
           <Button
             title={getSubmitButtonText()}
             onPress={formActions.handleSubmit}
