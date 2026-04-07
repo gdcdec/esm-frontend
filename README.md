@@ -1,50 +1,60 @@
-# Welcome to your Expo app 👋
+# Мой Донос 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Кроссплатформенное приложение (iOS, Android, Web) для гражданского мониторинга и создания жалоб на городские проблемы. Разработано на базе React Native и Expo.
 
-## Get started
+## 💻 Технологический стек
 
-1. Install dependencies
+Проект использует современные инструменты и библиотеки для быстрой и надежной разработки:
 
+| Категория | Технологии |
+| :--- | :--- |
+| **Фреймворк** | Expo SDK 54, React Native 0.81, TypeScript |
+| **Навигация** | Expo Router (на основе файловой системы) |
+| **Стилизация** | NativeWind v4 (Tailwind CSS) |
+| **Управление состоянием** | Zustand (клиент), TanStack Query (сервер) |
+| **Карты** | MapLibre (MapLibre React Native / react-map-gl) |
+| **HTTP-клиент** | Axios |
+| **Бэкенд** | Django REST Framework + PostgreSQL |
+
+## 🛠 Установка и запуск локально
+
+1. **Клонируйте репозиторий:**
+   ```bash
+   git clone <URL_РЕПОЗИТОРИЯ>
+   cd esm-frontend
+   ```
+
+2. **Установите зависимости:**
    ```bash
    npm install
    ```
 
-2. Start the app
-
-   ```bash
-   npx expo start
+3. **Настройте переменные окружения:**
+   Создайте файл `.env` в корне проекта и укажите URL API:
+   ```env
+   EXPO_PUBLIC_API_URL=http://<IP_БЭКЕНДА>:8000/api
    ```
 
-In the output, you'll find options to open the app in a
+4. **Запустите проект:**
+   ```bash
+   # Для запуска меню разработчика Expo
+   npm start
+   
+   # Для запуска веб-версии
+   npm run web
+   
+   # Для запуска в эмуляторе Android
+   npm run android
+   
+   # Для запуска в симуляторе iOS (только на macOS)
+   npm run ios
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📂 Структура проекта
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `app/` — Маршрутизация на основе файлов (Expo Router). Тут лежат экраны приложения.
+- `src/components/` — Разделяемые UI компоненты, карточки, элементы карты.
+- `src/constants/` — Конфигурации, палитры цветов, моковые данные.
+- `src/services/` — Клиенты API (`axios`), логика взаимодействия с сервером.
+- `src/store/` — Глобальное состояние (`Zustand` сторы).
+- `src/types/` — Глобальные интерфейсы TypeScript.
