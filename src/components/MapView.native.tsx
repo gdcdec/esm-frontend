@@ -5,7 +5,7 @@ import { MapViewRef, Report } from '@/src/types';
 import { CityBoundaryData, fetchCityBoundary } from '@/src/utils/fetchCityBoundary';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 MapLibreGL.setAccessToken(null);
 
@@ -80,7 +80,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     useImperativeHandle(ref, () => ({
         zoomIn: async () => {
             cameraRef.current?.setCamera({
-                zoomLevel: 15, // Approximate step, would normally get current zoom
+                zoomLevel: 15,
                 animationDuration: 300,
             });
         },
@@ -156,12 +156,12 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                 {visibilityArea && (
                     <MapLibreGL.ShapeSource id="fog-source" shape={fogGeoJSON as any}>
-                        <MapLibreGL.FillLayer 
-                            id="fog-layer" 
-                            style={{ 
-                                fillColor: isDarkMode ? '#111827' : '#6B7280', 
-                                fillOpacity: 1 
-                            }} 
+                        <MapLibreGL.FillLayer
+                            id="fog-layer"
+                            style={{
+                                fillColor: isDarkMode ? '#111827' : '#6B7280',
+                                fillOpacity: 1
+                            }}
                         />
                     </MapLibreGL.ShapeSource>
                 )}
@@ -190,7 +190,6 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                     );
                 })}
 
-                {/* Selected point marker */}
                 {selectedCoordinate && (
                     <MapLibreGL.PointAnnotation
                         key={`selected-${selectedCoordinate.latitude}-${selectedCoordinate.longitude}`}
