@@ -1,4 +1,4 @@
-import { AppMapView } from '@/src/components/map-view';
+import { AppMapView } from '@/src/components/MapView';
 import { InlineFilters } from '@/src/components/map/InlineFilters';
 import { ReportDetail } from '@/src/components/map/ReportDetail';
 import { ReportCard } from '@/src/components/ReportCard';

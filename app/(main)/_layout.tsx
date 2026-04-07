@@ -39,6 +39,25 @@ export default function MainLayout() {
                     animation: 'slide_from_right',
                 }}
             />
+            <Stack.Screen
+                name="about"
+                options={{
+                    animation: 'slide_from_right',
+                }}
+            />
+            <Stack.Screen
+                name="faq"
+                options={{
+                    animation: 'slide_from_right',
+                }}
+            />
+            <Stack.Screen
+                name="settings"
+                options={{
+                    animation: 'slide_from_right',
+                }}
+            />
         </Stack>
     );
 }
+

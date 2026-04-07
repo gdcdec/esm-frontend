@@ -1,8 +1,11 @@
 import { useRubricsStore } from '@/src/store/rubricsStore';
 import { useThemeStore } from '@/src/store/themeStore';
-import { ChevronRight } from 'lucide-react-native';
-import React from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Image, NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+
+const ITEM_WIDTH = 92;
+const SCROLL_AMOUNT = ITEM_WIDTH * 2;
 
 interface CategorySelectorProps {
   selectedCategory: string | null;
@@ -12,6 +15,37 @@ interface CategorySelectorProps {
 export function CategorySelector({ selectedCategory, onSelectCategory }: CategorySelectorProps) {
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
   const rubrics = useRubricsStore((s) => s.rubrics);
+  const scrollRef = useRef<ScrollView>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const scrollX = useRef(0);
+  const contentWidth = useRef(0);
+  const containerWidth = useRef(0);
+
+  const updateArrows = useCallback(() => {
+    setCanScrollLeft(scrollX.current > 4);
+    setCanScrollRight(scrollX.current < contentWidth.current - containerWidth.current - 4);
+  }, []);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollX.current = e.nativeEvent.contentOffset.x;
+    containerWidth.current = e.nativeEvent.layoutMeasurement.width;
+    contentWidth.current = e.nativeEvent.contentSize.width;
+    updateArrows();
+  }, [updateArrows]);
+
+  const scrollLeft = useCallback(() => {
+    const newX = Math.max(0, scrollX.current - SCROLL_AMOUNT);
+    scrollRef.current?.scrollTo({ x: newX, animated: true });
+  }, []);
+
+  const scrollRight = useCallback(() => {
+    const maxX = contentWidth.current - containerWidth.current;
+    const newX = Math.min(maxX, scrollX.current + SCROLL_AMOUNT);
+    scrollRef.current?.scrollTo({ x: newX, animated: true });
+  }, []);
+
+  const isWeb = Platform.OS === 'web';
 
   return (
     <View className="py-3">
@@ -22,11 +56,17 @@ export function CategorySelector({ selectedCategory, onSelectCategory }: Categor
       ) : (
         <View className="relative">
           <ScrollView
+            ref={scrollRef}
             horizontal
-            showsHorizontalScrollIndicator={true}
+            showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 12 }}
-            snapToInterval={92}
+            snapToInterval={ITEM_WIDTH}
             decelerationRate="fast"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onContentSizeChange={(w) => { contentWidth.current = w; updateArrows(); }}
+            onLayout={(e) => { containerWidth.current = e.nativeEvent.layout.width; updateArrows(); }}
+            {...(isWeb ? { style: { scrollbarWidth: 'none', msOverflowStyle: 'none' } as any } : {})}
           >
             {rubrics.map((rub) => (
               <TouchableOpacity
@@ -58,13 +98,50 @@ export function CategorySelector({ selectedCategory, onSelectCategory }: Categor
             ))}
           </ScrollView>
 
-          {/* Индикатор что можно листать */}
-          {rubrics.length > 3 && (
-            <View className="absolute right-0 top-0 bottom-0 justify-center px-1">
-              <View className="w-6 h-6 rounded-full bg-white/90 dark:bg-gray-800/90 shadow-sm items-center justify-center">
-                <ChevronRight size={14} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
+          {/* Left arrow */}
+          {canScrollLeft && (
+            <TouchableOpacity
+              onPress={scrollLeft}
+              className="absolute left-1 top-0 bottom-0 justify-center"
+              style={{ zIndex: 10 }}
+            >
+              <View
+                className="w-7 h-7 rounded-full items-center justify-center"
+                style={{
+                  backgroundColor: isDarkMode ? 'rgba(31,41,55,0.92)' : 'rgba(255,255,255,0.92)',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 3,
+                  elevation: 3,
+                }}
+              >
+                <ChevronLeft size={16} color={isDarkMode ? '#D1D5DB' : '#374151'} />
               </View>
-            </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Right arrow */}
+          {canScrollRight && (
+            <TouchableOpacity
+              onPress={scrollRight}
+              className="absolute right-1 top-0 bottom-0 justify-center"
+              style={{ zIndex: 10 }}
+            >
+              <View
+                className="w-7 h-7 rounded-full items-center justify-center"
+                style={{
+                  backgroundColor: isDarkMode ? 'rgba(31,41,55,0.92)' : 'rgba(255,255,255,0.92)',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 3,
+                  elevation: 3,
+                }}
+              >
+                <ChevronRight size={16} color={isDarkMode ? '#D1D5DB' : '#374151'} />
+              </View>
+            </TouchableOpacity>
           )}
         </View>
       )}
