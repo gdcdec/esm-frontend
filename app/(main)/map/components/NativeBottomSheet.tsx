@@ -20,7 +20,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CityAlert } from './CityAlert';
 import { ReturnType } from './useSheetState';
 
@@ -36,6 +36,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const isDarkMode = useThemeStore((s) => s.isDarkMode);
   const user = useAuthStore((s) => s.user);
+  const insets = useSafeAreaInsets();
 
   const snapPoints = useMemo(() => ['10%', '45%', '90%'], []);
 
@@ -162,8 +163,8 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
                 },
               })
             }
-            className="absolute bottom-28 right-4 w-14 h-14 bg-blue-600 rounded-full shadow-xl items-center justify-center"
-            style={{ zIndex: 10 }}
+            className="absolute right-4 w-14 h-14 bg-blue-600 rounded-full shadow-xl items-center justify-center"
+            style={{ zIndex: 10, bottom: Math.max(insets.bottom + 16, 112) }}
           >
             <Plus size={32} color="#FFFFFF" />
           </TouchableOpacity>
@@ -171,7 +172,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
       </View>
 
       {state.selectedCoord && (
-        <View className="absolute bottom-0 w-full p-4" style={{ zIndex: 30 }}>
+        <View className="absolute bottom-0 w-full px-4 pt-4" style={{ zIndex: 30, paddingBottom: Math.max(insets.bottom, 16) + 16 }}>
           <View className={`p-5 rounded-3xl shadow-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
             <View className="flex-row justify-between items-start mb-2">
               <View style={{ flex: 1, marginRight: 12 }}>
@@ -244,11 +245,11 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
           }}
         >
           {state.singleReport ? (
-            <BottomSheetScrollView contentContainerStyle={{ padding: 20 }}>
+            <BottomSheetScrollView contentContainerStyle={{ padding: 20, paddingBottom: Math.max(insets.bottom, 16) + 20 }}>
               <ReportDetail report={state.singleReport} onClose={handleCloseDetail} isDarkMode={isDarkMode} />
             </BottomSheetScrollView>
           ) : state.activeReports && state.activeReports.length > 0 ? (
-            <View className="flex-1 px-5 pb-5">
+            <View className="flex-1 px-5">
               <View className="flex-row justify-between items-center mb-4 py-2 border-b border-gray-50 dark:border-gray-800">
                 <View>
                   <Text className="font-bold text-lg text-gray-900 dark:text-gray-100">Жалобы по адресу</Text>
@@ -285,10 +286,11 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
                 )}
                 showsVerticalScrollIndicator={true}
                 indicatorStyle={isDarkMode ? 'white' : 'default'}
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 20 }}
               />
             </View>
           ) : (
-            <BottomSheetScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+            <BottomSheetScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 40 }}>
               <View className="px-5 pb-4">
                 <View className="flex-row items-center gap-2">
                   <View className="relative flex-1">

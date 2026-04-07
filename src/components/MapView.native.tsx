@@ -6,6 +6,7 @@ import { CityBoundaryData, fetchCityBoundary } from '@/src/utils/fetchCityBounda
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 MapLibreGL.setAccessToken(null);
 
@@ -55,9 +56,11 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     initialRegion,
 }, ref) => {
     const cameraRef = useRef<React.ElementRef<typeof MapLibreGL.Camera>>(null);
+    const mapRef = useRef<React.ElementRef<typeof MapLibreGL.MapView>>(null);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const visibilityArea = useThemeStore((s) => s.visibilityArea);
     const city = useThemeStore((s) => s.city);
+    const insets = useSafeAreaInsets();
 
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
 
@@ -79,16 +82,22 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
     useImperativeHandle(ref, () => ({
         zoomIn: async () => {
-            cameraRef.current?.setCamera({
-                zoomLevel: 15,
-                animationDuration: 300,
-            });
+            const currentZoom = await mapRef.current?.getZoom();
+            if (currentZoom !== undefined) {
+                cameraRef.current?.setCamera({
+                    zoomLevel: Math.min(currentZoom + 1, 22),
+                    animationDuration: 300,
+                });
+            }
         },
         zoomOut: async () => {
-            cameraRef.current?.setCamera({
-                zoomLevel: 10,
-                animationDuration: 300,
-            });
+            const currentZoom = await mapRef.current?.getZoom();
+            if (currentZoom !== undefined) {
+                cameraRef.current?.setCamera({
+                    zoomLevel: Math.max(currentZoom - 1, 0),
+                    animationDuration: 300,
+                });
+            }
         },
         goToLocation: (lat: number, lng: number) => {
             cameraRef.current?.setCamera({
@@ -133,10 +142,14 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
     return (
         <View style={{ flex: 1, position: 'relative' }}>
             <MapLibreGL.MapView
+                ref={mapRef}
                 style={StyleSheet.absoluteFillObject}
                 mapStyle={JSON.stringify(mapStyle)}
                 logoEnabled={false}
                 attributionEnabled={false}
+                compassEnabled={true}
+                compassViewPosition={2}
+                compassViewMargins={{ x: 16, y: Math.max(insets.top, 16) + 16 }}
                 onPress={(feature) => {
                     const coords = (feature.geometry as any).coordinates as number[];
                     onMapPress?.({ latitude: coords[1], longitude: coords[0] });

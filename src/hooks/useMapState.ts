@@ -210,12 +210,32 @@ export function useMapState() {
 
     const handleLocate = useCallback(async () => {
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Геолокация', 'Нет доступа к геолокации. Включите в настройках.');
+            const hasServices = await Location.hasServicesEnabledAsync();
+            if (!hasServices) {
+                Alert.alert('Службы выключены', 'Пожалуйста, включите GPS (геолокацию) на устройстве.');
                 return;
             }
-            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Геолокация', 'Нет доступа к геолокации. Разрешите доступ в настройках устройства.');
+                return;
+            }
+            
+            let loc = null;
+            try {
+                loc = await Location.getLastKnownPositionAsync();
+            } catch (e) {}
+            
+            if (!loc) {
+                loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            }
+
+            if (!loc) {
+                Alert.alert('Ошибка', 'Устройство не отдало координаты');
+                return;
+            }
+
             const coord = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             setUserLocation(coord);
             mapRef.current?.goToLocation(coord.latitude, coord.longitude);
@@ -228,8 +248,8 @@ export function useMapState() {
             } catch {
                 setUserAddress(null);
             }
-        } catch {
-            Alert.alert('Ошибка', 'Не удалось определить местоположение');
+        } catch (e: any) {
+            Alert.alert('Ошибка', 'Не удалось определить местоположение. ' + (e.message || ''));
         }
     }, []);
 

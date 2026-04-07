@@ -108,7 +108,7 @@ export function InlineFilters({
                             : 'bg-gray-100/50 dark:bg-slate-800/40 border-gray-200/50 dark:border-slate-700/50'
                             }`}
                     >
-                        <Text className={`text-[11px] font-medium flex-1 ${selectedRubricsCount > 0 ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
+                        <Text className={`text-[11px] font-medium ${selectedRubricsCount > 0 ? 'text-blue-500' : 'text-gray-500 dark:text-slate-400'}`}>
                             {rubricsLabel}
                         </Text>
                         <ChevronDown size={14} color={selectedRubricsCount > 0 ? '#3B82F6' : (isDarkMode ? '#94A3B8' : '#6B7280')} />

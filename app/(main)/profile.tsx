@@ -15,7 +15,7 @@ import * as Sharing from 'expo-sharing';
 import { Bell, ChevronLeft, ChevronRight, CloudUpload, Download, FileClock, FileText, Settings, X } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Встроенный тип для DraftReport если импорт не работает
 type DraftReportType = DraftReport;
@@ -29,6 +29,7 @@ export default function ProfileScreen() {
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
     const unreadCount = useNotificationsStore((s) => s.unreadCount);
     const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount);
+    const insets = useSafeAreaInsets();
 
     const [myReports, setMyReports] = useState<Report[]>(() => useReportsStore.getState().myReports);
     const [isLoading, setIsLoading] = useState(false);
@@ -435,7 +436,7 @@ export default function ProfileScreen() {
                 </View>
             </SafeAreaView>
 
-            <ScrollView className="flex-1 pt-4">
+            <ScrollView className="flex-1 pt-4" contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 20 }}>
                 {/* Profile card */}
                 <View className="bg-white dark:bg-gray-800 p-4 mx-4 mb-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 items-center">
                     <View className="w-full max-w-md self-center">

@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { CheckSquare, ChevronDown, Eye, EyeOff, MapPin, Square } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const isWeb = Platform.OS === 'web';
 
@@ -53,6 +54,7 @@ export default function LoginScreen() {
 
     const login = useAuthStore((state) => state.login);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
+    const insets = useSafeAreaInsets();
 
     // Анимации
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -303,7 +305,8 @@ export default function LoginScreen() {
                     contentContainerStyle={{
                         flexGrow: 1,
                         justifyContent: 'center',
-                        paddingVertical: 24,
+                        paddingTop: 24,
+                        paddingBottom: Math.max(insets.bottom, 24),
                         paddingHorizontal: 16,
                     }}
                     keyboardShouldPersistTaps="handled"
