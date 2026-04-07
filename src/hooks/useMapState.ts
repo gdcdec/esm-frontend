@@ -51,7 +51,7 @@ export function useMapState() {
 
     const mapRef = useRef<MapViewRef>(null);
 
-            // Получение подсказок адресов
+    // Получение подсказок адресов
     const fetchSuggestions = useCallback((query: string) => {
         if (query.trim().length < 3) {
             setSuggestions([]);
@@ -61,7 +61,7 @@ export function useMapState() {
         searchTimeoutRef.current = setTimeout(async () => {
             setIsSearching(true);
             try {
-            // При включенной области видимости ограничиваем поиск городом
+                // При включенной области видимости ограничиваем поиск городом
                 const cityFilter = visibilityArea && city ? city : undefined;
                 const results = await addressService.search(query, 5, cityFilter);
                 setSuggestions(results);
@@ -119,19 +119,47 @@ export function useMapState() {
         };
     }, [visibilityArea, city]);
 
+    useEffect(() => {
+        fetchReports(filters);
+    }, [filters]);
+
+    useEffect(() => {
+        if (showMine) {
+            fetchMine();
+        }
+    }, [showMine, fetchMine]);
+
     const displayReports = useMemo(() => showMine ? myReports : feedReports, [showMine, myReports, feedReports]);
 
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
 
-    const filteredReports = useMemo(
-        () =>
-            displayReports.filter(
+    const filteredReports = useMemo(() => {
+        let result = displayReports;
+
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(
                 (r) =>
-                    r.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    r.address?.toLowerCase().includes(searchQuery.toLowerCase())
-            ),
-        [displayReports, searchQuery]
-    );
+                    r.title?.toLowerCase().includes(q) ||
+                    r.address?.toLowerCase().includes(q)
+            );
+        }
+
+        if (filters.rubrics && filters.rubrics.length > 0) {
+            result = result.filter(
+                (r) => r.rubric_name && filters.rubrics!.includes(r.rubric_name)
+            );
+        }
+
+        const ordering = filters.ordering || '-created_at';
+        result = [...result].sort((a, b) => {
+            const dateA = new Date(a.created_at || 0).getTime();
+            const dateB = new Date(b.created_at || 0).getTime();
+            return ordering === 'created_at' ? dateA - dateB : dateB - dateA;
+        });
+
+        return result;
+    }, [displayReports, searchQuery, filters.rubrics, filters.ordering]);
 
     const handleMapPress = useCallback(
         async (coordinate: { latitude: number; longitude: number }) => {
