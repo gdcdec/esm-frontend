@@ -11,6 +11,7 @@ import { SearchDropdown } from './SearchDropdown';
 import { SheetContent } from './SheetContent';
 import { ReturnType } from './useSheetState';
 import { ZoomControls } from './ZoomControls';
+import { AddressSearchResult } from '@/src/types';
 
 const PANEL_WIDTH = 480;
 type PanelMode = 'collapsed' | 'dropdown' | 'open';
@@ -53,7 +54,7 @@ export function WebSidebar({ state }: WebSidebarProps) {
     if (panelMode === 'dropdown') setPanelMode('collapsed');
   };
 
-  const handleSelectSuggestion = (item: { latitude: number; longitude: number }) => {
+  const handleSelectSuggestion = (item: AddressSearchResult) => {
     state.handleSelectSuggestion(item);
     setPanelMode('open');
   };

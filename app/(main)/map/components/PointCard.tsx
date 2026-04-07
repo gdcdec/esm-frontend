@@ -9,7 +9,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 interface PointCardProps {
   coordinate: { latitude: number; longitude: number };
   address: string | null;
-  mapRef: React.RefObject<MapViewRef>;
+  mapRef: React.RefObject<MapViewRef | null>;
   onClose: () => void;
   variant?: 'web' | 'mobile' | 'native';
 }

@@ -4,7 +4,7 @@ import { Plus, Minus, Locate } from 'lucide-react-native';
 import React from 'react';
 
 interface ZoomControlsProps {
-  mapRef: React.RefObject<MapViewRef>;
+  mapRef: React.RefObject<MapViewRef | null>;
   onLocate: () => void;
   position?: 'right' | 'left';
 }
