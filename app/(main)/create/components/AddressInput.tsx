@@ -1,8 +1,7 @@
-import { Input } from '@/src/components/ui';
 import { useThemeStore } from '@/src/store/themeStore';
 import { AddressSearchResult } from '@/src/types';
 import { Loader2, MapPin } from 'lucide-react-native';
-import React, { useRef } from 'react';
+import React from 'react';
 import { Keyboard, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface AddressInputProps {
@@ -32,18 +31,23 @@ export function AddressInput({
   };
 
   return (
-    <View className="z-10 relative">
-      <Input
-        ref={inputRef}
-        placeholder="Адрес (например: ул. Ленина, 10)"
-        value={address}
-        selection={selection}
-        onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-        onChangeText={onChangeAddress}
-      />
+    <View className="mb-3 z-10 relative">
+      <Text className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Адрес</Text>
+      <View className="relative justify-center">
+        <TextInput
+          ref={inputRef}
+          placeholder="Например: ул. Ленина, 10"
+          value={address}
+          selection={selection}
+          onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+          onChangeText={onChangeAddress}
+          placeholderTextColor={isDarkMode ? '#6B7280' : '#9CA3AF'}
+          className="w-full bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-base border border-transparent dark:border-gray-700 text-gray-900 dark:text-gray-100"
+        />
+      </View>
       {(suggestions.length > 0 || isSearching) && (
         <View
-          className="absolute top-[52px] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50 p-2"
+          className="absolute top-[76px] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-50 p-2"
           style={{
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.1,
@@ -64,7 +68,9 @@ export function AddressInput({
                   index < suggestions.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''
                 }`}
               >
-                <MapPin size={16} color={isDarkMode ? '#9CA3AF' : '#9CA3AF'} style={{ marginRight: 12 }} />
+                <View className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-900/30 items-center justify-center mr-3">
+                  <MapPin size={14} color="#2563EB" />
+                </View>
                 <Text className="flex-1 text-sm text-gray-700 dark:text-gray-300" numberOfLines={2}>
                   {item.display_name}
                 </Text>
