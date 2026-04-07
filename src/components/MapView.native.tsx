@@ -148,7 +148,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 logoEnabled={false}
                 attributionEnabled={false}
                 compassEnabled={true}
-                compassViewPosition={2}
+                compassViewPosition={1}
                 compassViewMargins={{ x: 16, y: Math.max(insets.top, 16) + 16 }}
                 onPress={(feature) => {
                     const coords = (feature.geometry as any).coordinates as number[];

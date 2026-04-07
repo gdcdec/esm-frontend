@@ -38,7 +38,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
   const user = useAuthStore((s) => s.user);
   const insets = useSafeAreaInsets();
 
-  const snapPoints = useMemo(() => ['10%', '45%', '90%'], []);
+  const snapPoints = useMemo(() => [Math.max(insets.bottom, 16) + 70, '45%', '90%'], [insets.bottom]);
 
   const handleMapPress = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
@@ -131,22 +131,25 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
           </TouchableOpacity>
         </SafeAreaView>
 
-        <View className="absolute right-4 gap-3" style={{ top: '35%', zIndex: 10 }}>
+        <View className="absolute right-4 gap-3" style={{ top: '35%', elevation: 0 }}>
           <TouchableOpacity
             onPress={() => state.mapRef.current?.zoomIn()}
-            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
+            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700"
+            style={{ elevation: 0 }}
           >
             <Plus size={24} color={isDarkMode ? '#F3F4F6' : '#374151'} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => state.mapRef.current?.zoomOut()}
-            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700"
+            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700"
+            style={{ elevation: 0 }}
           >
             <Minus size={24} color={isDarkMode ? '#F3F4F6' : '#374151'} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={state.handleLocate}
-            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg items-center justify-center border border-gray-100 dark:border-gray-700 mt-4"
+            className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700 mt-4"
+            style={{ elevation: 0 }}
           >
             <Locate size={24} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
           </TouchableOpacity>
@@ -163,8 +166,8 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
                 },
               })
             }
-            className="absolute right-4 w-14 h-14 bg-blue-600 rounded-full shadow-xl items-center justify-center"
-            style={{ zIndex: 10, bottom: Math.max(insets.bottom + 16, 112) }}
+            className="absolute right-4 w-14 h-14 bg-blue-600 rounded-full items-center justify-center"
+            style={{ elevation: 0, bottom: Math.max(insets.bottom, 16) + 90 }}
           >
             <Plus size={32} color="#FFFFFF" />
           </TouchableOpacity>
