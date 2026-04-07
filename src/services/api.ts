@@ -6,7 +6,6 @@ let BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://109.120.135.24:8000/ap
 
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const host = window.location.hostname;
-    // Force relative path on live deployments (Vercel) to use proxy
     if (host !== 'localhost' && !host.includes('192.168.') && !host.includes('10.')) {
         BASE_URL = '/api';
     }
@@ -20,7 +19,7 @@ const api = axios.create({
     },
 });
 
-// Request interceptor: attach JWT token
+// Добавление токена JWT в запросы
 api.interceptors.request.use(
     (config) => {
         const token = useAuthStore.getState().token;
@@ -37,15 +36,12 @@ const isVercelLive = Platform.OS === 'web' && typeof window !== 'undefined' &&
     !window.location.hostname.includes('192.168.') && 
     !window.location.hostname.includes('10.');
 
-// Utility to recursively fix absolute media URLs missing the port or proxy them for Web
 const fixMediaUrls = (data: any): any => {
     if (typeof data === 'string') {
         if (data.startsWith('http://109.120.135.24/media/')) {
             if (isVercelLive) {
-                // Return relative path so Vercel can proxy it avoiding Mixed Content HTTPS block
                 return data.replace('http://109.120.135.24/media/', '/media/');
             } else {
-                // Append missing port for Native apps & local dev
                 return data.replace('http://109.120.135.24/media/', 'http://109.120.135.24:8000/media/');
             }
         }
@@ -64,7 +60,7 @@ const fixMediaUrls = (data: any): any => {
     return data;
 };
 
-// Response interceptor: fix image URLs and handle 401
+// Исправление URL изображений и обработка 401
 api.interceptors.response.use(
     (response) => {
         if (response.data) {

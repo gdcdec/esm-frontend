@@ -21,12 +21,12 @@ export default function AccountScreen() {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Toast notification state (same pattern as create.tsx)
+    // Состояние уведомления (тот же паттерн что и в create.tsx)
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [toastType, setToastType] = useState<'error' | 'success'>('error');
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Phone validation
+    // Валидация телефона
     const digitsOnly = phone.replace(/\D/g, '');
     const isPhoneValid = digitsOnly.length === 0 || (digitsOnly.length === 11 && digitsOnly.startsWith('7'));
     const phoneError = phone.length > 0 && !isPhoneValid;
@@ -66,7 +66,7 @@ export default function AccountScreen() {
                 setPatronymic(userData.patronymic || '');
                 setPhone(userData.phone_number || '');
             } catch {
-                // Keep using cached user data from store
+                // Используем кэшированные данные пользователя из хранилища
             } finally {
                 setIsLoading(false);
             }
@@ -75,7 +75,7 @@ export default function AccountScreen() {
     }, []);
 
     const handleSave = async () => {
-        // Phone validation
+        // Валидация телефона
         if (phone.length > 0 && !isPhoneValid) {
             showToast('Телефон должен содержать 11 цифр и начинаться с 7', 'error');
             return;
@@ -83,8 +83,8 @@ export default function AccountScreen() {
 
         setIsSaving(true);
         try {
-            // Only send non-empty fields — backend validators reject empty strings
-            // for first_name, last_name, phone_number etc. (allow_blank=True doesn't bypass validators)
+        // Отправляем только непустые поля — валидаторы бэкенда отклоняют пустые строки
+            // для first_name, last_name, phone_number и т.д. (allow_blank=True не обходит валидаторы)
             const payload: Record<string, string> = {};
             if (firstName.trim())  payload.first_name  = firstName.trim();
             if (lastName.trim())   payload.last_name   = lastName.trim();

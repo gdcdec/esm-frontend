@@ -13,7 +13,7 @@ export default function PasswordScreen() {
     const user = useAuthStore((s) => s.user);
     const insets = useSafeAreaInsets();
 
-    // Steps: 'request' → 'verify' → 'reset'
+    // Шаги: 'request' → 'verify' → 'reset'
     const [step, setStep] = useState<'request' | 'verify' | 'reset'>('request');
     const [email, setEmail] = useState(user?.email || '');
     const [code, setCode] = useState('');
@@ -23,12 +23,12 @@ export default function PasswordScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Toast notification
+    // Уведомление toast
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [toastType, setToastType] = useState<'error' | 'success'>('error');
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Password validation (same rules as login.tsx)
+    // Валидация пароля (те же правила что и в login.tsx)
     const passwordMinLength = newPassword.length >= 8;
     const passwordHasUpper = /[A-ZА-ЯЁ]/.test(newPassword);
     const passwordHasLower = /[a-zа-яё]/.test(newPassword);
@@ -50,7 +50,7 @@ export default function PasswordScreen() {
         navigateBack('/(main)/account');
     };
 
-    // Step 1: Request password reset code
+    // Шаг 1: Запрос кода сброса
     const handleRequestCode = async () => {
         if (!email.trim()) {
             showToast('Введите email', 'error');
@@ -72,7 +72,7 @@ export default function PasswordScreen() {
         }
     };
 
-    // Step 2: Verify the code
+    // Шаг 2: Проверка кода
     const handleVerifyCode = async () => {
         if (!code.trim()) {
             showToast('Введите код из письма', 'error');
@@ -94,7 +94,7 @@ export default function PasswordScreen() {
         }
     };
 
-    // Step 3: Set new password
+    // Шаг 3: Установка нового пароля
     const handleResetPassword = async () => {
         if (!isPasswordValid) {
             showToast('Пароль не соответствует требованиям', 'error');

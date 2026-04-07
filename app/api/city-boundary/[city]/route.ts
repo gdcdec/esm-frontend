@@ -1,4 +1,4 @@
-// Expo Router API route for city boundary proxy
+// API маршрут Expo Router для проксирования границ города
 import { CityBoundaryData } from '@/src/utils/fetchCityBoundary';
 
 async function handler(request: Request, { params }: { params: { city: string } }): Promise<Response> {
@@ -30,7 +30,7 @@ async function handler(request: Request, { params }: { params: { city: string } 
             );
         }
 
-        // Find the most relevant administrative boundary
+        // Поиск наиболее подходящей административной границы
         let bestResult = data.find((row: any) => 
             row.geojson && 
             (row.type === 'city' || row.type === 'administrative') &&
@@ -76,13 +76,13 @@ async function handler(request: Request, { params }: { params: { city: string } 
             rawCoords = largestPolygon;
         }
 
-        // Convert [longitude, latitude] to {latitude, longitude}
+        // Преобразование [longitude, latitude] в {latitude, longitude}
         const coords = rawCoords.map((coord: number[]) => ({
             latitude: coord[1],
             longitude: coord[0]
         }));
 
-        // Simplify polygon if too many points
+        // Упрощение полигона при слишком большом количестве точек
         if (coords.length > 200) {
             const step = Math.ceil(coords.length / 200);
             const decimated = [];
@@ -103,7 +103,7 @@ async function handler(request: Request, { params }: { params: { city: string } 
             }
         };
 
-        // Cache for 1 hour
+        // Кэширование на 1 час
         return Response.json(result, {
             headers: {
                 'Cache-Control': 'public, max-age=3600',
@@ -122,12 +122,12 @@ async function handler(request: Request, { params }: { params: { city: string } 
     }
 }
 
-// Export as default for Expo Router
+// Экспорт по умолчанию для Expo Router
 export default function CityBoundaryRoute({ params }: { params: { city: string } }) {
-    // This component will handle the API request
+    // Этот компонент обрабатывает API запрос
     return null;
 }
 
-// Also export the handler for direct API usage
+// Также экспортируем обработчик для прямого использования API
 export { handler as GET };
 

@@ -40,7 +40,7 @@ export function useMapState() {
     const [isSearching, setIsSearching] = useState(false);
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Cleanup timeout on unmount
+    // Очистка таймаута при размонтировании
     useEffect(() => {
         return () => {
             if (searchTimeoutRef.current) {
@@ -51,7 +51,7 @@ export function useMapState() {
 
     const mapRef = useRef<MapViewRef>(null);
 
-    // Fetch suggestions
+            // Получение подсказок адресов
     const fetchSuggestions = useCallback((query: string) => {
         if (query.trim().length < 3) {
             setSuggestions([]);
@@ -61,19 +61,19 @@ export function useMapState() {
         searchTimeoutRef.current = setTimeout(async () => {
             setIsSearching(true);
             try {
-                // Если включена область видимости, ограничиваем поиск городом
+            // При включенной области видимости ограничиваем поиск городом
                 const cityFilter = visibilityArea && city ? city : undefined;
                 const results = await addressService.search(query, 5, cityFilter);
                 setSuggestions(results);
             } catch {
-                // ignore
+                // игнорируем
             } finally {
                 setIsSearching(false);
             }
         }, 500);
     }, [visibilityArea, city]);
 
-    // Fetch real posts from API (through cached store)
+    // Получение отчетов через API (с кэшированием)
     const fetchReports = useCallback(async (currentFilters?: ReportFilters) => {
         let finalFilters = currentFilters || filters;
         if (visibilityArea && city) {
@@ -82,21 +82,20 @@ export function useMapState() {
         await fetchFeed(finalFilters);
     }, [filters, visibilityArea, city, fetchFeed]);
 
-    // Get rubric names from cached rubricsStore
+    // Получение названий рубрик из хранилища
     const rubricNames = useRubricsStore((s) => s.rubrics).map((r) => r.name);
 
-    // Load initial data
+    // Загрузка начальных данных
     useEffect(() => {
         let isMounted = true;
 
         const loadInitialData = async () => {
-            // Fetch rubrics into store (already cached via persist)
             await useRubricsStore.getState().fetchRubrics();
             if (isMounted) {
                 setRubrics(rubricNames);
             }
 
-            // Fetch city boundary if visibility area is enabled
+            // Загрузка границ города при включенной области видимости
             if (visibilityArea && city) {
                 try {
                     const boundaryData = await fetchCityBoundary(city);
@@ -104,7 +103,7 @@ export function useMapState() {
                         setCityBoundary(boundaryData);
                     }
                 } catch {
-                    // ignore
+                    // игнорируем
                 }
             }
 
@@ -120,19 +119,6 @@ export function useMapState() {
         };
     }, [visibilityArea, city]);
 
-    // Re-fetch reports when filters or visibility settings change
-    useEffect(() => {
-        fetchReports(filters);
-    }, [filters, visibilityArea, city]);
-
-    // When showMine is toggled, fetch the user's own reports
-    useEffect(() => {
-        if (showMine) {
-            fetchMine();
-        }
-    }, [showMine]);
-
-    // Select the active report source based on showMine toggle
     const displayReports = useMemo(() => showMine ? myReports : feedReports, [showMine, myReports, feedReports]);
 
     const singleReport = activeReports?.length === 1 ? activeReports[0] : null;
@@ -151,7 +137,7 @@ export function useMapState() {
         async (coordinate: { latitude: number; longitude: number }) => {
             setActiveReports(null);
 
-            // Check if point is outside city boundary when visibility area is enabled
+            // Проверка точки за пределами города при включенной области видимости
             if (visibilityArea && cityBoundary && cityBoundary.coords.length > 0) {
                 const isInsideCity = isPointInPolygon(coordinate, cityBoundary.coords);
                 if (!isInsideCity) {

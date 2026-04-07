@@ -254,7 +254,7 @@ export function GallerySheet({
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: () => {
                 isDraggingRef.current = true;
-                // Save current thumb position
+                // Сохраняем текущую позицию ползунка
                 (thumbY as any)._value !== undefined
                     ? (thumbStartY.current = (thumbY as any)._value)
                     : (thumbStartY.current = 0);

@@ -21,6 +21,7 @@ export function useSearch(initialQuery = ''): UseSearchReturn {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Очистка таймаута при размонтировании
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -40,7 +41,7 @@ export function useSearch(initialQuery = ''): UseSearchReturn {
         const results = await addressService.search(searchQuery);
         setSuggestions(results);
       } catch {
-        // ignore
+        // игнорируем
       } finally {
         setIsSearching(false);
       }

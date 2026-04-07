@@ -15,18 +15,18 @@ export function calculateCentroid(coords: GeoCoordinate[]): GeoCoordinate {
     let cx = 0;
     let cy = 0;
 
-    // We assume coords is a closed polygon (first == last point).
+    // Предполагаем, что координаты образуют замкнутый полигон
     for (let i = 0; i < coords.length - 1; i++) {
         const p0 = coords[i];
         const p1 = coords[i + 1];
-        // Using lng as x and lat as y
+        // Используем долготу как X и широту как Y
         const a = (p0.longitude * p1.latitude) - (p1.longitude * p0.latitude);
         signedArea += a;
         cx += (p0.longitude + p1.longitude) * a;
         cy += (p0.latitude + p1.latitude) * a;
     }
 
-    // If signedArea is 0 (e.g. invalid polygon), fallback to average
+    // При нулевой площади (некорректный полигон) используем усреднение
     if (signedArea === 0) {
         if (coords.length === 0) return { latitude: 0, longitude: 0 };
         const avgLat = coords.reduce((sum, c) => sum + c.latitude, 0) / coords.length;
@@ -69,8 +69,6 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
             'User-Agent': 'MoyDonos-App/1.0',
         };
 
-        // For now, always use direct API calls with fallback
-        // TODO: Implement proper CORS proxy when needed
         url = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cityName)}&country=RU&polygon_geojson=1&format=json`;
         
         try {
@@ -88,15 +86,14 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
                 return null;
             }
 
-            // Find the most relevant administrative boundary
-            // Priority: 1) city/administrative, 2) city, 3) any with polygon
+            // Приоритет: 1) city/administrative, 2) city, 3) любой с полигоном
             let bestResult = data.find((row: any) => 
                 row.geojson && 
                 (row.type === 'city' || row.type === 'administrative') &&
                 (row.geojson.type === 'Polygon' || row.geojson.type === 'MultiPolygon')
             );
 
-            // Fallback to any result with polygon
+            // Запасной вариант - любой результат с полигоном
             if (!bestResult) {
                 bestResult = data.find((row: any) => 
                     row.geojson && 
@@ -112,17 +109,17 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
             let rawCoords: number[][] = [];
 
             if (bestResult.geojson.type === 'Polygon') {
-                // Polygon structure: [[[lng, lat], [lng, lat], ...]]]
+                // Структура Polygon: [[[lng, lat], [lng, lat], ...]]]
                 rawCoords = bestResult.geojson.coordinates[0];
             } else if (bestResult.geojson.type === 'MultiPolygon') {
-                // MultiPolygon structure: [[[[lng, lat], ...]], [[[lng, lat], ...]]]
-                // Combine all polygons into one by taking the largest one
+                // Структура MultiPolygon: [[[[lng, lat], ...]], [[[lng, lat], ...]]]
+                // Объединяем все полигоны, выбирая наибольший
                 let largestPolygon: number[][] = [];
                 let maxArea = 0;
                 
                 for (const polygon of bestResult.geojson.coordinates) {
-                    const coords = polygon[0]; // First ring of each polygon
-                    // Simple area calculation for comparison
+                    const coords = polygon[0]; // Первый контур каждого многоугольника
+                    // Простое вычисление площади для сравнения
                     let area = 0;
                     for (let i = 0; i < coords.length - 1; i++) {
                         area += coords[i][0] * coords[i + 1][1] - coords[i + 1][0] * coords[i][1];
@@ -138,20 +135,20 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
                 rawCoords = largestPolygon;
             }
 
-            // Convert [longitude, latitude] to {latitude, longitude}
+            // Преобразование [longitude, latitude] в {latitude, longitude}
             let mappedCoords: GeoCoordinate[] = rawCoords.map((coord: number[]) => ({
                 latitude: coord[1],
                 longitude: coord[0]
             }));
 
-            // Decimate (simplify) the polygon to reduce rendering load
+            // Упрощение полигона для уменьшения нагрузки на рендеринг
             if (mappedCoords.length > maxPoints) {
                 const step = Math.ceil(mappedCoords.length / maxPoints);
                 const decimated = [];
                 for (let i = 0; i < mappedCoords.length; i += step) {
                     decimated.push(mappedCoords[i]);
                 }
-                // Ensure polygon is closed
+                // Обеспечиваем замкнутость полигона
                 if (decimated.length > 0) {
                     decimated.push(decimated[0]);
                 }
@@ -166,7 +163,7 @@ export async function fetchCityBoundary(cityName: string, maxPoints: number = 20
                 }
             };
         } catch (fetchError) {
-            // Handle CORS and network errors gracefully
+            // Обработка ошибок CORS и сети
             console.warn(`[Nominatim] Network/CORS error for ${cityName}:`, fetchError);
             return null;
         }

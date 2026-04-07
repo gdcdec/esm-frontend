@@ -17,23 +17,39 @@ interface NotificationsState {
     setEnabled: (enabled: boolean) => void;
     setHasHydrated: (state: boolean) => void;
 
-    /** Fetch all notifications from server */
+    /**
+     * Получение всех уведомлений с сервера
+     */
     fetchNotifications: () => Promise<void>;
-    /** Fetch only the unread count (lightweight) */
+    /**
+     * Получение только количества непрочитанных (легковесный запрос)
+     */
     fetchUnreadCount: () => Promise<void>;
-    /** Mark a single notification as read (server + local) */
+    /**
+     * Отметка уведомления как прочитанного (сервер + локально)
+     */
     markAsRead: (id: number) => void;
-    /** Mark all notifications as read (server + local) */
+    /**
+     * Отметка всех уведомлений как прочитанных (сервер + локально)
+     */
     markAllAsRead: () => void;
 
-    /** Start polling for unread count every 60s */
+    /**
+     * Запуск опроса непрочитанных каждые 60 секунд
+     */
     startPolling: () => void;
-    /** Stop polling */
+    /**
+     * Остановка опроса
+     */
     stopPolling: () => void;
 
-    /** Push notification permissions */
+    /**
+     * Разрешения для push-уведомлений
+     */
     requestPushPermissions: () => Promise<boolean>;
-    /** Schedule a local push notification */
+    /**
+     * Локальное push-уведомление
+     */
     scheduleLocalNotification: (title: string, body: string) => Promise<void>;
 }
 
@@ -65,7 +81,7 @@ export const useNotificationsStore = create<NotificationsState>()(
                     const newNotifications = response.notifications;
                     const oldNotifications = get().notifications;
 
-                    // Detect truly new unread notifications to trigger local push
+                    // Обнаружение новых непрочитанных уведомлений для push
                     if (Platform.OS !== 'web' && oldNotifications.length > 0) {
                         const oldIds = new Set(oldNotifications.map((n) => n.id));
                         const brandNew = newNotifications.filter(
@@ -95,12 +111,12 @@ export const useNotificationsStore = create<NotificationsState>()(
                     const count = await notificationsService.getUnreadCount();
                     set({ unreadCount: count });
                 } catch (error) {
-                    // Silently fail — we'll retry on next poll
+                    // Игнорируем — повторим при следующем опросе
                 }
             },
 
             markAsRead: async (id) => {
-                // Optimistic local update
+                // Оптимистичное локальное обновление
                 set((state) => ({
                     notifications: state.notifications.map((n) =>
                         n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n
@@ -112,13 +128,13 @@ export const useNotificationsStore = create<NotificationsState>()(
                     await notificationsService.markAsRead(id);
                 } catch (error) {
                     console.warn('Failed to mark notification as read:', error);
-                    // Revert on error — refetch
+                    // Откат при ошибке — перезагрузка
                     get().fetchNotifications();
                 }
             },
 
             markAllAsRead: async () => {
-                // Optimistic local update
+                // Оптимистичное локальное обновление
                 set((state) => ({
                     notifications: state.notifications.map((n) => ({
                         ...n,
@@ -138,14 +154,14 @@ export const useNotificationsStore = create<NotificationsState>()(
 
             startPolling: () => {
                 const existing = get()._pollingInterval;
-                if (existing) return; // already polling
+                if (existing) return; // уже запущено
 
-                // Initial fetch
+                // Начальный запрос
                 get().fetchUnreadCount();
 
                 const interval = setInterval(() => {
                     get().fetchUnreadCount();
-                }, 60_000); // 60 seconds
+                }, 60_000); // 60 секунд
 
                 set({ _pollingInterval: interval });
             },
@@ -186,7 +202,8 @@ export const useNotificationsStore = create<NotificationsState>()(
                             sound: true,
                             priority: Notifications.AndroidNotificationPriority.HIGH,
                         },
-                        trigger: null, // Show immediately
+                        // Показать сразу
+            trigger: null,
                     });
                 } catch (error) {
                     console.warn('Failed to schedule notification:', error);
@@ -208,7 +225,7 @@ export const useNotificationsStore = create<NotificationsState>()(
     )
 );
 
-// Configure Expo notification handler
+// Настройка обработчика уведомлений Expo
 if (Platform.OS !== 'web') {
     Notifications.setNotificationHandler({
         handleNotification: async () => ({

@@ -19,7 +19,7 @@ export const addressService = {
             const data = await res.json();
 
             return {
-                in_working_area: true, // Always true or map bounding handles it
+                in_working_area: true,
                 address: data.display_name || 'Неизвестный адрес',
                 latitude: lat,
                 longitude: lon,
@@ -29,7 +29,7 @@ export const addressService = {
             };
         } catch (error) {
             console.warn('Nominatim reverse error:', error);
-            // Fallback to old proxy if nominatim fails to avoid breaking
+            // Запасной вариант через прокси при ошибке Nominatim
             const { data } = await api.post<AddressReverseResponse>(
                 '/address/reverse/',
                 { lat, lon }

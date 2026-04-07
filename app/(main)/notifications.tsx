@@ -15,11 +15,10 @@ import {
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Platform,
     ScrollView,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -116,7 +115,7 @@ export default function NotificationsScreen() {
 
     const [filter, setFilter] = useState<'all' | 'unread'>('unread');
 
-    // Fetch full notifications when screen mounts
+    // Получение всех уведомлений при монтировании экрана
     useEffect(() => {
         fetchNotifications();
     }, [fetchNotifications]);
@@ -126,9 +125,9 @@ export default function NotificationsScreen() {
             markAsRead(notification.id);
         }
 
-        // Navigate to linked content if available
+        // Переход по ссылке если она есть
         if (notification.link) {
-            // If link looks like a post ID, navigate to profile with openReportId
+            // Если ссылка выглядит как ID поста, переходим в профиль с openReportId
             const postIdMatch = notification.link.match(/\/posts\/(\d+)/);
             if (postIdMatch) {
                 router.push({
@@ -139,7 +138,7 @@ export default function NotificationsScreen() {
             }
         }
 
-        // Also check metadata for post_id
+        // Также проверяем metadata для post_id
         if (notification.metadata?.post_id) {
             router.push({
                 pathname: '/(main)/profile',

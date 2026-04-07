@@ -1,11 +1,5 @@
 /**
- * Centralized status mapping for reports
- * Matches backend STATUS_CHOICES:
- * - draft → Черновик
- * - published → Опубликован
- * - archived → В архиве
- * - check → На рассмотрении
- * - banned → Забанен
+ * Централизованное отображение статусов жалоб
  */
 
 import { ReportStatus } from '@/src/types';
@@ -45,19 +39,19 @@ export const STATUS_CONFIG: Record<ReportStatus, StatusConfig> = {
 };
 
 /**
- * Get status configuration by status value
- * Supports both code format (e.g., 'published') and display format (e.g., 'Опубликован')
- * Returns default (check) if status is invalid
+ * Получение конфигурации статуса по значению
+ * Поддерживает коды (например, 'published') и названия (например, 'Опубликован')
+ * Возвращает значение по умолчанию (check) при некорректном статусе
  */
 export function getStatusConfig(status: string | undefined | null): StatusConfig {
     const rawStatus = (status || '').toString().toLowerCase().trim();
 
-    // Direct lookup for codes (draft, published, etc.)
+    // Поиск по коду (draft, published и т.д.)
     if (STATUS_CONFIG[rawStatus as ReportStatus]) {
         return STATUS_CONFIG[rawStatus as ReportStatus];
     }
 
-    // Map display names to codes (for when API returns display names)
+    // Сопоставление названий с кодами (когда API возвращает названия)
     const displayToCode: Record<string, ReportStatus> = {
         'черновик': 'draft',
         'опубликован': 'published',

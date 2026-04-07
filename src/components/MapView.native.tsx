@@ -62,7 +62,7 @@ const AnimatedFogOverlay = React.memo(function AnimatedFogOverlay({ isDark, city
 
         const centerLng = cityBoundary?.center?.longitude ?? DEFAULT_REGION.longitude;
 
-        // Regional polygon coords to avoid native map crashes, large enough to cover the camera bounds
+        // Региональные координаты полигона для предотвращения падений нативной карты
 
         return [
 
@@ -80,13 +80,11 @@ const AnimatedFogOverlay = React.memo(function AnimatedFogOverlay({ isDark, city
 
 
 
-    // Generate fluffy polygon applying to the REAL city string bounds or fallback if fetch fails
-
     const holeConfig = React.useMemo(() => {
 
         if (!cityBoundary) {
 
-            // Fallback to CCW circle if nominatim fails
+            // Запасной вариант - круг при ошибке получения границ
 
             return generateCloudyHole(
 
@@ -104,9 +102,7 @@ const AnimatedFogOverlay = React.memo(function AnimatedFogOverlay({ isDark, city
 
 
 
-        // Pass the OSM boundary array through the Chaikin curve smoothing algorithm
-
-        // 4 iterations will turn a 200-point jagged boundary into a perfectly smooth blob
+        // Сглаживание границы города алгоритмом Chaikin'a
 
         return generateCloudyPolygon(cityBoundary.coords, 4);
 
@@ -114,7 +110,7 @@ const AnimatedFogOverlay = React.memo(function AnimatedFogOverlay({ isDark, city
 
 
 
-    // Solid fog colors
+    // Цвет тумана
 
     const fogColorHex = isDark ? '#111827' : '#6B7280';
 
@@ -170,7 +166,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
 
 
-    // Fetch the real OSM boundaries of the user's city dynamically
+        // Загрузка реальных границ города из OSM
 
     useEffect(() => {
 
@@ -180,7 +176,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                 setCityBoundary(data);
 
-                // Center map to the true centroid of the new polygon
+                // Центрирование карты на геометрическом центре полигона
 
                 mapRef.current?.animateToRegion({
 
@@ -260,7 +256,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
 
 
-    // Group reports by coordinates for clustering
+    // Кластеризация жалоб по координатам
 
     const clusters = React.useMemo(() => {
 
@@ -282,10 +278,6 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
 
 
-    // Lock camera bounds so user cannot pan outside the Fog polygon natively
-
-    // We update this via ref whenever the configuration changes.
-
     useEffect(() => {
 
         if (!mapRef.current) return;
@@ -294,7 +286,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
         if (visibilityArea) {
 
-            // Calculate the true geometric centroid of the city to apply accurate camera bounds
+            // Вычисление центра города для ограничения камеры
 
             let centerLat = initialRegion.latitude;
 
@@ -314,18 +306,12 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
             mapRef.current.setMapBoundaries(
 
-                { latitude: centerLat + 2.0, longitude: centerLng + 3.0 }, // NorthEast
-
-                { latitude: centerLat - 2.0, longitude: centerLng - 3.0 }  // SouthWest
+                { latitude: centerLat + 2.0, longitude: centerLng + 3.0 },
+                { latitude: centerLat - 2.0, longitude: centerLng - 3.0 }
 
             );
 
         } else {
-
-            // Unlock bounding box completely if visibilityArea is disabled
-
-            // Passing null allows the native map engine to clear constraints completely without math freeze
-
             (mapRef.current as any)?.setMapBoundaries(null, null);
 
         }
@@ -548,7 +534,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
             >
 
-                {/* OpenStreetMap tiles via CartoDB CDN (avoids OSM 403 block) почему-то меня блокирует osm заменил https://tile.openstreetmap.org/{z}/{x}/{y}.png на это, надо думать*/}
+                {/* OpenStreetMap через CartoDB CDN */}
 
                 <UrlTile
 
@@ -590,7 +576,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
                             onPress={() => onMarkerPress?.(cluster)}
 
-                            tracksViewChanges={false} // Improves performance by not tracking view redraws for static markers
+                            tracksViewChanges={false}
 
                         />
 

@@ -22,7 +22,7 @@ export function ReportDetail({
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const getById = useReportsStore((s) => s.getById);
 
-    // Fetch full report details (with description, photos) when opened
+    // Загрузка полных данных жалобы (с описанием и фото) при открытии
     useEffect(() => {
         let cancelled = false;
         if (!initialReport.description && initialReport.id) {

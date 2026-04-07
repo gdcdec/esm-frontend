@@ -7,7 +7,7 @@ export function generateCloudyHole(
     const points = [];
 
     for (let i = 0; i < numPoints; i++) {
-        const theta = (Math.PI * 2 * (numPoints - i)) / numPoints; // Go backwards for CCW
+        const theta = (Math.PI * 2 * (numPoints - i)) / numPoints; // против часовой стрелки
 
         const aspect = Math.cos(centerLat * (Math.PI / 180));
 

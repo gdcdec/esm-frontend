@@ -64,12 +64,12 @@ interface PasswordResetConfirmResponse {
     message: string;
 }
 
-// ── Auth service ────────────────────────────────────────────────
+// ── Сервис авторизации ──────────────────────────────────────────
 
 export const authService = {
     /**
-     * Login — POST /auth/login/
-     * Username field accepts both username and email
+     * Авторизация — POST /auth/login/
+     * Поле username принимает как логин, так и email
      */
     login: async (username: string, password: string): Promise<LoginResponse> => {
         const { data } = await api.post<LoginResponse>('/auth/login/', {
@@ -80,7 +80,7 @@ export const authService = {
     },
 
     /**
-     * Register — POST /auth/register/
+     * Регистрация — POST /auth/register/
      */
     register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
         const { data } = await api.post<RegisterResponse>('/auth/register/', payload);
@@ -88,15 +88,15 @@ export const authService = {
     },
 
     /**
-     * Logout — POST /auth/logout/
+     * Выход — POST /auth/logout/
      */
     logout: async (): Promise<void> => {
         await api.post('/auth/logout/');
     },
 
     /**
-     * Password reset step 1 — POST /auth/password-reset/request/
-     * Sends a confirmation code to the user's email
+     * Сброс пароля шаг 1 — POST /auth/password-reset/request/
+     * Отправляет код подтверждения на email пользователя
      */
     requestPasswordReset: async (email: string): Promise<PasswordResetRequestResponse> => {
         const { data } = await api.post<PasswordResetRequestResponse>(
@@ -107,8 +107,8 @@ export const authService = {
     },
 
     /**
-     * Password reset step 2 — POST /auth/password-reset/verify/
-     * Verifies the code from the email
+     * Сброс пароля шаг 2 — POST /auth/password-reset/verify/
+     * Проверяет код из email
      */
     verifyResetCode: async (email: string, code: string): Promise<PasswordResetVerifyResponse> => {
         const { data } = await api.post<PasswordResetVerifyResponse>(
@@ -119,8 +119,8 @@ export const authService = {
     },
 
     /**
-     * Password reset step 3 — POST /auth/password-reset/confirm/
-     * Sets the new password
+     * Сброс пароля шаг 3 — POST /auth/password-reset/confirm/
+     * Устанавливает новый пароль
      */
     confirmPasswordReset: async (
         email: string,
@@ -135,7 +135,7 @@ export const authService = {
     },
 
     /**
-     * Get current user profile — GET /users/me/
+     * Получение профиля текущего пользователя — GET /users/me/
      */
     getCurrentUser: async (): Promise<User> => {
         const { data } = await api.get<User>('/users/me/');
@@ -143,7 +143,7 @@ export const authService = {
     },
 
     /**
-     * Update current user profile — PATCH /users/me/
+     * Обновление профиля текущего пользователя — PATCH /users/me/
      */
     updateCurrentUser: async (updates: Partial<User>): Promise<User> => {
         const { data } = await api.patch<User>('/users/me/', updates);

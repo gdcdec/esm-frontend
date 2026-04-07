@@ -17,7 +17,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Inline тип для DraftReport если импорт не работает
+// Встроенный тип для DraftReport если импорт не работает
 type DraftReportType = DraftReport;
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -43,7 +43,7 @@ export default function ProfileScreen() {
     const [editableLetterText, setEditableLetterText] = useState('');
     const reportsPerPage = 5;
 
-    // Drafts state
+    // Состояние черновиков
     const drafts = useReportsStore((s) => s.drafts);
     const removeDraft = useReportsStore((s) => s.removeDraft);
     const [activeTab, setActiveTab] = useState<'reports' | 'drafts'>('reports');
@@ -52,18 +52,18 @@ export default function ProfileScreen() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [currentDraftsPage, setCurrentDraftsPage] = useState(1);
 
-    // Combine local drafts with server drafts (from myReports)
+    // Объединяем локальные и серверные черновики (из myReports)
     const serverDrafts = myReports.filter(r => r.status === 'draft');
     const allDrafts = [...drafts, ...serverDrafts];
 
-    // Drafts pagination
+    // Пагинация черновиков
     const totalDraftsPages = Math.ceil(allDrafts.length / reportsPerPage);
     const indexOfLastDraft = currentDraftsPage * reportsPerPage;
     const indexOfFirstDraft = indexOfLastDraft - reportsPerPage;
     const currentDrafts = allDrafts.slice(indexOfFirstDraft, indexOfLastDraft);
 
-    // Use a ref to access latest myReports without adding it to useCallback dependencies
-    // This prevents the infinite fetching loop inside useFocusEffect
+    // Используем ref для доступа к актуальным myReports без добавления в зависимости useCallback
+    // Это предотвращает бесконечный цикл загрузки внутри useFocusEffect
     const myReportsRef = React.useRef(myReports);
     React.useEffect(() => {
         myReportsRef.current = myReports;
@@ -94,7 +94,7 @@ export default function ProfileScreen() {
 
         try {
             // Тихо получаем полные данные напрямую без лишних оберток
-            // reportsService.getById гарантированно отдает свежие данные с фото
+            // reportsService.getById гарантированно возвращает свежие данные с фото
             const freshReport = await reportsService.getById(reportId);
 
             // Плавно обновляем окно, только если оно всё ещё открыто на этой заявке
@@ -131,7 +131,7 @@ export default function ProfileScreen() {
         const { report: reportInfo } = exportPreview;
         const letterText = editableLetterText;
 
-        // Collect all photo URLs
+        // Собираем все URL фото
         const allPhotos: string[] = [];
         if (reportInfo.preview_photo) allPhotos.push(reportInfo.preview_photo);
         if (reportInfo.photos && reportInfo.photos.length > 0) {
@@ -202,7 +202,7 @@ export default function ProfileScreen() {
     useFocusEffect(
         useCallback(() => {
             fetchMyReports();
-            // Fetch unread count from server
+            // Получение счетчика непрочитанных с сервера
             fetchUnreadCount();
             // Запрашиваем разрешения на push-уведомления
             if (Platform.OS !== 'web') {
@@ -214,7 +214,7 @@ export default function ProfileScreen() {
     // Расширенная система статистики профиля
     // XP начисляется за разные действия: публикация (50), рассмотрение (30), решенная (100)
     const calculateStats = () => {
-        // Exclude draft reports from stats
+        // Исключаем черновики из статистики
         const nonDraftReports = myReports.filter(r => r.status !== 'draft');
         const total = nonDraftReports.length;
         const published = nonDraftReports.filter(r => (r.status || '').toString().toLowerCase() === 'published').length;
@@ -356,7 +356,7 @@ export default function ProfileScreen() {
         });
     };
 
-    // Draft handlers
+    // Обработчики черновиков
     const handleEditDraft = (draft: DraftReportType) => {
         setSelectedDraft(null);
         router.push({
@@ -382,7 +382,7 @@ export default function ProfileScreen() {
         }
     };
 
-    // Sync drafts handler
+    // Обработчик синхронизации черновиков
     const handleSyncDrafts = async () => {
         if (drafts.length === 0) return;
         setIsSyncing(true);
@@ -536,7 +536,7 @@ export default function ProfileScreen() {
                         <View className="px-6 pb-8">
                             <View className="w-full max-w-sm self-center">
                                 {activeTab === 'reports' ? (
-                                    // Reports list
+                                    // Список отчетов
                                     isLoading ? (
                                         <View className="py-8 items-center">
                                             <ActivityIndicator size="small" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
@@ -586,7 +586,7 @@ export default function ProfileScreen() {
                                         })
                                     )
                                 ) : (
-                                    // Drafts list
+                                    // Список черновиков
                                     <>
                                         {/* Sync button - only for local drafts */}
                                         {drafts.length > 0 && (
@@ -618,7 +618,7 @@ export default function ProfileScreen() {
                                             </View>
                                         ) : (
                                             currentDrafts.map((d) => {
-                                                // Check if it's a server draft (Report) or local draft (DraftReport)
+                                                // Проверяем, серверный это черновик (Report) или локальный (DraftReport)
                                                 const isServerDraft = 'id' in d && !('localId' in d);
                                                 const cat = useRubricsStore.getState().getRubric(
                                                     isServerDraft ? (d as Report).rubric_name : (d as DraftReportType).rubric
@@ -686,9 +686,9 @@ export default function ProfileScreen() {
                             </View>
                         </View>
 
-                        {/* Pagination */}
+                        {/* Пагинация */}
                         {activeTab === 'reports' ? (
-                            // Reports pagination
+                            // Пагинация отчетов
                             !isLoading && totalReports > 0 && totalPages > 1 && (
                                 <View className="px-6 pb-4">
                                     <View className="w-full max-w-sm self-center">
@@ -729,7 +729,7 @@ export default function ProfileScreen() {
                                 </View>
                             )
                         ) : (
-                            // Drafts pagination
+                            // Пагинация черновиков
                             allDrafts.length > 0 && totalDraftsPages > 1 && (
                                 <View className="px-6 pb-4">
                                     <View className="w-full max-w-sm self-center">

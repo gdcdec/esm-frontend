@@ -88,7 +88,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(
       setMapError('Не удалось загрузить карту. Проверьте подключение к интернету.');
     };
 
-    // Center map on city when city changes (regardless of visibilityArea setting)
+    // Центрирование карты при смене города (вне зависимости от настройки области видимости)
     useEffect(() => {
       if (cityBoundary?.center) {
         mapRef.current?.flyTo({

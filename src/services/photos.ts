@@ -12,7 +12,7 @@ export const photosService = {
 
         for (const photo of photos) {
             if (Platform.OS === 'web') {
-                // Web: convert data URI / object URL to File
+                // Web: конвертация data URI / object URL в File
                 const response = await fetch(photo.uri);
                 const blob = await response.blob();
                 const file = new File(
@@ -22,7 +22,7 @@ export const photosService = {
                 );
                 formData.append('photos', file);
             } else {
-                // Native (iOS/Android): RN FormData accepts {uri, name, type}
+                // Native (iOS/Android): FormData принимает {uri, name, type}
                 formData.append('photos', {
                     uri: photo.uri,
                     name: photo.name || 'photo.jpg',

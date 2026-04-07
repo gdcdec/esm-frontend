@@ -1,6 +1,6 @@
-import { AddressSearchResult } from '@/src/types';
 import { useThemeStore } from '@/src/store/themeStore';
-import { MapPin, Search, Clock, X } from 'lucide-react-native';
+import { AddressSearchResult } from '@/src/types';
+import { Clock, MapPin, Search } from 'lucide-react-native';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
@@ -134,7 +134,7 @@ export function SearchDropdown({
     );
   }
 
-  // mobile variant
+  // мобильный вариант
   return (
     <>
       {query.length >= 3 && (isSearching || suggestions.length > 0) ? (

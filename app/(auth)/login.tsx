@@ -26,14 +26,14 @@ export default function LoginScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Modals
+    // Модальные окна
     const [showCityModal, setShowCityModal] = useState(false);
     const [citySearchQuery, setCitySearchQuery] = useState('');
     const CITIES = ['Самара', 'Москва', 'Санкт-Петербург', 'Владивосток', 'Казань', 'Екатеринбург', 'Нижний Новгород', 'Новосибирск'];
 
     const filteredCities = CITIES.filter(c => c.toLowerCase().includes(citySearchQuery.toLowerCase()));
 
-    // Password validation
+    // Валидация пароля
     const passwordMinLength = password.length >= 8;
     const passwordHasUpper = /[A-ZА-ЯЁ]/.test(password);
     const passwordHasLower = /[a-zа-яё]/.test(password);
@@ -47,14 +47,14 @@ export default function LoginScreen() {
         passwordHasNumber &&
         passwordHasSpecial;
 
-    // Phone validation
+    // Валидация телефона
     const digitsOnly = phoneNumber.replace(/\D/g, '');
     const isPhoneValid = digitsOnly.length === 11 && digitsOnly.startsWith('7');
 
     const login = useAuthStore((state) => state.login);
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
-    // Animations
+    // Анимации
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const logoScale = useRef(new Animated.Value(0.8)).current;

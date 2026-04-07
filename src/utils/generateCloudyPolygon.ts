@@ -1,12 +1,11 @@
 import { GeoCoordinate } from './fetchCityBoundary';
 
 /**
- * Chaikin's Corner-Cutting Algorithm to smooth out a jagged polygon.
- * This takes the raw city boundary (which can be blocky, especially after decimation)
- * and turns it into a perfectly smooth, flowing continuous curve.
+ * Алгоритм сглаживания полигона Chaikin'a
+ * Преобразует угловатую границу города в плавную кривую
  * 
- * @param baseBoundary The raw coordinates making up the city polygon hole.
- * @param iterations The number of smoothing passes (default 4 is very smooth).
+ * @param baseBoundary Исходные координаты полигона города
+ * @param iterations Количество проходов сглаживания (по умолчанию 4)
  */
 export function generateCloudyPolygon(
     baseBoundary: GeoCoordinate[],
@@ -16,8 +15,8 @@ export function generateCloudyPolygon(
 
     let result = baseBoundary;
 
-    // Chaikin's algorithm: for every line segment A->B, replace it with two points
-    // at 25% and 75% along the segment. Repeating this physically rounds off all corners.
+    // Алгоритм Chaikin'a: каждый отрезок A->B заменяется двумя точками на 25% и 75%
+    // Повторение сглаживает все углы
     for (let iter = 0; iter < iterations; iter++) {
         const smoothed: GeoCoordinate[] = [];
         const len = result.length;
@@ -26,12 +25,12 @@ export function generateCloudyPolygon(
             const p1 = result[i];
             const p2 = result[(i + 1) % len];
 
-            // Point at 25% distance from p1 to p2
+            // Точка на 25% от p1 к p2
             smoothed.push({
                 latitude: p1.latitude * 0.75 + p2.latitude * 0.25,
                 longitude: p1.longitude * 0.75 + p2.longitude * 0.25,
             });
-            // Point at 75% distance from p1 to p2
+            // Точка на 75% от p1 к p2
             smoothed.push({
                 latitude: p1.latitude * 0.25 + p2.latitude * 0.75,
                 longitude: p1.longitude * 0.25 + p2.longitude * 0.75,

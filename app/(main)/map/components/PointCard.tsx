@@ -1,6 +1,6 @@
-import { MapViewRef } from '@/src/types';
-import { useThemeStore } from '@/src/store/themeStore';
 import { Button } from '@/src/components/ui';
+import { useThemeStore } from '@/src/store/themeStore';
+import { MapViewRef } from '@/src/types';
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
 import React from 'react';
@@ -118,7 +118,7 @@ export function PointCard({ coordinate, address, onClose, variant = 'web' }: Poi
     );
   }
 
-  // native variant
+  // нативный вариант
   return (
     <View className="absolute bottom-0 w-full p-4" style={{ zIndex: 30 }}>
       <View className={`p-5 rounded-3xl shadow-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>

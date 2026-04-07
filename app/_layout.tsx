@@ -35,13 +35,13 @@ export default function RootLayout() {
     setColorScheme(isDarkMode ? 'dark' : 'light');
   }, [isDarkMode, setColorScheme]);
 
-  // Load rubrics and sync pending drafts on startup
+  // Загрузка рубрик и синхронизация черновиков при старте
   useEffect(() => {
     useRubricsStore.getState().fetchRubrics();
     useReportsStore.getState().syncDrafts();
   }, []);
 
-  // Start / stop notification polling based on auth state
+  // Запуск/остановка опроса уведомлений в зависимости от состояния авторизации
   useEffect(() => {
     if (isAuthenticated && _hasHydrated) {
       useNotificationsStore.getState().startPolling();
@@ -53,21 +53,21 @@ export default function RootLayout() {
     };
   }, [isAuthenticated, _hasHydrated]);
 
-    // Auth guard - redirect based on authentication state
+    // Защита авторизации — перенаправление в зависимости от состояния
     useEffect(() => {
-        // Wait for auth state and navigation to be ready
+        // Ждем готовности состояния авторизации и навигации
         if (!_hasHydrated || !segments[0]) return;
 
         const inAuthGroup = segments[0] === '(auth)';
         const isRulesPage = (segments as any[]).includes('rules');
 
-        // Defer navigation to after render cycle to ensure Root Layout is mounted
+        // Откладываем навигацию до следующего цикла рендера для монтирования Root Layout
         const rafId = requestAnimationFrame(() => {
             if (!isAuthenticated && !inAuthGroup && !isRulesPage) {
-                // Not authenticated, redirect to login
+                // Не авторизован — перенаправляем на вход
                 router.replace('/(auth)/login');
             } else if (isAuthenticated && inAuthGroup && !isRulesPage) {
-                // Authenticated but on auth page (and not rules), redirect to map
+                // Авторизован, но на странице входа (не правила) — перенаправляем на карту
                 router.replace('/(main)/map');
             }
         });
@@ -75,7 +75,7 @@ export default function RootLayout() {
         return () => cancelAnimationFrame(rafId);
     }, [isAuthenticated, _hasHydrated, segments, router]);
 
-  // Show nothing while checking auth state to prevent flash
+  // Ничего не показываем пока проверяем авторизацию (чтобы не было мигания)
   if (!_hasHydrated) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>

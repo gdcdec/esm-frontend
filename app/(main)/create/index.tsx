@@ -47,7 +47,7 @@ export default function CreateReportScreen() {
   };
 
   const handleWebPhotoPick = () => {
-    // Web photo picking is handled differently
+    // Выбор фото на web обрабатывается иначе
     formActions.pickFromGallery();
   };
 

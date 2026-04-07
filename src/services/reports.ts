@@ -3,9 +3,9 @@ import api from './api';
 
 export const reportsService = {
     /**
-     * Get all published posts.
+     * Получение всех опубликованных постов.
      * GET /api/posts/
-     * Optional filters: ?address=...  ?rubric=...
+     * Фильтры: ?address=... ?rubric=...
      */
     getAll: async (filters?: {
         rubrics?: string[];
@@ -18,7 +18,7 @@ export const reportsService = {
         status?: string;
         ordering?: string;
     }): Promise<Report[]> => {
-        // Clean up parameters: remove undefined/null, handle rubrics
+        // Очистка параметров: удаляем undefined/null, обрабатываем рубрики
         const cleanParams: Record<string, any> = {};
 
         if (filters) {
@@ -40,22 +40,23 @@ export const reportsService = {
     },
 
     /**
-     * Get a single post by ID.
+     * Получение поста по ID.
      */
-    // Fetch report details by ID
     getById: async (id: number): Promise<Report> => {
         const response = await api.get(`/posts/${id}/`);
         return response.data;
     },
 
-    // Export report document text
+    /**
+     * Экспорт документа жалобы в текстовом формате.
+     */
     export: async (id: number): Promise<{ letter: string; message: string }> => {
         const response = await api.get(`/posts/${id}/?doc=1`);
         return response.data;
     },
 
     /**
-     * Create a new post.
+     * Создание нового поста.
      * POST /api/posts/
      */
     create: async (payload: CreateReportPayload): Promise<Report> => {
@@ -64,7 +65,7 @@ export const reportsService = {
     },
 
     /**
-     * Update an existing post.
+     * Обновление существующего поста.
      * PUT /api/posts/<id>/
      */
     update: async (
@@ -81,7 +82,7 @@ export const reportsService = {
     */
 
     /**
-     * Delete a post.
+     * Удаление поста.
      * DELETE /api/posts/<id>/
      */
     delete: async (id: number): Promise<void> => {
@@ -89,7 +90,7 @@ export const reportsService = {
     },
 
     /**
-     * Get posts for a specific user.
+     * Получение постов конкретного пользователя.
      * GET /api/users/<user_id>/posts/
      */
     getByUser: async (userId: number, filters?: {
@@ -105,7 +106,7 @@ export const reportsService = {
     },
 
     /**
-     * Get current user's own posts (including drafts).
+     * Получение своих постов (включая черновики).
      * GET /api/posts/?self=1
      */
     getMine: async (): Promise<Report[]> => {

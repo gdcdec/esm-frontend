@@ -21,7 +21,7 @@ export default function ForgotPasswordScreen() {
 
     const isDarkMode = useThemeStore((s) => s.isDarkMode);
 
-    // Animations
+    // Анимации
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const logoScale = useRef(new Animated.Value(0.8)).current;
@@ -297,7 +297,7 @@ export default function ForgotPasswordScreen() {
                         ) : null}
 
                         {!isCodeSent ? (
-                            // Step 1: Enter email
+                            // Шаг 1: Ввод email
                             <View>
                                 <Text style={{
                                     fontSize: 14, fontWeight: '600',
@@ -344,7 +344,7 @@ export default function ForgotPasswordScreen() {
                                 </View>
                             </View>
                         ) : !isCodeVerified ? (
-                            // Step 2: Enter verification code
+                            // Шаг 2: Ввод кода подтверждения
                             <View>
                                 <Text style={{
                                     fontSize: 14, fontWeight: '600',
@@ -402,7 +402,7 @@ export default function ForgotPasswordScreen() {
                                 </View>
                             </View>
                         ) : (
-                            // Step 3: Set new password
+                            // Шаг 3: Установка нового пароля
                             <View>
                                 <Text style={{
                                     fontSize: 14, fontWeight: '600',

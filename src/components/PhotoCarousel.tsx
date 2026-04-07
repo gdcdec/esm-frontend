@@ -68,7 +68,7 @@ export function PhotoCarousel({
         };
 
         if (selectedPhoto) {
-            window.addEventListener('keydown', handleKeyDown, true); // capture phase
+            window.addEventListener('keydown', handleKeyDown, true); // фаза захвата
             return () => window.removeEventListener('keydown', handleKeyDown, true);
         }
     }, [selectedPhoto]);
