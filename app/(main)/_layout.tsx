@@ -8,9 +8,9 @@ export default function MainLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' }
         }}>
-            <Stack.Screen name="map" />
+            <Stack.Screen name="map/index" />
             <Stack.Screen
-                name="create"
+                name="create/index"
                 options={{
                     animation: 'slide_from_right',
                 }}

@@ -14,10 +14,10 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AddressInput } from './components/AddressInput';
-import { CategorySelector } from './components/CategorySelector';
-import { PhotoUploader } from './components/PhotoUploader';
-import { useReportForm } from './hooks/useReportForm';
+import { AddressInput } from '@/src/components/create-screen/AddressInput';
+import { CategorySelector } from '@/src/components/create-screen/CategorySelector';
+import { PhotoUploader } from '@/src/components/create-screen/PhotoUploader';
+import { useReportForm } from '@/src/hooks/create/useReportForm';
 
 export default function CreateReportScreen() {
   const params = useLocalSearchParams<{ editId?: string; draftId?: string }>();
