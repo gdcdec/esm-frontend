@@ -183,6 +183,10 @@ export function useMapState() {
 
             setSelectedCoord(coordinate);
             setSelectedAddress(null);
+            
+            // Перемещаем камеру к выбранной точке
+            mapRef.current?.goToLocation(coordinate.latitude, coordinate.longitude);
+
             try {
                 const res = await addressService.reverse(coordinate.latitude, coordinate.longitude);
                 const formatted = res.street
@@ -200,6 +204,12 @@ export function useMapState() {
         setSelectedCoord(null);
         setSelectedAddress(null);
         setActiveReports(clusterReports);
+        
+        // Перемещаем камеру к метке
+        if (clusterReports.length > 0) {
+            const first = clusterReports[0];
+            mapRef.current?.goToLocation(first.latitude, first.longitude);
+        }
     }, []);
 
     const handleCloseDetail = useCallback(() => {

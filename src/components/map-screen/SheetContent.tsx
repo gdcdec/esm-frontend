@@ -29,6 +29,7 @@ export function SheetContent({ state, isDarkMode, onCloseDetail, variant = 'web'
 
   const handleReportPress = (report: Report) => {
     state.setActiveReports([report]);
+    state.mapRef.current?.goToLocation(report.latitude, report.longitude);
   };
 
   if (state.singleReport) {

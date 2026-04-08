@@ -11,14 +11,14 @@ import { router } from 'expo-router';
 import { Clock, Locate, MapPin, Minus, Plus, Search, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    BackHandler,
-    FlatList,
-    Keyboard,
-    Platform,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  BackHandler,
+  FlatList,
+  Keyboard,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CityAlert } from './CityAlert';
@@ -136,6 +136,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
             onPress={() => state.mapRef.current?.zoomIn()}
             className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700"
             style={{ elevation: 0 }}
+            activeOpacity={0.7}
           >
             <Plus size={24} color={isDarkMode ? '#F3F4F6' : '#374151'} />
           </TouchableOpacity>
@@ -143,6 +144,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
             onPress={() => state.mapRef.current?.zoomOut()}
             className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700"
             style={{ elevation: 0 }}
+            activeOpacity={0.7}
           >
             <Minus size={24} color={isDarkMode ? '#F3F4F6' : '#374151'} />
           </TouchableOpacity>
@@ -150,6 +152,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
             onPress={state.handleLocate}
             className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full items-center justify-center border border-gray-100 dark:border-gray-700 mt-4"
             style={{ elevation: 0 }}
+            activeOpacity={0.7}
           >
             <Locate size={24} color={isDarkMode ? '#60A5FA' : '#2563EB'} />
           </TouchableOpacity>
@@ -217,8 +220,9 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
       {!state.selectedCoord && (
         <BottomSheet
           ref={bottomSheetRef}
-          index={sheetIndex}
+          index={Math.max(sheetIndex, 0)}
           onChange={(idx) => {
+            if (idx < 0) return;
             setSheetIndex(idx);
             if (idx < 2 && searchFocused) {
               searchInputRef.current?.blur();
@@ -284,7 +288,10 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
                 renderItem={({ item }) => (
                   <ReportCard
                     report={item}
-                    onPress={() => state.setActiveReports([item])}
+                    onPress={() => {
+                      state.setActiveReports([item]);
+                      state.mapRef.current?.goToLocation(item.latitude, item.longitude);
+                    }}
                   />
                 )}
                 showsVerticalScrollIndicator={true}
@@ -376,6 +383,7 @@ export function NativeBottomSheet({ state }: NativeBottomSheetProps) {
                     report={report}
                     onPress={() => {
                       state.setActiveReports([report]);
+                      state.mapRef.current?.goToLocation(report.latitude, report.longitude);
                       if (sheetIndex === 0) {
                         bottomSheetRef.current?.snapToIndex(1);
                       }

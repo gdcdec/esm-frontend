@@ -4,7 +4,7 @@ import { useThemeStore } from '@/src/store/themeStore';
 import { MapViewRef, Report } from '@/src/types';
 import { CityBoundaryData, fetchCityBoundary } from '@/src/utils/fetchCityBoundary';
 import MapLibreGL from '@maplibre/maplibre-react-native';
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -48,7 +48,12 @@ const mapStyle = {
     ],
 };
 
-export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
+const INITIAL_CAMERA_SETTINGS = {
+    centerCoordinate: [DEFAULT_CENTER.longitude, DEFAULT_CENTER.latitude] as [number, number],
+    zoomLevel: 13,
+};
+
+const AppMapViewInner = forwardRef<MapViewRef, MapViewProps>(({
     reports,
     selectedCoordinate,
     onMapPress,
@@ -64,49 +69,74 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
 
     const [cityBoundary, setCityBoundary] = useState<CityBoundaryData | null>(null);
 
+    const onMapPressRef = useRef(onMapPress);
+    const onMarkerPressRef = useRef(onMarkerPress);
+    useEffect(() => {
+        onMapPressRef.current = onMapPress;
+        onMarkerPressRef.current = onMarkerPress;
+    });
+
     // Загрузка реальных границ города из OSM
     useEffect(() => {
         if (city) {
             fetchCityBoundary(city).then(data => {
                 if (data && data.coords.length > 0) {
                     setCityBoundary(data);
-                    cameraRef.current?.setCamera({
-                        centerCoordinate: [data.center.longitude, data.center.latitude],
-                        zoomLevel: 11,
-                        animationDuration: 1000,
-                    });
+                    setFlyTarget({ center: [data.center.longitude, data.center.latitude], zoom: 11, duration: 1000 });
+                    currentZoomRef.current = 11;
                 }
             });
         }
     }, [city]);
 
+    const currentZoomRef = useRef(13);
+    const flyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    const [flyTarget, setFlyTarget] = useState<{
+        center: [number, number];
+        zoom: number;
+        duration: number;
+    } | null>(null);
+
+    useEffect(() => {
+        if (flyTarget) {
+            if (flyTimeoutRef.current) clearTimeout(flyTimeoutRef.current);
+            flyTimeoutRef.current = setTimeout(() => setFlyTarget(null), flyTarget.duration + 200);
+        }
+        return () => {
+            if (flyTimeoutRef.current) clearTimeout(flyTimeoutRef.current);
+        };
+    }, [flyTarget]);
+
+    const center = initialRegion
+        ? { latitude: initialRegion.latitude, longitude: initialRegion.longitude }
+        : DEFAULT_CENTER;
+
     useImperativeHandle(ref, () => ({
-        zoomIn: async () => {
-            const currentZoom = await mapRef.current?.getZoom();
-            if (currentZoom !== undefined) {
-                cameraRef.current?.setCamera({
-                    zoomLevel: Math.min(currentZoom + 1, 22),
-                    animationDuration: 300,
-                });
-            }
+        zoomIn: () => {
+            const newZoom = Math.min(currentZoomRef.current + 1, 22);
+            cameraRef.current?.setCamera({
+                zoomLevel: newZoom,
+                animationDuration: 300,
+                animationMode: 'easeTo',
+            });
+            currentZoomRef.current = newZoom;
         },
-        zoomOut: async () => {
-            const currentZoom = await mapRef.current?.getZoom();
-            if (currentZoom !== undefined) {
-                cameraRef.current?.setCamera({
-                    zoomLevel: Math.max(currentZoom - 1, 0),
-                    animationDuration: 300,
-                });
-            }
+        zoomOut: () => {
+            const minZoom = visibilityArea ? 10 : 0;
+            const newZoom = Math.max(currentZoomRef.current - 1, minZoom);
+            cameraRef.current?.setCamera({
+                zoomLevel: newZoom,
+                animationDuration: 300,
+                animationMode: 'easeTo',
+            });
+            currentZoomRef.current = newZoom;
         },
         goToLocation: (lat: number, lng: number) => {
-            cameraRef.current?.setCamera({
-                centerCoordinate: [lng, lat],
-                zoomLevel: 16,
-                animationDuration: 1000,
-            });
+            setFlyTarget({ center: [lng, lat], zoom: 16, duration: 1000 });
+            currentZoomRef.current = 16;
         },
-    }));
+    }), [visibilityArea]);
 
     // Кластеризация жалоб по координатам
     const clusters = useMemo(() => {
@@ -118,10 +148,6 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         });
         return Object.values(grouped);
     }, [reports]);
-
-    const center = initialRegion
-        ? { latitude: initialRegion.latitude, longitude: initialRegion.longitude }
-        : DEFAULT_CENTER;
 
     const { fogGeoJSON, fogLayerStyle } = useFogLayer({
         cityBoundary,
@@ -139,30 +165,53 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
         return undefined;
     }, [visibilityArea, cityBoundary]);
 
+    const margins = useMemo(() => ({ x: 16, y: Math.max(insets.top, 16) + 16 }), [insets.top]);
+
+    const handleRegionDidChange = useCallback((feature: any) => {
+        const zoom = feature?.properties?.zoomLevel;
+        if (typeof zoom === 'number') {
+            currentZoomRef.current = zoom;
+        }
+    }, []);
+
+    const handlePress = useCallback((feature: any) => {
+        const coords = (feature.geometry as any).coordinates as number[];
+        onMapPressRef.current?.({ latitude: coords[1], longitude: coords[0] });
+    }, []);
+
+    const handleMarkerSelected = useCallback((cluster: Report[]) => {
+        onMarkerPressRef.current?.(cluster);
+    }, []);
+
+    const mapStyleJSON = useMemo(() => JSON.stringify(mapStyle), []);
+
     return (
-        <View style={{ flex: 1, position: 'relative' }}>
+        <View
+            style={{ flex: 1, position: 'relative' }}
+            onTouchStart={() => { if (flyTarget) setFlyTarget(null); }}
+        >
             <MapLibreGL.MapView
+                key={visibilityArea ? 'bounded' : 'unbounded'}
                 ref={mapRef}
                 style={StyleSheet.absoluteFillObject}
-                mapStyle={JSON.stringify(mapStyle)}
+                mapStyle={mapStyleJSON}
                 logoEnabled={false}
                 attributionEnabled={false}
                 compassEnabled={true}
                 compassViewPosition={1}
-                compassViewMargins={{ x: 16, y: Math.max(insets.top, 16) + 16 }}
-                onPress={(feature) => {
-                    const coords = (feature.geometry as any).coordinates as number[];
-                    onMapPress?.({ latitude: coords[1], longitude: coords[0] });
-                }}
+                compassViewMargins={margins}
+                onRegionDidChange={handleRegionDidChange}
+                onPress={handlePress}
             >
                 <MapLibreGL.Camera
                     ref={cameraRef}
-                    defaultSettings={{
-                        centerCoordinate: [center.longitude, center.latitude],
-                        zoomLevel: 13,
-                    }}
+                    defaultSettings={INITIAL_CAMERA_SETTINGS}
+                    centerCoordinate={flyTarget?.center}
+                    zoomLevel={flyTarget?.zoom}
+                    animationDuration={flyTarget?.duration}
+                    animationMode={flyTarget ? 'easeTo' : undefined}
                     maxBounds={maxBounds}
-                    minZoomLevel={visibilityArea ? 10 : undefined}
+                    minZoomLevel={visibilityArea ? 10 : 0}
                 />
 
                 <MapLibreGL.UserLocation showsUserHeadingIndicator />
@@ -190,7 +239,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                             key={`marker-${main.latitude}-${main.longitude}`}
                             id={`marker-${main.latitude}-${main.longitude}`}
                             coordinate={[main.longitude, main.latitude]}
-                            onSelected={() => onMarkerPress?.(cluster)}
+                            onSelected={() => handleMarkerSelected(cluster)}
                         >
                             <View style={[styles.markerContainer, { backgroundColor: color }]}>
                                 {isMulti && (
@@ -214,6 +263,14 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(({
                 )}
             </MapLibreGL.MapView>
         </View>
+    );
+});
+
+export const AppMapView = React.memo(AppMapViewInner, (prev, next) => {
+    return (
+        prev.reports === next.reports &&
+        prev.selectedCoordinate === next.selectedCoordinate &&
+        prev.initialRegion === next.initialRegion
     );
 });
 
