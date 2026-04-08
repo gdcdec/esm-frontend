@@ -517,17 +517,35 @@ export default function ProfileScreen() {
                             <View className="w-full max-w-sm self-center flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
                                 <TouchableOpacity
                                     onPress={() => setActiveTab('reports')}
-                                    className={`flex-1 py-2 rounded-lg ${activeTab === 'reports' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+                                    activeOpacity={0.7}
+                                    className="flex-1 py-2 rounded-lg items-center justify-center"
+                                    style={activeTab === 'reports' ? {
+                                        backgroundColor: isDarkMode ? '#374151' : '#FFFFFF',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.05,
+                                        shadowRadius: 2,
+                                        elevation: 1,
+                                    } : undefined}
                                 >
-                                    <Text className={`text-sm font-medium text-center ${activeTab === 'reports' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    <Text style={{ color: activeTab === 'reports' ? (isDarkMode ? '#60A5FA' : '#2563EB') : (isDarkMode ? '#9CA3AF' : '#6B7280'), fontSize: 14, fontWeight: '500', textAlign: 'center' }}>
                                         Заявки ({totalReports})
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => setActiveTab('drafts')}
-                                    className={`flex-1 py-2 rounded-lg ${activeTab === 'drafts' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+                                    activeOpacity={0.7}
+                                    className="flex-1 py-2 rounded-lg items-center justify-center"
+                                    style={activeTab === 'drafts' ? {
+                                        backgroundColor: isDarkMode ? '#374151' : '#FFFFFF',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.05,
+                                        shadowRadius: 2,
+                                        elevation: 1,
+                                    } : undefined}
                                 >
-                                    <Text className={`text-sm font-medium text-center ${activeTab === 'drafts' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    <Text style={{ color: activeTab === 'drafts' ? (isDarkMode ? '#60A5FA' : '#2563EB') : (isDarkMode ? '#9CA3AF' : '#6B7280'), fontSize: 14, fontWeight: '500', textAlign: 'center' }}>
                                         Черновики ({allDrafts.length})
                                     </Text>
                                 </TouchableOpacity>

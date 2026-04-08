@@ -202,6 +202,57 @@ export default function NotificationsScreen() {
                 </View>
             </SafeAreaView>
 
+            {/* Tabs Filter — always visible */}
+            <View className="w-full max-w-lg self-center px-4 pt-4">
+                <View className="flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
+                    <TouchableOpacity
+                        onPress={() => setFilter('unread')}
+                        activeOpacity={0.7}
+                        className="flex-1 py-2 rounded-lg flex-row items-center justify-center"
+                        style={filter === 'unread' ? {
+                            backgroundColor: isDarkMode ? '#374151' : '#FFFFFF',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 2,
+                            elevation: 1,
+                        } : undefined}
+                    >
+                        <Text
+                            style={{ fontSize: 14, fontWeight: '500', color: filter === 'unread' ? (isDarkMode ? '#60A5FA' : '#2563EB') : (isDarkMode ? '#9CA3AF' : '#6B7280') }}
+                        >
+                            Непрочитанные
+                        </Text>
+                        {unreadCount > 0 && (
+                            <View className="ml-1.5 bg-blue-500 px-1.5 py-0.5 rounded-full items-center justify-center">
+                                <Text className="text-[10px] font-bold text-white">
+                                    {unreadCount}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setFilter('all')}
+                        activeOpacity={0.7}
+                        className="flex-1 py-2 rounded-lg items-center justify-center"
+                        style={filter === 'all' ? {
+                            backgroundColor: isDarkMode ? '#374151' : '#FFFFFF',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 2,
+                            elevation: 1,
+                        } : undefined}
+                    >
+                        <Text
+                            style={{ fontSize: 14, fontWeight: '500', color: filter === 'all' ? (isDarkMode ? '#60A5FA' : '#2563EB') : (isDarkMode ? '#9CA3AF' : '#6B7280') }}
+                        >
+                            Все
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             {/* Content */}
             {isLoading && notifications.length === 0 ? (
                 <View className="flex-1 items-center justify-center">
@@ -228,51 +279,8 @@ export default function NotificationsScreen() {
                     </Text>
                 </View>
             ) : (
-                <ScrollView className="flex-1 pt-4">
+                <ScrollView className="flex-1">
                     <View className="w-full max-w-lg self-center px-4">
-                        {/* Tabs Filter */}
-                        <View className="flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
-                            <TouchableOpacity
-                                onPress={() => setFilter('unread')}
-                                className={`flex-1 py-2 rounded-lg flex-row items-center justify-center ${
-                                    filter === 'unread' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
-                                }`}
-                            >
-                                <Text
-                                    className={`text-sm font-medium ${
-                                        filter === 'unread'
-                                            ? 'text-blue-600 dark:text-blue-400'
-                                            : 'text-gray-500 dark:text-gray-400'
-                                    }`}
-                                >
-                                    Непрочитанные
-                                </Text>
-                                {unreadCount > 0 && (
-                                    <View className="ml-1.5 bg-blue-500 px-1.5 py-0.5 rounded-full items-center justify-center">
-                                        <Text className="text-[10px] font-bold text-white">
-                                            {unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => setFilter('all')}
-                                className={`flex-1 py-2 rounded-lg items-center justify-center ${
-                                    filter === 'all' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''
-                                }`}
-                            >
-                                <Text
-                                    className={`text-sm font-medium ${
-                                        filter === 'all'
-                                            ? 'text-blue-600 dark:text-blue-400'
-                                            : 'text-gray-500 dark:text-gray-400'
-                                    }`}
-                                >
-                                    Все
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
                         {/* Mark all as read button */}
                         {notifications.length > 0 && unreadCount > 0 && (
                             <TouchableOpacity 
