@@ -298,7 +298,7 @@ export function MobileBottomSheet({ state }: MobileBottomSheetProps) {
         )}
       </div>
 
-      <div style={{ position: 'absolute' as const, right: 12, top: '30%', zIndex: 50, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+      <div style={{ position: 'absolute' as const, right: 12, top: '30%', zIndex: 5, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
         <button
           onClick={() => state.mapRef.current?.zoomIn()}
           style={{
@@ -355,7 +355,7 @@ export function MobileBottomSheet({ state }: MobileBottomSheetProps) {
           style={{
             position: 'absolute' as const,
             bottom: SNAP_PEEK + 16, right: 16,
-            zIndex: 50,
+            zIndex: 5,
             width: 56, height: 56, borderRadius: 28,
             border: 'none', background: '#2563EB', cursor: 'pointer',
             boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
