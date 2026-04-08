@@ -800,7 +800,7 @@ export default function ProfileScreen() {
                             borderColor: isDarkMode ? '#374151' : '#F3F4F6'
                         }}
                     >
-                        <View className="p-6">
+                        <View className="p-6" style={{ flexShrink: 1 }}>
                             {reportDetailLoading ? (
                                 <View className="flex-1 justify-center items-center py-8">
                                     <ActivityIndicator size="large" color={isDarkMode ? '#60A5FA' : '#2563EB'} />
@@ -850,7 +850,7 @@ export default function ProfileScreen() {
                             borderColor: isDarkMode ? '#374151' : '#F3F4F6'
                         }}
                     >
-                        <View className="p-6">
+                        <View className="p-6" style={{ flexShrink: 1 }}>
                             {selectedDraft && (
                                 <DraftDetailInner
                                     draft={selectedDraft}

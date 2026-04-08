@@ -213,7 +213,7 @@ export function PhotoCarousel({
                         <Image
                             source={{ uri: photos[currentIndex].photo_url }}
                             style={{ width: '100%', height }}
-                            className="rounded-2xl bg-gray-200 dark:bg-gray-700"
+                            className="rounded-2xl bg-gray-200 dark:bg-gray-700 overflow-hidden"
                             resizeMode="cover"
                         />
 
