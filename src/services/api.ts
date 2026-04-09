@@ -38,11 +38,12 @@ const isVercelLive = Platform.OS === 'web' && typeof window !== 'undefined' &&
 
 const fixMediaUrls = (data: any): any => {
     if (typeof data === 'string') {
-        if (data.startsWith('http://109.120.135.24/media/')) {
+        const matchStr = data.match(/^http:\/\/109\.120\.135\.24(:\d+)?\/media\//);
+        if (matchStr) {
             if (isVercelLive) {
-                return data.replace('http://109.120.135.24/media/', '/media/');
+                return data.replace(matchStr[0], '/media/');
             } else {
-                return data.replace('http://109.120.135.24/media/', 'http://109.120.135.24:8000/media/');
+                return data.replace(matchStr[0], 'http://109.120.135.24:8000/media/');
             }
         }
         return data;
