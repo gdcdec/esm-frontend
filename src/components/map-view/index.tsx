@@ -26,25 +26,7 @@ interface MapViewProps {
 const DEFAULT_CENTER: [number, number] = [53.2, 50.15];
 const DEFAULT_ZOOM = 13;
 
-const mapStyle = {
-  version: 8,
-  sources: {
-    'cartodb-tiles': {
-      type: 'raster',
-      tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
-      tileSize: 256,
-    },
-  },
-  layers: [
-    {
-      id: 'cartodb-layer',
-      type: 'raster',
-      source: 'cartodb-tiles',
-      minzoom: 0,
-      maxzoom: 22,
-    },
-  ],
-} as any;
+const mapStyle = "https://api.maptiler.com/maps/019d8dc2-4ad4-79d7-a0b4-f4aebd8c2037/style.json?key=l3jbXX46p28c4ZuP3QGb";
 
 export const AppMapView = forwardRef<MapViewRef, MapViewProps>(
   ({ reports, selectedCoordinate, onMapPress, onMarkerPress, initialRegion }, ref) => {
@@ -176,9 +158,9 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(
           maxBounds={
             visibilityArea && cityBoundary
               ? [
-                  [cityBoundary.center.longitude - 3.0, cityBoundary.center.latitude - 2.0],
-                  [cityBoundary.center.longitude + 3.0, cityBoundary.center.latitude + 2.0],
-                ]
+                [cityBoundary.center.longitude - 3.0, cityBoundary.center.latitude - 2.0],
+                [cityBoundary.center.longitude + 3.0, cityBoundary.center.latitude + 2.0],
+              ]
               : undefined
           }
           dragRotate={isMobile}
@@ -187,7 +169,7 @@ export const AppMapView = forwardRef<MapViewRef, MapViewProps>(
           keyboard={isMobile}
         >
           {visibilityArea && <FogLayer fogGeoJSON={fogGeoJSON} fogLayerStyle={fogLayerStyle} />}
-          <ReportMarkers reports={reports} onMarkerPress={onMarkerPress ?? (() => {})} />
+          <ReportMarkers reports={reports} onMarkerPress={onMarkerPress ?? (() => { })} />
           {selectedCoordinate && (
             <SelectedMarker latitude={selectedCoordinate.latitude} longitude={selectedCoordinate.longitude} />
           )}
